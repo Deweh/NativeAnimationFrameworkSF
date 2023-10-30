@@ -1,0 +1,6 @@
+[submodule "extern/DKUtil"]
+	path = extern/DKUtil
+	url = https://github.com/gottyduke/DKUtil.git
+[submodule "extern/CommonLibSF"]
+	path = extern/CommonLibSF
+	url = https://github.com/Deweh/CommonLibSF.git
