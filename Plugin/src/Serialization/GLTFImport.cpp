@@ -26,12 +26,31 @@ namespace Serialization
 		std::vector<float> times;
 		for (auto& c : anim->channels) {
 			times.clear();
+			if (c.nodeIndex > asset->nodes.size())
+				continue;
+
 			auto idx = skeletonIdxs[c.nodeIndex];
 			if (idx == UINT64_MAX)
 				continue;
 
 			auto& rTl = result->rotation[idx];
 			auto& pTl = result->position[idx];
+
+			auto& curNode = asset->nodes[c.nodeIndex];
+			if (std::holds_alternative<fastgltf::Node::TRS>(curNode.transform)) {
+				auto& trs = std::get<fastgltf::Node::TRS>(curNode.transform);
+				rTl.keys[-0.001f] = {
+					trs.rotation[3],
+					trs.rotation[0],
+					trs.rotation[1],
+					trs.rotation[2]
+				};
+				pTl.keys[-0.001f] = {
+					trs.translation[0],
+					trs.translation[1],
+					trs.translation[2]
+				};
+			}
 
 			if (c.samplerIndex > anim->samplers.size())
 				continue;
@@ -125,7 +144,8 @@ namespace Serialization
 
 		fastgltf::Parser parser;
 		auto gltfOptions =
-			fastgltf::Options::LoadGLBBuffers;
+			fastgltf::Options::LoadGLBBuffers |
+			fastgltf::Options::DecomposeNodeMatrices;
 
 		auto type = fastgltf::determineGltfFileType(&data);
 		std::unique_ptr<fastgltf::glTF> gltf;
