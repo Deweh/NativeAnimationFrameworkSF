@@ -1,9 +1,10 @@
 #include "Settings.h"
 #include "simdjson.h"
+#include "Util/String.h"
 
 namespace Settings
 {
-	const char* skeletonsDir = "Data/NAF/Skeletons";
+	const std::filesystem::path skeletonsDir = Util::String::GetDataPath() / "Skeletons";
 
 	std::shared_ptr<SkeletonDescriptor> defaultSkeleton = std::make_shared<SkeletonDescriptor>();
 
@@ -29,6 +30,7 @@ namespace Settings
 					for (auto n : nodes) {
 						skele->nodeNames.emplace_back(n.get_string().value());
 					}
+					skele->MakeNodeNamesUnique();
 					auto sName = p.stem().generic_string();
 					skeletons[sName] = skele;
 					INFO("Loaded {} skeleton.", sName);

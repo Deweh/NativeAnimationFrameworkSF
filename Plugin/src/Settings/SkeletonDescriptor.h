@@ -16,6 +16,7 @@ namespace Settings
 		std::vector<IKChainDescriptor> chains;
 		std::vector<std::string> nodeNames;
 
+		void MakeNodeNamesUnique();
 		std::optional<size_t> GetNodeIndex(const std::string& name) const;
 		std::map<std::string, size_t> GetNodeIndexMap() const;
 	};

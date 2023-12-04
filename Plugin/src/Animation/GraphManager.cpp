@@ -1,6 +1,7 @@
 #include "GraphManager.h"
 #include "Settings/Settings.h"
 #include "Serialization/GLTFImport.h"
+#include "Util/String.h"
 
 namespace Animation
 {
@@ -50,7 +51,7 @@ namespace Animation
 			return kNoSkeleton;
 		}
 
-		auto asset = Serialization::GLTFImport::LoadGLTF("Data/NAF/" + a_fileName);
+		auto asset = Serialization::GLTFImport::LoadGLTF(Util::String::GetDataPath() / a_fileName);
 		if (!asset) {
 			return kFailedToLoad;
 		}

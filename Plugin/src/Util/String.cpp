@@ -2,6 +2,29 @@
 
 namespace Util
 {
+	const std::filesystem::path& String::GetGamePath()
+	{
+		static std::optional<std::filesystem::path> BasePath = std::nullopt;
+
+		if (!BasePath) {
+			std::filesystem::path p = REL::WinAPI::GetProcPath(nullptr);
+			BasePath = p.parent_path();
+		}
+
+		return *BasePath;
+	}
+
+	const std::filesystem::path& String::GetDataPath()
+	{
+		static std::optional<std::filesystem::path> DataPath = std::nullopt;
+
+		if (!DataPath) {
+			DataPath = GetGamePath() / "Data" / "NAF";
+		}
+
+		return *DataPath;
+	}
+
 	std::vector<std::string_view> String::Split(const std::string_view& s, const std::string_view& delimiter, const std::optional<char>& escapeChar)
 	{
 		std::vector<std::string_view> substrings;
