@@ -1,5 +1,6 @@
 #include "Commands.h"
 #include "Util/String.h"
+#include "polyhook2/Detour/x64Detour.hpp"
 
 namespace Commands
 {
@@ -20,8 +21,9 @@ namespace Commands
 		return GetRefrFromHandle(outId);
 	}
 
-	typedef void (*ExecuteCommandFunc)(void*, const char*);
+	typedef int64_t (*ExecuteCommandFunc)(void*, const char*);
 
+	std::unique_ptr<PLH::x64Detour> ExecuteCommandDetour = nullptr;
 	ExecuteCommandFunc OriginalExecuteCommand;
 	std::unordered_map<std::string, CommandFunction> registrations;
 
@@ -30,11 +32,10 @@ namespace Commands
 		registrations[name] = func;
 	}
 
-	void ExecuteCommand(void* a1, const char* a_cmd)
+	int64_t ExecuteCommand(void* a1, const char* a_cmd, ...)
 	{
 		if (!a_cmd) {
-			OriginalExecuteCommand(a1, a_cmd);
-			return;
+			return OriginalExecuteCommand(a1, a_cmd);
 		}
 
 		std::string_view cmdView(a_cmd);
@@ -42,41 +43,20 @@ namespace Commands
 		if (auto iter = registrations.find(std::string(args[0])); iter != registrations.end()) {
 			auto refr = GetConsoleRefr();
 			iter->second(args, cmdView, refr.get());
+			return 0;
 		} else {
-			OriginalExecuteCommand(a1, a_cmd);
+			return OriginalExecuteCommand(a1, a_cmd);
 		}
 	}
 
 	void InstallHooks()
 	{
-		auto& t = SFSE::GetTrampoline();
-
-		REL::Relocation<uintptr_t> hookLoc1{ REL::ID(148098), 0x184 };
-		OriginalExecuteCommand = reinterpret_cast<ExecuteCommandFunc>(t.write_call<5>(hookLoc1.address(), &ExecuteCommand));
-		
-		REL::Relocation<uintptr_t> hookLoc2{ REL::ID(149017), 0x35 };
-		t.write_call<5>(hookLoc2.address(), &ExecuteCommand);
-
-		REL::Relocation<uintptr_t> hookLoc3{ REL::ID(166251), 0x142 };
-		t.write_call<5>(hookLoc3.address(), &ExecuteCommand);
-
-		REL::Relocation<uintptr_t> hookLoc4{ REL::ID(166292), 0x15 };
-		t.write_call<5>(hookLoc4.address(), &ExecuteCommand);
-
-		REL::Relocation<uintptr_t> hookLoc5{ REL::ID(166311), 0x1E };
-		t.write_call<5>(hookLoc5.address(), &ExecuteCommand);
-
-		REL::Relocation<uintptr_t> hookLoc6{ REL::ID(166324), 0x18A };
-		t.write_call<5>(hookLoc6.address(), &ExecuteCommand);
-
-		REL::Relocation<uintptr_t> hookLoc7{ REL::ID(170824), 0x53 };
-		t.write_call<5>(hookLoc7.address(), &ExecuteCommand);
-
-		REL::Relocation<uintptr_t> hookLoc8{ REL::ID(170824), 0x40 };
-		t.write_call<5>(hookLoc8.address(), &ExecuteCommand);
-
-		REL::Relocation<uintptr_t> hookLoc9{ REL::ID(170824), 0x29 };
-		t.write_call<5>(hookLoc9.address(), &ExecuteCommand);
+		REL::Relocation<uintptr_t> hookLoc{ REL::ID(166307) };
+		ExecuteCommandDetour = std::make_unique<PLH::x64Detour>(
+			static_cast<uint64_t>(hookLoc.address()),
+			reinterpret_cast<uint64_t>(&ExecuteCommand),
+			reinterpret_cast<uint64_t*>(&OriginalExecuteCommand));
+		ExecuteCommandDetour->hook();
 		
 		INFO("Installed command hook.");
 	}

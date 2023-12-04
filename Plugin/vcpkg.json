@@ -12,6 +12,7 @@
     "tomlplusplus",
     "xbyak",
     "simdjson",
-    "fastgltf"
+    "fastgltf",
+    "polyhook2"
   ]
 }

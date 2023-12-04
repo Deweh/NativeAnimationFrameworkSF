@@ -48,7 +48,7 @@ DLLEXPORT bool SFSEAPI SFSEPlugin_Load(const SFSE::LoadInterface* a_sfse)
 	DKUtil::Logger::Init(Plugin::NAME, std::to_string(Plugin::Version));
 	INFO("{} v{} loaded", Plugin::NAME, Plugin::Version);
 	
-	SFSE::AllocTrampoline(28);
+	SFSE::AllocTrampoline(14);
 	Animation::GraphManager::GetSingleton()->InstallHooks();
 	Tasks::SaveLoadListener::InstallHooks();
 	Commands::InstallHooks();

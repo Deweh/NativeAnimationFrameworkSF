@@ -168,6 +168,14 @@ namespace NAFAPI
 	//API Functions
 
 	/*
+	* Returns true if NativeAnimationFrameworkSF.dll is installed & loaded.
+	*/
+	bool IsInstalled()
+	{
+		return GetModuleHandleA("NativeAnimationFrameworkSF.dll") != NULL;
+	}
+
+	/*
 	* Creates a ClipGenerator from a GLTF animation and attaches it to an actor.
 	* 
 	* a_actor - The actor to attach the ClipGenerator to.

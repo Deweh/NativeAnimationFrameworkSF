@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.21)
 # info
 project(
 	NativeAnimationFrameworkSF
-	VERSION 1.0.0
+	VERSION 1.0.1
 	LANGUAGES CXX
 )
 
@@ -37,6 +37,7 @@ source_group(
 )
 
 # dependencies
+find_package(PolyHook_2 CONFIG REQUIRED)
 find_package(simdjson CONFIG REQUIRED)
 find_package(fastgltf CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
@@ -64,13 +65,17 @@ add_library(
  "src/Settings/SkeletonDescriptor.cpp" 
  "src/Animation/Node.cpp"  
  "src/Serialization/GLTFImport.cpp"
- "src/Util/String.cpp" "src/Commands/Commands.cpp" "src/Commands/NAFCommand.cpp" "src/Tasks/SaveLoadListener.cpp")
+ "src/Util/String.cpp"
+ "src/Commands/Commands.cpp"
+ "src/Commands/NAFCommand.cpp"
+ "src/Tasks/SaveLoadListener.cpp")
 
 # copy to Starfield directory
 set(STARFIELD_PATH "C:/Program Files (x86)/Steam/steamapps/common/Starfield/Data/SFSE/Plugins")
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}> ${STARFIELD_PATH}
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_PDB_FILE:${PROJECT_NAME}> ${STARFIELD_PATH}
     COMMENT "Copying plugin to Starfield directory..."
 )
 
@@ -92,6 +97,7 @@ target_link_libraries(
 		spdlog::spdlog
 		simdjson::simdjson
 		fastgltf::fastgltf
+		PolyHook_2::PolyHook_2
 )
 
 # compiler def
