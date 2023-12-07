@@ -5,34 +5,7 @@
 
 namespace Animation
 {
-	struct BSAnimationUpdateData
-	{
-		uint64_t unk00;
-		uint32_t unk01;
-		float unk02;
-		uint64_t unk04;
-		float unk05;
-		float unk06;
-		uint64_t unk07;
-		float unk08;
-		float unk09;
-		uint64_t unk10;
-		float unk11;
-		float unk12;
-		uint64_t unk13;
-		uint64_t unk14;
-		uint64_t unk15;
-		uint64_t unk16;
-		float timeDelta;
-		float unk18;
-		int32_t flags;
-		int32_t unk19;
-		float unk20;
-		float unk21;
-	};
-	static_assert(offsetof(BSAnimationUpdateData, timeDelta) == 0x60);
-
-	typedef void (*GraphUpdateFunc)(RE::IAnimationGraphManagerHolder*, BSAnimationUpdateData*, void*);
+	typedef void (*GraphUpdateFunc)(RE::IAnimationGraphManagerHolder*, RE::BSAnimationUpdateData*, void*);
 
 	GraphManager* GraphManager::GetSingleton()
 	{
@@ -148,24 +121,29 @@ namespace Animation
 		return false;
 	}
 
-	GraphUpdateFunc originalUpdate;
+	GraphManager& graphManager = *GraphManager::GetSingleton();
+	GraphUpdateFunc OriginalGraphUpdate;
 
-	void UpdateGraph(RE::IAnimationGraphManagerHolder* a_graphHolder, BSAnimationUpdateData* a_updateData, void* a_graph)
+	void UpdateGraph(RE::IAnimationGraphManagerHolder* a_graphHolder, RE::BSAnimationUpdateData* a_updateData, void* a_graph)
 	{
-		originalUpdate(a_graphHolder, a_updateData, a_graph);
-		static GraphManager& graphManager = *GraphManager::GetSingleton();
-
 		std::shared_lock l{ graphManager.stateLock };
 		auto& m = graphManager.state->graphMap;
 		if (auto iter = m.find(a_graphHolder); iter != m.end()) {
 			auto& g = iter->second;
 			std::unique_lock gl{ g->lock };
+
+			if (g->state == Graph::STATE::kTransition || g->state == Graph::STATE::kIdle) {
+				OriginalGraphUpdate(a_graphHolder, a_updateData, a_graph);
+			}
+
 			g->Update(a_updateData->timeDelta);
 
 			if (g->state == Graph::STATE::kIdle && g->flags.all(Graph::FLAGS::kTemporary, Graph::FLAGS::kNoActiveIKChains)) {
 				l.unlock();
 				graphManager.DetachGraph(a_graphHolder);
 			}
+		} else {
+			OriginalGraphUpdate(a_graphHolder, a_updateData, a_graph);
 		}
 	}
 
@@ -173,7 +151,7 @@ namespace Animation
 	{
 		//IAnimationGraphManagerHolder::UpdateAnimationGraphManager(IAnimationGraphManagerHolder*, BSAnimationUpdateData*, Graph*)
 		REL::Relocation<uintptr_t> hookLoc{ REL::ID(118488), 0x61 };
-		originalUpdate = reinterpret_cast<GraphUpdateFunc>(SFSE::GetTrampoline().write_call<5>(hookLoc.address(), &UpdateGraph));
+		OriginalGraphUpdate = reinterpret_cast<GraphUpdateFunc>(SFSE::GetTrampoline().write_call<5>(hookLoc.address(), &UpdateGraph));
 		INFO("Installed graph update hook.");
 	}
 }

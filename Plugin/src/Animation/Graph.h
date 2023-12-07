@@ -48,8 +48,9 @@ namespace Animation
 		std::vector<Transform> transitionSnapshot;
 		float transitionDuration = 0.0f;
 		float transitionLocalTime = 0.0f;
-		EasedInterpolator<QuaternionLinearInterpolator, CubicInOutEase<float>> transitionRotInterp = {};
-		EasedInterpolator<Point3LinearInterpolator, CubicInOutEase<float>> transitionPosInterp = {};
+		QuaternionLinearInterpolator transitionRotInterp;
+		Point3LinearInterpolator transitionPosInterp;
+		CubicInOutEase<float> transitionEase;
 
 		Graph();
 

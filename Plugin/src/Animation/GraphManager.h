@@ -1,6 +1,5 @@
 #pragma once
 #include "Graph.h"
-#include "Tasks/MainLoop.h"
 
 namespace Animation
 {

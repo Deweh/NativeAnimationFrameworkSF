@@ -144,6 +144,7 @@ namespace Animation
 			transitionLocalTime = transitionDuration;
 		}
 
+		auto normalizedTime = transitionEase(Util::NormalizeSpan(0.0f, transitionDuration, transitionLocalTime));
 		size_t count = nodes.size() > generator->output.size() ? generator->output.size() : nodes.size();
 		for (size_t i = 0; i < count; i++) {
 			auto trans = a_transformsFunc(i);
@@ -152,7 +153,6 @@ namespace Animation
 			} else if (trans.second.IsIdentity()) {
 				transitionOutput[i] = trans.first;
 			} else {
-				auto normalizedTime = Util::NormalizeSpan(0.0f, transitionDuration, transitionLocalTime);
 				auto& out = transitionOutput[i];
 				transitionPosInterp(trans.first.translate, trans.second.translate, normalizedTime, out.translate);
 				transitionRotInterp(trans.first.rotate, trans.second.rotate, normalizedTime, out.rotate);

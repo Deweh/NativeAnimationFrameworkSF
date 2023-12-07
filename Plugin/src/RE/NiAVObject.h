@@ -6,6 +6,32 @@ namespace RE
 	class BSGeometry;
 	class BSFaceGenNiNode;
 
+	struct BSAnimationUpdateData
+	{
+		NiPoint3A rootLocation1;
+		NiPoint3A rootAngle1;
+		NiPoint3A rootLocation2;
+		NiPoint3A rootAngle2;
+		float     unk01;
+		float     unk02;
+		float     unk03;
+		float     unk04;
+		float     unk05;
+		float     unk06;
+		float     unk07;
+		float     unk08;
+		float     timeDelta;
+		float     unk09;
+		float     unk10;
+		float     unk11;
+		bool      unk12;
+		bool      unk13;
+		bool      unkFlag;
+		bool      unk15;
+		float     unk16;
+	};
+	static_assert(offsetof(BSAnimationUpdateData, timeDelta) == 0x60);
+
 	template <class T>
 	struct BSArray
 	{
@@ -16,25 +42,25 @@ namespace RE
 
 	struct NiUpdateData
 	{
-		float     delta;
-		float     unk04;
-		float     unk08;
-		uint32_t  unk0C;
-		NiPoint4* unk10;
-		NiPoint4* unk18;
-		uint64_t  unk20;
-		uint64_t  unk28;
-		uint64_t  unk30;
-		uint32_t  flags;
-		uint32_t  flags2;
-		uint32_t  flags3;
-		uint32_t  unk44;
-		float     unk48;
-		uint32_t  unk4C;
-		float     unk50;
-		float     unk54;
-		float     unk58;
-		uint32_t  unk5C;
+		float     delta = 0;
+		float     unk04 = 0;
+		float     unk08 = 0;
+		uint32_t  unk0C = 0;
+		NiPoint4* unk10 = nullptr;
+		NiPoint4* unk18 = nullptr;
+		uint64_t  unk20 = 0;
+		uint64_t  unk28 = 0;
+		uint64_t  unk30 = 0;
+		uint32_t  flags = 0x10;
+		uint32_t  flags2 = 1;
+		uint32_t  flags3 = 1;
+		uint32_t  unk44 = 0;
+		float     unk48 = 0;
+		uint32_t  unk4C = 0;
+		float     unk50 = 0;
+		float     unk54 = 0;
+		float     unk58 = 0;
+		uint32_t  unk5C = 0;
 	};
 
 	class BGSModelNode
@@ -185,14 +211,14 @@ namespace RE
 		virtual void* Unk70();
 		virtual void* Unk71();
 		virtual void* Unk72();
-		virtual void* Unk73();
+		virtual void* Update(NiUpdateData* data);
 		virtual void* Unk74();
 		virtual void* Unk75();
 		virtual void* Unk76();
 		virtual void* Unk77();
 		virtual void* Unk78();
 		virtual void* UpdateWorldData(NiUpdateData* data);
-		virtual void* UpdateTransformAndBounds();
+		virtual void* UpdateTransformAndBounds(NiUpdateData* data);
 		virtual void* UpdateTransforms(NiUpdateData* data);
 		virtual void* Unk82();
 		virtual void* Unk83();
@@ -234,7 +260,6 @@ namespace RE
 		NiTArray<NiNode*> children; //NiTObjectArray<NiPointer<NiAVObject>> //130
 		void* unk148;
 	};
-	static constexpr size_t tst{ offsetof(NiNode, children) };
 
 	class BGSFadeNode : public NiNode
 	{
@@ -249,6 +274,7 @@ namespace RE
 		void*         unk178;
 		BGSModelNode* bgsModelNode;
 	};
+	constexpr size_t tst{ offsetof(BGSFadeNode, bgsModelNode) };
 
 	class BSGeometry : public NiAVObject
 	{
