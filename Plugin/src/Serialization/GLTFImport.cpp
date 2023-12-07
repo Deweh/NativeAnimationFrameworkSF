@@ -1,4 +1,5 @@
 #include "GLTFImport.h"
+#include "Animation/Transform.h"
 
 namespace Serialization
 {
@@ -23,6 +24,7 @@ namespace Serialization
 		result->SetSize(skeletonMap.size());
 
 		//Process GLTF data
+		std::vector<std::optional<Animation::Transform>> bindPose(skeletonMap.size(), std::optional<Animation::Transform>(std::nullopt));
 		std::vector<float> times;
 		for (auto& c : anim->channels) {
 			times.clear();
@@ -36,20 +38,21 @@ namespace Serialization
 			auto& rTl = result->rotation[idx];
 			auto& pTl = result->position[idx];
 
-			auto& curNode = asset->nodes[c.nodeIndex];
-			if (std::holds_alternative<fastgltf::Node::TRS>(curNode.transform)) {
+			if (auto& curNode = asset->nodes[c.nodeIndex]; std::holds_alternative<fastgltf::Node::TRS>(curNode.transform)) {
 				auto& trs = std::get<fastgltf::Node::TRS>(curNode.transform);
-				rTl.keys[-0.001f] = {
-					trs.rotation[3],
-					trs.rotation[0],
-					trs.rotation[1],
-					trs.rotation[2]
-				};
-				pTl.keys[-0.001f] = {
-					trs.translation[0],
-					trs.translation[1],
-					trs.translation[2]
-				};
+				bindPose[idx] = {
+					RE::NiQuaternion{
+						trs.rotation[3],
+						trs.rotation[0],
+						trs.rotation[1],
+						trs.rotation[2]
+					},
+					RE::NiPoint3{
+						trs.translation[0],
+						trs.translation[1],
+						trs.translation[2]
+					}
+				};			
 			}
 
 			if (c.samplerIndex > anim->samplers.size())
@@ -130,6 +133,18 @@ namespace Serialization
 					pTl.keys.emplace(t, p);
 					break;
 				}
+			}
+		}
+
+		for (size_t i = 0; i < skeletonMap.size(); i++) {
+			auto& rTl = result->rotation[i].keys;
+			auto& pTl = result->position[i].keys;
+			auto& b = bindPose[i];
+			if (rTl.empty() && b.has_value()) {
+				rTl[0.0001f] = b->rotate;
+			}
+			if (pTl.empty() && b.has_value()) {
+				pTl[0.0001f] = b->translate;
 			}
 		}
 
