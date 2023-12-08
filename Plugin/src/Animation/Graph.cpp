@@ -22,6 +22,8 @@ namespace Animation
 		rootNode = a_rootNode;
 
 		if (a_rootNode != nullptr) {
+			rootTransform.translate = target->data.location;
+			rootTransform.rotate = target->data.angle;
 			for (auto& name : skeleton->nodeNames) {
 				RE::NiAVObject* n = a_rootNode->GetObjectByName(name);
 				if (!n) {
@@ -168,6 +170,7 @@ namespace Animation
 
 	void Graph::PushOutput(const std::vector<Transform>& a_output)
 	{
+		static RE::TransformsManager* transformManager = RE::TransformsManager::GetSingleton();
 		size_t updateCount = nodes.size() > a_output.size() ? a_output.size() : nodes.size();
 
 		for (size_t i = 0; i < updateCount; i++) {
@@ -176,6 +179,8 @@ namespace Animation
 				nodes[i]->SetLocal(cur);
 			}
 		}
+
+		transformManager->RequestPosRotUpdate(target.get(), rootTransform.translate, rootTransform.rotate);
 
 		auto r = rootNode;
 		if (!r)

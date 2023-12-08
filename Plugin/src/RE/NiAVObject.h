@@ -223,9 +223,9 @@ namespace RE
 		virtual void* Unk82();
 		virtual void* Unk83();
 
+		BSFixedString name;
 		uint32_t refcount;
 		uint32_t pad0C;
-		BSFixedString name;
 		void* controller;
 		void* unk28;
 		void* unk30;
@@ -266,15 +266,21 @@ namespace RE
 	public:
 		virtual ~BGSFadeNode() = default;
 
+		struct UnkEntry
+		{
+			std::byte    unk00[32];
+			NiBound      worldBound;
+			NiAVObject*  node;
+			void*        unk01;
+		};
+
 		void*         unk150;
 		void*         unk158;
 		void*         unk160;
 		void*         unk168;
-		void*         unk170;
-		void*         unk178;
+		BSArray<UnkEntry> geometries;
 		BGSModelNode* bgsModelNode;
 	};
-	constexpr size_t tst{ offsetof(BGSFadeNode, bgsModelNode) };
 
 	class BSGeometry : public NiAVObject
 	{

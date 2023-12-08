@@ -2,6 +2,14 @@
 
 namespace Animation
 {
+	struct XYZTransform
+	{
+		RE::NiPoint3 rotate;
+		RE::NiPoint3 translate;
+
+		void ConstrainRotationAngles();
+	};
+
 	struct Transform
 	{
 		RE::NiQuaternion rotate;

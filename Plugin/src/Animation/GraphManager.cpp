@@ -126,24 +126,19 @@ namespace Animation
 
 	void UpdateGraph(RE::IAnimationGraphManagerHolder* a_graphHolder, RE::BSAnimationUpdateData* a_updateData, void* a_graph)
 	{
+		OriginalGraphUpdate(a_graphHolder, a_updateData, a_graph);
+
 		std::shared_lock l{ graphManager.stateLock };
 		auto& m = graphManager.state->graphMap;
 		if (auto iter = m.find(a_graphHolder); iter != m.end()) {
 			auto& g = iter->second;
 			std::unique_lock gl{ g->lock };
-
-			if (g->state == Graph::STATE::kTransition || g->state == Graph::STATE::kIdle) {
-				OriginalGraphUpdate(a_graphHolder, a_updateData, a_graph);
-			}
-
 			g->Update(a_updateData->timeDelta);
 
 			if (g->state == Graph::STATE::kIdle && g->flags.all(Graph::FLAGS::kTemporary, Graph::FLAGS::kNoActiveIKChains)) {
 				l.unlock();
 				graphManager.DetachGraph(a_graphHolder);
 			}
-		} else {
-			OriginalGraphUpdate(a_graphHolder, a_updateData, a_graph);
 		}
 	}
 

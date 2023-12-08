@@ -19,12 +19,46 @@ namespace RE
 			FromMatrix(mat);
 		}
 
-		NiQuaternion(float angle, const RE::NiPoint3& axis)
+		static NiQuaternion EulerZXY(const NiPoint3& euler)
 		{
-			FromAngleAxis(angle, axis);
+			NiQuaternion result;
+			result.FromEulerAnglesZXY(euler);
+			return result;
 		}
 
-		void FromAngleAxis(float angle, const RE::NiPoint3& axis)
+		static NiQuaternion AngleAxis(float angle, const NiPoint3& axis)
+		{
+			NiQuaternion result;
+			result.FromAngleAxis(angle, axis);
+			return result;
+		}
+
+		NiPoint3 ToEulerAnglesZXY() const
+		{
+			NiPoint3 euler;
+			euler.x = std::atan2(2.0f * (w * x + y * z), 1.0f - 2.0f * (x * x + y * y));
+			euler.y = std::asin(2.0f * (w * y - z * x));
+			euler.z = std::atan2(2.0f * (w * z + x * y), 1.0f - 2.0f * (y * y + z * z));
+
+			return euler;
+		}
+
+		void FromEulerAnglesZXY(const NiPoint3& euler)
+		{
+			float cy = std::cos(euler.z * 0.5f);
+			float sy = std::sin(euler.z * 0.5f);
+			float cp = std::cos(euler.y * 0.5f);
+			float sp = std::sin(euler.y * 0.5f);
+			float cr = std::cos(euler.x * 0.5f);
+			float sr = std::sin(euler.x * 0.5f);
+
+			w = cr * cp * cy + sr * sp * sy;
+			x = sr * cp * cy - cr * sp * sy;
+			y = cr * sp * cy + sr * cp * sy;
+			z = cr * cp * sy - sr * sp * cy;
+		}
+
+		void FromAngleAxis(float angle, const NiPoint3& axis)
 		{
 			float halfAngle = angle / 2.0f;
 			w = std::cos(halfAngle);
@@ -124,17 +158,17 @@ namespace RE
 			return { w + a_rhs.w, x + a_rhs.x, y + a_rhs.y, z + a_rhs.z };
 		}
 
-		RE::NiQuaternion operator-(const RE::NiQuaternion& a_rhs) const
+		NiQuaternion operator-(const NiQuaternion& a_rhs) const
 		{
 			return { w - a_rhs.w, x - a_rhs.x, y - a_rhs.y, z - a_rhs.z };
 		}
 
-		RE::NiQuaternion operator/(float s) const
+		NiQuaternion operator/(float s) const
 		{
 			return { w / s, x / s, y / s, z / s };
 		}
 
-		RE::NiQuaternion operator-() const
+		NiQuaternion operator-() const
 		{
 			return { -w, -x, -y, -z };
 		}

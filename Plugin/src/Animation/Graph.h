@@ -42,6 +42,7 @@ namespace Animation
 		std::shared_ptr<const Settings::SkeletonDescriptor> skeleton;
 		std::vector<std::unique_ptr<Node>> nodes;
 		RE::BGSFadeNode* rootNode = nullptr;
+		XYZTransform rootTransform;
 
 		std::unique_ptr<Generator> generator = nullptr;
 		std::vector<Transform> transitionOutput;

@@ -1,8 +1,57 @@
 #include "GLTFImport.h"
 #include "Animation/Transform.h"
+#include "Settings/Settings.h"
+#include "Util/String.h"
 
 namespace Serialization
 {
+	void GLTFImport::LoadAnimation(AnimationInfo& info)
+	{
+		if (!info.targetActor) {
+			info.result.error = kNoSkeleton;
+			return;
+		}
+
+		auto skeleton = Settings::GetSkeleton(info.targetActor);
+		if (Settings::IsDefaultSkeleton(skeleton)) {
+			info.result.error = kNoSkeleton;
+			return;
+		}
+
+		auto asset = LoadGLTF(Util::String::GetDataPath() / info.fileName);
+		if (!asset) {
+			info.result.error = kFailedToLoad;
+			return;
+		}
+
+		fastgltf::Animation* anim = nullptr;
+		if (info.id.type == AnimationIdentifer::Type::kIndex && info.id.index < asset->animations.size()) {
+			anim = &asset->animations[info.id.index];
+		} else if (info.id.type == AnimationIdentifer::Type::kName) {
+			for (auto& a : asset->animations) {
+				if (a.name == info.id.name) {
+					anim = &a;
+					break;
+				}
+			}
+		}
+
+		if (!anim) {
+			info.result.error = kInvalidAnimationIdentifier;
+			return;
+		}
+
+		auto gen = CreateClipGenerator(asset.get(), anim, skeleton.get());
+		if (!gen) {
+			info.result.error = kFailedToMakeClip;
+			return;
+		}
+
+		gen->InitTimelines();
+		info.result.generator = std::move(gen);
+		info.result.error = kSuccess;
+	}
+
 	std::unique_ptr<Animation::LinearClipGenerator> GLTFImport::CreateClipGenerator(const fastgltf::Asset* asset, const fastgltf::Animation* anim, const Settings::SkeletonDescriptor* skeleton)
 	{
 		//Create a map of GLTF node indexes -> skeleton indexes
@@ -153,9 +202,24 @@ namespace Serialization
 
 	std::unique_ptr<fastgltf::Asset> GLTFImport::LoadGLTF(const std::filesystem::path& fileName)
 	{
-		fastgltf::GltfDataBuffer data;
-		if (!data.loadFromFile(fileName))
+		std::ifstream file(fileName, std::ios::binary);
+
+		if (!file.is_open())
 			return nullptr;
+
+		std::vector<uint8_t> buffer;
+		std::istreambuf_iterator<char> fileEnd;
+
+		for (std::istreambuf_iterator<char> iter(file); iter != fileEnd; iter++) {
+			buffer.push_back(*iter);
+		}
+
+		size_t baseBufferSize = buffer.size();
+		size_t paddedBufferSize = baseBufferSize + fastgltf::getGltfBufferPadding();
+		buffer.resize(paddedBufferSize);
+
+		fastgltf::GltfDataBuffer data;
+		data.fromByteView(buffer.data(), baseBufferSize, paddedBufferSize);
 
 		fastgltf::Parser parser;
 		auto gltfOptions =

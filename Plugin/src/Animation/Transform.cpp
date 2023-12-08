@@ -2,6 +2,13 @@
 
 namespace Animation
 {
+	void XYZTransform::ConstrainRotationAngles()
+	{
+		rotate.x = std::fmodf(rotate.x, 2.0f * PI_F);
+		rotate.y = std::fmodf(rotate.y, 2.0f * PI_F);
+		rotate.z = std::fmodf(rotate.z, 2.0f * PI_F);
+	}
+
 	Transform::Transform() {}
 
 	Transform::Transform(const RE::NiQuaternion& rotate, const RE::NiPoint3& translate) :
