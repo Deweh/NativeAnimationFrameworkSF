@@ -2,6 +2,7 @@
 #include "API_External.h"
 #include "Animation/GraphManager.h"
 #include "Settings/Settings.h"
+#include "Serialization/GLTFImport.h"
 namespace
 {
 	class NAFAPI_UserGenerator : public Animation::Generator
@@ -108,14 +109,21 @@ uint16_t NAFAPI_PlayAnimationFromGLTF(
 	const char* a_fileName,
 	const NAFAPI_AnimationIdentifer& a_id)
 {
-	Animation::AnimationIdentifer id;
-	id.type = static_cast<Animation::AnimationIdentifer::Type>(a_id.type);
-	id.index = a_id.index;
+	Serialization::GLTFImport::AnimationInfo info{ .targetActor = a_actor, .fileName = a_fileName };
+	info.id.type = static_cast<Serialization::GLTFImport::AnimationIdentifer::Type>(a_id.type);
+	info.id.index = a_id.index;
 	if (a_id.name != nullptr) {
-		id.name = a_id.name;
+		info.id.name = a_id.name;
 	}
 
-	return Animation::GraphManager::GetSingleton()->PlayAnimationFromGLTF(a_actor, a_transitionTime, a_fileName, id);
+	Serialization::GLTFImport::LoadAnimation(info);
+
+	if (info.result.error) {
+		return info.result.error;
+	}
+
+	Animation::GraphManager::GetSingleton()->AttachGenerator(a_actor, std::move(info.result.generator), a_transitionTime);
+	return 0;
 }
 
 NAFAPI_Handle<NAFAPI_Array<const char*>> NAFAPI_GetSkeletonNodes(

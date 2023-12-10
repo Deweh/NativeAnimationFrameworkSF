@@ -13,46 +13,38 @@ namespace Animation
 		return &singleton;
 	}
 
-	GLTFErrorCode GraphManager::PlayAnimationFromGLTF(RE::Actor* a_actor, float a_transitionTime, const std::string& a_fileName, const AnimationIdentifer& a_id)
+	bool GraphManager::AttachGeneratorsSynced(const std::vector<RE::Actor*>& a_actors, std::vector<std::unique_ptr<Generator>>& a_gens, float a_transitionTime, bool alignRoots)
 	{
-		if (!a_actor) {
-			return kNoSkeleton;
+		if (a_actors.empty() || a_actors.size() != a_gens.size())
+			return false;
+
+		RE::NiPoint3A rootAngle;
+		RE::NiPoint3A rootLoc;
+		if (auto& a = a_actors.front(); a != nullptr) {
+			rootAngle = a->data.angle;
+			rootLoc = a->data.location;
 		}
 
-		auto skeleton = Settings::GetSkeleton(a_actor);
-		if (Settings::IsDefaultSkeleton(skeleton)) {
-			return kNoSkeleton;
-		}
+		std::unique_lock sl{ stateLock };
+		for (size_t i = 0; i < a_actors.size(); i++) {
+			auto& a = a_actors[i];
+			auto& gen = a_gens[i];
+			if (!a)
+				return false;
 
-		auto asset = Serialization::GLTFImport::LoadGLTF(Util::String::GetDataPath() / a_fileName);
-		if (!asset) {
-			return kFailedToLoad;
-		}
+			auto grph = GetGraphLockless(a, true);
 
-		fastgltf::Animation* anim = nullptr;
-		if (a_id.type == AnimationIdentifer::Type::kIndex && a_id.index < asset->animations.size()) {
-			anim = &asset->animations[a_id.index];
-		} else if (a_id.type == AnimationIdentifer::Type::kName) {
-			for (auto& a : asset->animations) {
-				if (a.name == a_id.name) {
-					anim = &a;
-					break;
-				}
+			std::unique_lock l{ grph->lock };
+			grph->StartTransition(std::move(gen), a_transitionTime);
+
+			if (alignRoots) {
+				a->data.angle = rootAngle;
+				a->data.location = rootLoc;
+				grph->ResetRootTransform();
 			}
 		}
 
-		if (!anim) {
-			return kInvalidAnimationIdentifier;
-		}
-		
-		auto gen = Serialization::GLTFImport::CreateClipGenerator(asset.get(), anim, skeleton.get());
-		if (!gen) {
-			return kFailedToMakeClip;
-		}
-
-		gen->InitTimelines();
-		AttachGenerator(a_actor, std::move(gen), a_transitionTime);
-		return kSuccess;
+		return true;
 	}
 
 	bool GraphManager::AttachGenerator(RE::Actor* a_actor, std::unique_ptr<Generator> a_gen, float a_transitionTime)
@@ -97,6 +89,11 @@ namespace Animation
 			ls.lock();
 		}
 
+		return GetGraphLockless(a_actor, create);
+	}
+
+	std::shared_ptr<Graph> GraphManager::GetGraphLockless(RE::Actor* a_actor, bool create)
+	{
 		if (auto iter = state->graphMap.find(a_actor); iter != state->graphMap.end())
 			return iter->second;
 

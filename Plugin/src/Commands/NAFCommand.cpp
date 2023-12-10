@@ -37,9 +37,12 @@ namespace Commands::NAFCommand
 
 		using clock = std::chrono::high_resolution_clock;
 		auto start = clock::now();
-		if (auto error = Animation::GraphManager::GetSingleton()->PlayAnimationFromGLTF(actor, 1.0f, std::string(args[2])); error) {
-			using enum Animation::GLTFErrorCode;
-			switch (error) {
+		Serialization::GLTFImport::AnimationInfo animInfo{ .targetActor = actor, .fileName = std::string(args[2]) };
+		Serialization::GLTFImport::LoadAnimation(animInfo);
+
+		if (animInfo.result.error) {
+			using enum Serialization::GLTFImport::ErrorCode;
+			switch (animInfo.result.error) {
 			case kFailedToLoad:
 				log->Print("Failed to load GLTF/GLB.");
 				break;
@@ -56,6 +59,7 @@ namespace Commands::NAFCommand
 			return;
 		}
 
+		Animation::GraphManager::GetSingleton()->AttachGenerator(actor, std::move(animInfo.result.generator), 1.0f);
 		log->Print(std::format("Loaded animation in {:.3f}ms", std::chrono::duration<double>(clock::now() - start).count() * 1000).c_str());
 	}
 
