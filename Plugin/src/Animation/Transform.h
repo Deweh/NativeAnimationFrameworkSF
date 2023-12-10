@@ -22,5 +22,8 @@ namespace Animation
 		void ToReal(RE::NiTransform& t) const;
 		void FromReal(const RE::NiTransform& t);
 		bool IsIdentity() const;
+		void MakeIdentity();
+		Transform operator-(const Transform& rhs) const;
+		Transform operator*(const Transform& rhs) const;
 	};
 }

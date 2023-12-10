@@ -22,8 +22,7 @@ namespace Animation
 		rootNode = a_rootNode;
 
 		if (a_rootNode != nullptr) {
-			rootTransform.translate = target->data.location;
-			rootTransform.rotate = target->data.angle;
+			ResetRootTransform();
 			for (auto& name : skeleton->nodeNames) {
 				RE::NiAVObject* n = a_rootNode->GetObjectByName(name);
 				if (!n) {
@@ -101,6 +100,7 @@ namespace Animation
 		switch (state) {
 		case kIdle:
 			if (a_dest != nullptr) {
+				ResetRootTransform();
 				transitionType = TRANSITION_TYPE::kGameToGraph;
 			} else {
 				return;
@@ -173,14 +173,26 @@ namespace Animation
 		static RE::TransformsManager* transformManager = RE::TransformsManager::GetSingleton();
 		size_t updateCount = nodes.size() > a_output.size() ? a_output.size() : nodes.size();
 
-		for (size_t i = 0; i < updateCount; i++) {
+		if (generator && generator->rootResetRequired) {
+			ResetRootOrientation();
+			generator->rootResetRequired = false;
+		}
+
+		if (updateCount > 0) {
+			const auto& rootRelative = a_output[0];
+			rootTransform.rotate = rootRelative.rotate.InvertVector() * rootTransform.rotate;
+			rootTransform.translate += rootOrientation * rootRelative.translate;
+		}
+
+		for (size_t i = 1; i < updateCount; i++) {
 			const auto& cur = a_output[i];
 			if (!cur.IsIdentity()) {
 				nodes[i]->SetLocal(cur);
 			}
 		}
 
-		transformManager->RequestPosRotUpdate(target.get(), rootTransform.translate, rootTransform.rotate);
+		auto rootXYZ = GetRootXYZ();
+		transformManager->RequestPosRotUpdate(target.get(), rootXYZ.translate, rootXYZ.rotate);
 
 		auto r = rootNode;
 		if (!r)
@@ -194,9 +206,30 @@ namespace Animation
 		u->needsUpdate = true;
 	}
 
-	void Graph::SnapshotTransformsForTransition() {
+	void Graph::SnapshotTransformsForTransition()
+	{
 		for (size_t i = 0; i < nodes.size(); i++) {
 			transitionSnapshot[i] = GetCurrentTransform(i);
 		}
+	}
+
+	void Graph::ResetRootTransform()
+	{
+		rootTransform.rotate.FromEulerAnglesZXY(target->data.angle);
+		rootTransform.translate = target->data.location;
+		ResetRootOrientation();
+	}
+
+	void Graph::ResetRootOrientation()
+	{
+		rootOrientation = rootTransform.rotate.InvertVector();
+	}
+
+	XYZTransform Graph::GetRootXYZ()
+	{
+		XYZTransform result;
+		result.rotate = rootTransform.rotate.ToEulerAnglesZXY();
+		result.translate = rootTransform.translate;
+		return result;
 	}
 }

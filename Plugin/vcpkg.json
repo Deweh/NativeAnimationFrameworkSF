@@ -13,6 +13,8 @@
     "xbyak",
     "simdjson",
     "fastgltf",
-    "polyhook2"
+    "polyhook2",
+    "zstr",
+    "libzippp"
   ]
 }

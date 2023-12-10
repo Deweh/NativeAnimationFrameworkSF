@@ -37,6 +37,7 @@ source_group(
 )
 
 # dependencies
+find_package(libzippp CONFIG REQUIRED)
 find_package(PolyHook_2 CONFIG REQUIRED)
 find_package(simdjson CONFIG REQUIRED)
 find_package(fastgltf CONFIG REQUIRED)
@@ -98,6 +99,7 @@ target_link_libraries(
 		simdjson::simdjson
 		fastgltf::fastgltf
 		PolyHook_2::PolyHook_2
+		libzippp::libzippp
 )
 
 # compiler def

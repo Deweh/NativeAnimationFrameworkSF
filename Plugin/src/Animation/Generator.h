@@ -8,6 +8,7 @@ namespace Animation
 	class Generator
 	{
 	public:
+		bool rootResetRequired = false;
 		bool paused = false;
 		float localTime = 0.0f;
 		float duration = 0.0f;
@@ -26,6 +27,7 @@ namespace Animation
 
 		std::vector<PositionTimelineType> position;
 		std::vector<RotationTimelineType> rotation;
+		Transform previousRoot;
 
 		void InitTimelines()
 		{
@@ -48,8 +50,10 @@ namespace Animation
 		{
 			if (!paused) {
 				localTime += deltaTime;
-				while (localTime >= duration) {
-					localTime -= duration;
+				if (localTime > duration || localTime < 0.0f) {
+					localTime = std::fmodf(std::abs(localTime), duration);
+					previousRoot.MakeIdentity();
+					rootResetRequired = true;
 				}
 			}
 
@@ -57,6 +61,13 @@ namespace Animation
 				auto& result = output[i];
 				position[i].GetValueAtTime(localTime, result.translate);
 				rotation[i].GetValueAtTime(localTime, result.rotate);
+			}
+
+			if (!output.empty()) {
+				auto& rootTransform = output[0];
+				Transform temp = rootTransform;
+				rootTransform = rootTransform - previousRoot;
+				previousRoot = temp;
 			}
 		}
 

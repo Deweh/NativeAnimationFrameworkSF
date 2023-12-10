@@ -12,7 +12,8 @@ namespace RE
 
 		NiQuaternion() {}
 
-		NiQuaternion(float w, float x, float y, float z) : w(w), x(x), y(y), z(z) {}
+		NiQuaternion(float w, float x, float y, float z) :
+			w(w), x(x), y(y), z(z) {}
 
 		NiQuaternion(const NiMatrix3& mat)
 		{
@@ -97,6 +98,7 @@ namespace RE
 			return std::sqrt(Dot());
 		}
 
+		//Faster than SlowNormalize(), but with less precision.
 		NiQuaternion Normalize() const
 		{
 			__m128 temp = _mm_set_ss(Dot());
@@ -141,6 +143,12 @@ namespace RE
 				a_rhs.w * y + a_rhs.x * z + a_rhs.y * w - a_rhs.z * x,
 				a_rhs.w * z - a_rhs.x * y + a_rhs.y * x + a_rhs.z * w
 			};
+		}
+
+		NiPoint3 operator*(const NiPoint3& a_rhs) const
+		{
+			NiQuaternion res = (*this) * NiQuaternion{ 0.0f, a_rhs.x, a_rhs.y, a_rhs.z } * InvertVector();
+			return { res.x, res.y, res.z };
 		}
 
 		void operator*=(const NiQuaternion& a_rhs)

@@ -42,7 +42,8 @@ namespace Animation
 		std::shared_ptr<const Settings::SkeletonDescriptor> skeleton;
 		std::vector<std::unique_ptr<Node>> nodes;
 		RE::BGSFadeNode* rootNode = nullptr;
-		XYZTransform rootTransform;
+		Transform rootTransform;
+		RE::NiQuaternion rootOrientation;
 
 		std::unique_ptr<Generator> generator = nullptr;
 		std::vector<Transform> transitionOutput;
@@ -63,5 +64,8 @@ namespace Animation
 		void UpdateTransition(float a_deltaTime, STATE a_endState, const std::function<std::pair<Transform, Transform>(size_t)>& a_transformsFunc);
 		void PushOutput(const std::vector<Transform>& a_output);
 		void SnapshotTransformsForTransition();
+		void ResetRootTransform();
+		void ResetRootOrientation();
+		XYZTransform GetRootXYZ();
 	};
 }

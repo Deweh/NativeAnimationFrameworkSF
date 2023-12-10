@@ -42,4 +42,31 @@ namespace Animation
 			rotate.y == 0.0f &&
 			rotate.z == 0.0f);
 	}
+
+	void Transform::MakeIdentity()
+	{
+		translate.x = 0.0f;
+		translate.y = 0.0f;
+		translate.z = 0.0f;
+		rotate.w = 1.0f;
+		rotate.x = 0.0f;
+		rotate.y = 0.0f;
+		rotate.z = 0.0f;
+	}
+
+	Transform Transform::operator-(const Transform& rhs) const
+	{
+		Transform result;
+		result.rotate = rotate * rhs.rotate.InvertVector();
+		result.translate = translate - rhs.translate;
+		return result;
+	}
+
+	Transform Transform::operator*(const Transform& rhs) const
+	{
+		Transform result;
+		result.rotate = rotate * rhs.rotate;
+		result.translate = translate + rhs.translate;
+		return result;
+	}
 }

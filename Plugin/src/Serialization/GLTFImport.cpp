@@ -2,6 +2,7 @@
 #include "Animation/Transform.h"
 #include "Settings/Settings.h"
 #include "Util/String.h"
+#include "zstr.hpp"
 
 namespace Serialization
 {
@@ -58,10 +59,25 @@ namespace Serialization
 		std::vector<size_t> skeletonIdxs;
 		skeletonIdxs.reserve(asset->nodes.size());
 		auto skeletonMap = skeleton->GetNodeIndexMap();
+		std::vector<std::optional<Animation::Transform>> bindPose(skeletonMap.size(), std::optional<Animation::Transform>(std::nullopt));
 
 		for (const auto& n : asset->nodes) {
 			if (auto iter = skeletonMap.find(n.name); iter != skeletonMap.end()) {
 				skeletonIdxs.push_back(iter->second);
+				if (std::holds_alternative<fastgltf::Node::TRS>(n.transform)) {
+					auto& trs = std::get<fastgltf::Node::TRS>(n.transform);
+					bindPose[iter->second] = {
+						RE::NiQuaternion{
+							trs.rotation[3],
+							trs.rotation[0],
+							trs.rotation[1],
+							trs.rotation[2] },
+						RE::NiPoint3{
+							trs.translation[0],
+							trs.translation[1],
+							trs.translation[2] }
+					};
+				}
 			} else {
 				skeletonIdxs.push_back(UINT64_MAX);
 			}
@@ -73,7 +89,6 @@ namespace Serialization
 		result->SetSize(skeletonMap.size());
 
 		//Process GLTF data
-		std::vector<std::optional<Animation::Transform>> bindPose(skeletonMap.size(), std::optional<Animation::Transform>(std::nullopt));
 		std::vector<float> times;
 		for (auto& c : anim->channels) {
 			times.clear();
@@ -86,23 +101,6 @@ namespace Serialization
 
 			auto& rTl = result->rotation[idx];
 			auto& pTl = result->position[idx];
-
-			if (auto& curNode = asset->nodes[c.nodeIndex]; std::holds_alternative<fastgltf::Node::TRS>(curNode.transform)) {
-				auto& trs = std::get<fastgltf::Node::TRS>(curNode.transform);
-				bindPose[idx] = {
-					RE::NiQuaternion{
-						trs.rotation[3],
-						trs.rotation[0],
-						trs.rotation[1],
-						trs.rotation[2]
-					},
-					RE::NiPoint3{
-						trs.translation[0],
-						trs.translation[1],
-						trs.translation[2]
-					}
-				};			
-			}
 
 			if (c.samplerIndex > anim->samplers.size())
 				continue;
@@ -202,46 +200,50 @@ namespace Serialization
 
 	std::unique_ptr<fastgltf::Asset> GLTFImport::LoadGLTF(const std::filesystem::path& fileName)
 	{
-		std::ifstream file(fileName, std::ios::binary);
+		try {
+			zstr::ifstream file(fileName.generic_string(), std::ios::binary);
 
-		if (!file.is_open())
+			if (file.bad())
+				return nullptr;
+
+			std::vector<uint8_t> buffer;
+			std::istreambuf_iterator<char> fileEnd;
+
+			for (std::istreambuf_iterator<char> iter(file); iter != fileEnd; iter++) {
+				buffer.push_back(*iter);
+			}
+
+			size_t baseBufferSize = buffer.size();
+			size_t paddedBufferSize = baseBufferSize + fastgltf::getGltfBufferPadding();
+			buffer.resize(paddedBufferSize);
+
+			fastgltf::GltfDataBuffer data;
+			data.fromByteView(buffer.data(), baseBufferSize, paddedBufferSize);
+
+			fastgltf::Parser parser;
+			auto gltfOptions =
+				fastgltf::Options::LoadGLBBuffers |
+				fastgltf::Options::DecomposeNodeMatrices;
+
+			auto type = fastgltf::determineGltfFileType(&data);
+			std::unique_ptr<fastgltf::glTF> gltf;
+			if (type == fastgltf::GltfType::glTF) {
+				gltf = parser.loadGLTF(&data, fileName.parent_path(), gltfOptions);
+			} else if (type == fastgltf::GltfType::GLB) {
+				gltf = parser.loadBinaryGLTF(&data, fileName.parent_path(), gltfOptions);
+			} else {
+				return nullptr;
+			}
+
+			if (!gltf)
+				return nullptr;
+
+			if (gltf->parse(fastgltf::Category::OnlyAnimations | fastgltf::Category::Nodes) != fastgltf::Error::None || gltf->validate() != fastgltf::Error::None)
+				return nullptr;
+
+			return gltf->getParsedAsset();
+		} catch (const std::exception&) {
 			return nullptr;
-
-		std::vector<uint8_t> buffer;
-		std::istreambuf_iterator<char> fileEnd;
-
-		for (std::istreambuf_iterator<char> iter(file); iter != fileEnd; iter++) {
-			buffer.push_back(*iter);
 		}
-
-		size_t baseBufferSize = buffer.size();
-		size_t paddedBufferSize = baseBufferSize + fastgltf::getGltfBufferPadding();
-		buffer.resize(paddedBufferSize);
-
-		fastgltf::GltfDataBuffer data;
-		data.fromByteView(buffer.data(), baseBufferSize, paddedBufferSize);
-
-		fastgltf::Parser parser;
-		auto gltfOptions =
-			fastgltf::Options::LoadGLBBuffers |
-			fastgltf::Options::DecomposeNodeMatrices;
-
-		auto type = fastgltf::determineGltfFileType(&data);
-		std::unique_ptr<fastgltf::glTF> gltf;
-		if (type == fastgltf::GltfType::glTF) {
-			gltf = parser.loadGLTF(&data, fileName.parent_path(), gltfOptions);
-		} else if (type == fastgltf::GltfType::GLB) {
-			gltf = parser.loadBinaryGLTF(&data, fileName.parent_path(), gltfOptions);
-		} else {
-			return nullptr;
-		}
-
-		if (!gltf)
-			return nullptr;
-
-		if (gltf->parse(fastgltf::Category::OnlyAnimations | fastgltf::Category::Nodes) != fastgltf::Error::None || gltf->validate() != fastgltf::Error::None)
-			return nullptr;
-
-		return gltf->getParsedAsset();
 	}
 }
