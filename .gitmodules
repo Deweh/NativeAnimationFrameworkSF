@@ -4,3 +4,6 @@
 [submodule "extern/CommonLibSF"]
 	path = extern/CommonLibSF
 	url = https://github.com/Deweh/CommonLibSF.git
+[submodule "extern/ozz-animation"]
+	path = extern/ozz-animation
+	url = https://github.com/guillaumeblanc/ozz-animation

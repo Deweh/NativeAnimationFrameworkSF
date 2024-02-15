@@ -2,6 +2,19 @@
 
 namespace Settings
 {
+	ozz::unique_ptr<ozz::animation::Skeleton> SkeletonDescriptor::ToOzz()
+	{
+		ozz::animation::offline::RawSkeleton raw;
+		for (auto& n : nodeNames) {
+			ozz::animation::offline::RawSkeleton::Joint j;
+			j.transform = ozz::math::Transform::identity();
+			j.name = n;
+			raw.roots.push_back(j);
+		}
+		ozz::animation::offline::SkeletonBuilder builder;
+		return builder(raw);
+	}
+
 	void SkeletonDescriptor::MakeNodeNamesUnique()
 	{
 		std::unordered_set<std::string> s;

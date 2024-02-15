@@ -42,51 +42,61 @@ namespace Serialization
 			return;
 		}
 
-		auto gen = CreateClipGenerator(asset.get(), anim, skeleton.get());
-		if (!gen) {
+		auto runtimeAnim = CreateRuntimeAnimation(asset.get(), anim, skeleton->data.get());
+		if (!runtimeAnim) {
 			info.result.error = kFailedToMakeClip;
 			return;
 		}
 
-		gen->InitTimelines();
-		info.result.generator = std::move(gen);
+		info.result.anim = std::move(runtimeAnim);
 		info.result.error = kSuccess;
 	}
 
-	std::unique_ptr<Animation::LinearClipGenerator> GLTFImport::CreateClipGenerator(const fastgltf::Asset* asset, const fastgltf::Animation* anim, const Settings::SkeletonDescriptor* skeleton)
+	ozz::unique_ptr<ozz::animation::Animation> GLTFImport::CreateRuntimeAnimation(const fastgltf::Asset* asset, const fastgltf::Animation* anim, const ozz::animation::Skeleton* skeleton)
 	{
 		//Create a map of GLTF node indexes -> skeleton indexes
 		std::vector<size_t> skeletonIdxs;
 		skeletonIdxs.reserve(asset->nodes.size());
-		auto skeletonMap = skeleton->GetNodeIndexMap();
-		std::vector<std::optional<Animation::Transform>> bindPose(skeletonMap.size(), std::optional<Animation::Transform>(std::nullopt));
+
+		std::map<std::string, size_t> skeletonMap;
+		auto skeletonJointNames = skeleton->joint_names();
+		for (size_t i = 0; i < skeletonJointNames.size(); i++) {
+			skeletonMap[skeletonJointNames[i]] = i;
+		}
+
+		ozz::math::Transform identity;
+		identity.rotation = { .0f, .0f, .0f, 1.0f };
+		identity.translation = { .0f, .0f, .0f };
+		std::vector<ozz::math::Transform> bindPose(skeletonMap.size(), identity);
 
 		for (const auto& n : asset->nodes) {
 			if (auto iter = skeletonMap.find(n.name); iter != skeletonMap.end()) {
 				skeletonIdxs.push_back(iter->second);
 				if (std::holds_alternative<fastgltf::Node::TRS>(n.transform)) {
 					auto& trs = std::get<fastgltf::Node::TRS>(n.transform);
-					bindPose[iter->second] = {
-						RE::NiQuaternion{
-							trs.rotation[3],
-							trs.rotation[0],
-							trs.rotation[1],
-							trs.rotation[2] },
-						RE::NiPoint3{
-							trs.translation[0],
-							trs.translation[1],
-							trs.translation[2] }
+					auto& b = bindPose[iter->second];
+					b.rotation = {
+						trs.rotation[0],
+						trs.rotation[1],
+						trs.rotation[2],
+						trs.rotation[3]
 					};
+					b.translation = {
+						trs.translation[0],
+						trs.translation[1],
+						trs.translation[2]
+					};
+					b.scale = ozz::math::Float3::one();
 				}
 			} else {
 				skeletonIdxs.push_back(UINT64_MAX);
 			}
 		}
 
-		//Create the clip generator
-		std::unique_ptr<Animation::LinearClipGenerator> result = std::make_unique<Animation::LinearClipGenerator>();
-		result->duration = 0.001f;
-		result->SetSize(skeletonMap.size());
+		//Create the raw animation
+		ozz::animation::offline::RawAnimation animResult;
+		animResult.duration = 0.001f;
+		animResult.tracks.resize(skeletonMap.size());
 
 		//Process GLTF data
 		std::vector<float> times;
@@ -99,8 +109,8 @@ namespace Serialization
 			if (idx == UINT64_MAX)
 				continue;
 
-			auto& rTl = result->rotation[idx];
-			auto& pTl = result->position[idx];
+			auto& rTl = animResult.tracks[idx].rotations;
+			auto& pTl = animResult.tracks[idx].translations;
 
 			if (c.samplerIndex > anim->samplers.size())
 				continue;
@@ -158,44 +168,50 @@ namespace Serialization
 				dataByteOffset + (dataByteCount) > dBufData.bytes.size())
 				continue;
 
+			ozz::animation::offline::RawAnimation::RotationKey r;
+			ozz::animation::offline::RawAnimation::TranslationKey p;
 			for (size_t i = 0; i < timeAccessor.count; i++) {
 				float t;
 				std::memcpy(&t, &tBufData.bytes[timeByteOffset + (i * 4)], 4);
-				if (t > result->duration)
-					result->duration = t;
+				if (t > animResult.duration)
+					animResult.duration = t;
 
 				size_t off = dataByteOffset + (i * elementSize);
-				RE::NiQuaternion q;
-				RE::NiPoint3 p;
 				switch (c.path) {
 				case fastgltf::AnimationPath::Rotation:
-					//NiQuaternions are stored as WXYZ, but GLTF stores rotations as XYZW, so we have to copy XYZ and W separately.
-					std::memcpy(&q.x, &dBufData.bytes[off], 12);
-					off += 12;
-					std::memcpy(&q.w, &dBufData.bytes[off], 4);
-					rTl.keys.emplace(t, q);
+					std::memcpy(&r.value.x, &dBufData.bytes[off], elementSize);
+					r.time = t;
+					rTl.push_back(r);
 					break;
 				case fastgltf::AnimationPath::Translation:
-					std::memcpy(&p.x, &dBufData.bytes[off], elementSize);
-					pTl.keys.emplace(t, p);
+					std::memcpy(&p.value.x, &dBufData.bytes[off], elementSize);
+					p.time = t;
+					pTl.push_back(p);
 					break;
 				}
 			}
 		}
 
 		for (size_t i = 0; i < skeletonMap.size(); i++) {
-			auto& rTl = result->rotation[i].keys;
-			auto& pTl = result->position[i].keys;
+			auto& rTl = animResult.tracks[i].rotations;
+			auto& pTl = animResult.tracks[i].translations;
 			auto& b = bindPose[i];
-			if (rTl.empty() && b.has_value()) {
-				rTl[0.0001f] = b->rotate;
+			if (rTl.empty()) {
+				ozz::animation::offline::RawAnimation::RotationKey r;
+				r.time = 0.0001f;
+				r.value = b.rotation;
+				rTl.push_back(r); 
 			}
-			if (pTl.empty() && b.has_value()) {
-				pTl[0.0001f] = b->translate;
+			if (pTl.empty()) {
+				ozz::animation::offline::RawAnimation::TranslationKey p;
+				p.time = 0.0001f;
+				p.value = b.translation;
+				pTl.push_back(p);
 			}
 		}
 
-		return result;
+		ozz::animation::offline::AnimationBuilder builder;
+		return builder(animResult);
 	}
 
 	std::unique_ptr<fastgltf::Asset> GLTFImport::LoadGLTF(const std::filesystem::path& fileName)

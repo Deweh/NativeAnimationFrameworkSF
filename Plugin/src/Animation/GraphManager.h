@@ -1,5 +1,6 @@
 #pragma once
 #include "Graph.h"
+#include "Ozz.h"
 
 namespace Animation
 {
@@ -15,6 +16,7 @@ namespace Animation
 		std::unique_ptr<PersistentState> state = std::make_unique<PersistentState>();
 
 		static GraphManager* GetSingleton();
+		static std::unique_ptr<Generator> CreateAnimationGenerator(std::shared_ptr<OzzAnimation> anim);
 		bool AttachGeneratorsSynced(const std::vector<RE::Actor*>& a_actors, std::vector<std::unique_ptr<Generator>>& a_gens, float a_transitionTime, bool alignRoots);
 		bool AttachGenerator(RE::Actor* a_actor, std::unique_ptr<Generator> a_gen, float a_transitionTime);
 		bool DetachGenerator(RE::Actor* a_actor, float a_transitionTime);

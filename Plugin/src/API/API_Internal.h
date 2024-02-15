@@ -41,6 +41,8 @@ struct NAFAPI_Array
 	uint64_t size = 0;
 };
 
+extern "C" __declspec(dllexport) uint16_t NAFAPI_GetFeatureLevel();
+
 extern "C" __declspec(dllexport) void NAFAPI_ReleaseHandle(
 	uint64_t a_hndl);
 

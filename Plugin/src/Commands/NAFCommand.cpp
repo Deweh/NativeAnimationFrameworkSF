@@ -2,6 +2,7 @@
 #include "Serialization/GLTFImport.h"
 #include "Settings/Settings.h"
 #include "Animation/GraphManager.h"
+#include "Animation/Ozz.h"
 
 namespace Commands::NAFCommand
 {
@@ -59,7 +60,14 @@ namespace Commands::NAFCommand
 			return;
 		}
 
-		Animation::GraphManager::GetSingleton()->AttachGenerator(actor, std::move(animInfo.result.generator), 1.0f);
+		auto sharedAnim = std::make_shared<Animation::OzzAnimation>();
+		sharedAnim->data = std::move(animInfo.result.anim);
+
+		Animation::GraphManager::GetSingleton()->AttachGenerator(
+			actor,
+			Animation::GraphManager::CreateAnimationGenerator(sharedAnim),
+			1.0f
+		);
 		log->Print(std::format("Loaded animation in {:.3f}ms", std::chrono::duration<double>(clock::now() - start).count() * 1000).c_str());
 	}
 
@@ -80,6 +88,13 @@ namespace Commands::NAFCommand
 		log->Print("Stopping animation...");
 	}
 
+	void ProcessTest(RE::ConsoleLog* log)
+	{
+		static volatile RE::NiCamera* worldCam = RE::Main::WorldCamera();
+		auto screenPt = const_cast<RE::NiCamera*>(worldCam)->WorldPtToScreenPt3(RE::PlayerCharacter::GetSingleton()->data.location);
+		log->Print(std::format("X:{:.3f}, Y:{:.3f}, Z:{:.3f}", screenPt.x, screenPt.y, screenPt.z).c_str());
+	}
+
 	void Run(const std::vector<std::string_view>& args, const std::string_view& fullStr, RE::TESObjectREFR* refr)
 	{
 		auto log = RE::ConsoleLog::GetSingleton();
@@ -93,6 +108,8 @@ namespace Commands::NAFCommand
 			ProcessPlayCommand(args, log, refr);
 		} else if (args[1] == "stop") {
 			ProcessStopCommand(log, refr);
+		} else if (args[1] == "test") {
+			ProcessTest(log);
 		} else {
 			ShowHelp(log);
 		}

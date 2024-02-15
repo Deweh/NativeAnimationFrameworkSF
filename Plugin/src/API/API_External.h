@@ -1,7 +1,6 @@
 #pragma once
 
 //This header is intended to be copied into other plugins so that they can utilize the API.
-
 namespace NAFAPI
 {
 	//API Invocation Templates
@@ -147,6 +146,16 @@ namespace NAFAPI
 		kInvalidAnimationIdentifier = 4
 	};
 
+	enum APIFunction : uint16_t
+	{
+		kIsInstalled,
+		kPlayAnimationFromGLTF,
+		kGetSkeletonNodes,
+		kAttachClipGenerator,
+		kAttachCustomGenerator,
+		kDetachGenerator
+	};
+
 	//API Types
 
 	/*
@@ -159,6 +168,7 @@ namespace NAFAPI
 	*/
 	typedef void (*CustomGeneratorFunction)(void* a_data, float a_deltaTime, Transform* a_output, bool& a_paused, float& a_localTime, float& a_duration);
 
+	typedef uint16_t (*GetFeatureLevel_Def)();
 	typedef GLTFErrorCode (*PlayAnimationFromGLTF_Def)(RE::Actor* a_actor, float a_transitionTime, const char* a_fileName, const AnimationIdentifer& a_id);
 	typedef Handle<Array<const char*>> (*GetSkeletonNodes_Def)(const char* a_raceEditorId);
 	typedef void (*AttachClipGenerator_Def)(RE::Actor* a_actor, Timeline::Data* a_timelines, uint64_t a_timelinesSize, float a_transitionTime, int a_generatorType);
@@ -173,6 +183,27 @@ namespace NAFAPI
 	bool IsInstalled()
 	{
 		return GetModuleHandleA("NativeAnimationFrameworkSF.dll") != NULL;
+	}
+
+	/*
+	* Returns a set of all available API functions based on NAF's reported feature level.
+	* This depends on the version of NAF the user has installed.
+	*/
+	std::set<APIFunction> GetAvailableFunctions()
+	{
+		uint16_t featureLevel = invokeWithReturn<GetFeatureLevel_Def>("NAFAPI_GetFeatureLevel", 0ui16);
+		std::set<APIFunction> result;
+		switch (featureLevel) {
+		default:
+		case 0:
+			result.insert(APIFunction::kIsInstalled);
+			result.insert(APIFunction::kPlayAnimationFromGLTF);
+			result.insert(APIFunction::kGetSkeletonNodes);
+			result.insert(APIFunction::kAttachClipGenerator);
+			result.insert(APIFunction::kAttachCustomGenerator);
+			result.insert(APIFunction::kDetachGenerator);
+		}
+		return result;
 	}
 
 	/*

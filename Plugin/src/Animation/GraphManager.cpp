@@ -13,6 +13,14 @@ namespace Animation
 		return &singleton;
 	}
 
+	std::unique_ptr<Generator> GraphManager::CreateAnimationGenerator(std::shared_ptr<OzzAnimation> anim)
+	{
+		auto gen = std::make_unique<LinearClipGenerator>();
+		gen->anim = anim;
+		gen->duration = anim->data->duration();
+		return gen;
+	}
+
 	bool GraphManager::AttachGeneratorsSynced(const std::vector<RE::Actor*>& a_actors, std::vector<std::unique_ptr<Generator>>& a_gens, float a_transitionTime, bool alignRoots)
 	{
 		if (a_actors.empty() || a_actors.size() != a_gens.size())
@@ -132,7 +140,8 @@ namespace Animation
 			std::unique_lock gl{ g->lock };
 			g->Update(a_updateData->timeDelta);
 
-			if (g->state == Graph::STATE::kIdle && g->flags.all(Graph::FLAGS::kTemporary, Graph::FLAGS::kNoActiveIKChains)) {
+			if (g->flags.none(Graph::FLAGS::kHasGenerator, Graph::FLAGS::kTransitioning) &&
+				g->flags.all(Graph::FLAGS::kTemporary, Graph::FLAGS::kNoActiveIKChains)) {
 				l.unlock();
 				graphManager.DetachGraph(a_graphHolder);
 			}

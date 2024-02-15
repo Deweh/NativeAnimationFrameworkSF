@@ -12,15 +12,15 @@ namespace
 		NAFAPI_CustomGeneratorFunction generateFunc = nullptr;
 		NAFAPI_CustomGeneratorFunction onDestroyFunc = nullptr;
 
-		virtual void Generate(float deltaTime)
+		virtual void Generate(float)
 		{
-			generateFunc(userData, deltaTime, &output[0], paused, localTime, duration);
+			//generateFunc(userData, deltaTime, &output[0], paused, localTime, duration);
 		}
 
 		virtual ~NAFAPI_UserGenerator()
 		{
-			if (onDestroyFunc != nullptr)
-				onDestroyFunc(userData, 0.0f, &output[0], paused, localTime, duration);
+			//if (onDestroyFunc != nullptr)
+				//onDestroyFunc(userData, 0.0f, &output[0], paused, localTime, duration);
 		}
 	};
 
@@ -94,6 +94,10 @@ namespace
 	}
 }
 
+uint16_t NAFAPI_GetFeatureLevel() {
+	return 1;
+}
+
 void NAFAPI_ReleaseHandle(
 	uint64_t hndl)
 {
@@ -122,7 +126,7 @@ uint16_t NAFAPI_PlayAnimationFromGLTF(
 		return info.result.error;
 	}
 
-	Animation::GraphManager::GetSingleton()->AttachGenerator(a_actor, std::move(info.result.generator), a_transitionTime);
+	//Animation::GraphManager::GetSingleton()->AttachGenerator(a_actor, std::move(info.result.generator), a_transitionTime);
 	return 0;
 }
 
@@ -135,7 +139,11 @@ NAFAPI_Handle<NAFAPI_Array<const char*>> NAFAPI_GetSkeletonNodes(
 		return result;
 
 	auto obj = std::make_unique<NAFAPI_Shared<NAFAPI_StringArray>>();
-	obj->data = skeleton->nodeNames;
+	std::vector<std::string> namesArr;
+	for (auto& n : skeleton->data->joint_names()) {
+		namesArr.push_back(n);
+	}
+	obj->data = namesArr;
 	result.data = obj->data;
 	result.handle = MakeObjectManaged(std::move(obj));
 	return result;
@@ -157,21 +165,21 @@ void NAFAPI_AttachClipGenerator(
 
 	for (size_t i = 0; i < a_timelinesSize; i++) {
 		auto& tl = a_timelines[i];
-		auto& p = gen->position[i];
-		auto& r = gen->rotation[i];
+		//auto& p = gen->position[i];
+		//auto& r = gen->rotation[i];
 
 		for (size_t j = 0; j < tl.positionsSize; j++) {
 			auto& t = tl.positionTimes[j];
 			if (t > gen->duration)
 				gen->duration = t;
-			p.keys.emplace(t, tl.positions[j]);
+			//p.keys.emplace(t, tl.positions[j]);
 		}
 
 		for (size_t j = 0; j < tl.rotationsSize; j++) {
 			auto& t = tl.rotationTimes[j];
 			if (t > gen->duration)
 				gen->duration = t;
-			r.keys.emplace(t, tl.rotations[j]);
+			//r.keys.emplace(t, tl.rotations[j]);
 		}
 	}
 
@@ -194,7 +202,7 @@ void NAFAPI_AttachCustomGenerator(
 	gen->generateFunc = a_generatorFunc;
 	gen->onDestroyFunc = a_onDestroyFunc;
 	gen->userData = a_userData;
-	gen->output.resize(a_outputSize);
+	//gen->output.resize(a_outputSize);
 
 	Animation::GraphManager::GetSingleton()->AttachGenerator(a_actor, std::move(gen), a_transitionTime);
 }

@@ -32,7 +32,7 @@ namespace Serialization
 
 		struct AnimationResult
 		{
-			std::unique_ptr<Animation::Generator> generator = nullptr;
+			ozz::unique_ptr<ozz::animation::Animation> anim = nullptr;
 			ErrorCode error = kUnspecifiedError;
 		};
 
@@ -45,7 +45,7 @@ namespace Serialization
 		};
 
 		static void LoadAnimation(AnimationInfo& info);
-		static std::unique_ptr<Animation::LinearClipGenerator> CreateClipGenerator(const fastgltf::Asset* asset, const fastgltf::Animation* anim, const Settings::SkeletonDescriptor* skeleton);
+		static ozz::unique_ptr<ozz::animation::Animation> CreateRuntimeAnimation(const fastgltf::Asset* asset, const fastgltf::Animation* anim, const ozz::animation::Skeleton* skeleton);
 		static std::unique_ptr<fastgltf::Asset> LoadGLTF(const std::filesystem::path& fileName);
 	};
 }

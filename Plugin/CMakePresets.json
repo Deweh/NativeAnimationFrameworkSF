@@ -10,6 +10,14 @@
 			"name": "common",
 			"hidden": true,
 			"cacheVariables": {
+				"BUILD_SHARED_LIBS": "OFF",
+				"ozz_build_msvc_rt_dll": "ON",
+				"ozz_build_samples": "OFF",
+				"ozz_build_tests": "OFF",
+				"ozz_build_howtos": "OFF",
+				"ozz_build_tools": "OFF",
+				"ozz_build_gltf": "OFF",
+				"ozz_build_fbx": "OFF",
 				"USING_VCPKG": "ON",
 				"CMAKE_CXX_FLAGS": "$env{PROJECT_PLATFORM_FLAGS} $env{PROJECT_TEXT_FLAGS} $env{PROJECT_COMPILER_FLAGS} $penv{CXXFLAGS}",
 				"SFSE_SUPPORT_XBYAK": "ON"

@@ -8,13 +8,23 @@ namespace Animation
 	Graph::Graph()
 	{
 		flags.set(FLAGS::kTemporary, FLAGS::kNoActiveIKChains, FLAGS::kUnloaded3D);
+		blendLayers[0].weight = .0f;
+		blendLayers[1].weight = .0f;
 	}
 
-	void Graph::SetSkeleton(std::shared_ptr<const Settings::SkeletonDescriptor> a_descriptor)
+	void Graph::SetSkeleton(std::shared_ptr<const OzzSkeleton> a_descriptor)
 	{
 		skeleton = a_descriptor;
-		transitionOutput.resize(skeleton->nodeNames.size());
-		transitionSnapshot.resize(skeleton->nodeNames.size());
+		restPose.resize(skeleton->data->num_soa_joints());
+		snapshotPose.resize(skeleton->data->num_soa_joints());
+		generatedPose.resize(skeleton->data->num_soa_joints());
+		blendedPose.resize(skeleton->data->num_soa_joints());
+		context.Resize(skeleton->data->num_joints());
+		blendLayers[0].transform = ozz::make_span(generatedPose);
+		blendLayers[1].transform = ozz::make_span(snapshotPose);
+		if (generator != nullptr) {
+			generator->output = generatedPose;
+		}
 	}
 
 	void Graph::GetSkeletonNodes(RE::BGSFadeNode* a_rootNode) {
@@ -23,7 +33,7 @@ namespace Animation
 
 		if (a_rootNode != nullptr) {
 			ResetRootTransform();
-			for (auto& name : skeleton->nodeNames) {
+			for (auto& name : skeleton->data->joint_names()) {
 				RE::NiAVObject* n = a_rootNode->GetObjectByName(name);
 				if (!n) {
 					nodes.push_back(std::make_unique<NullNode>());
@@ -57,139 +67,147 @@ namespace Animation
 		}
 		
 		if (rootNode != nullptr && generator != nullptr) {
-			switch (state) {
-			case STATE::kGenerator:
-				generator->Generate(a_deltaTime);
-				PushOutput(generator->output);
-				break;
-			case STATE::kTransition:
-				switch (transitionType) {
-				case kGameToGraph:
-					UpdateTransition(a_deltaTime, STATE::kGenerator, [&](size_t i) {
-						return std::make_pair(GetCurrentTransform(i), generator->output[i]);
-					});
-					break;
-				case kGraphToGame:
-					UpdateTransition(a_deltaTime, STATE::kIdle, [&](size_t i) {
-						return std::make_pair(generator->output[i], GetCurrentTransform(i));
-					});
-					break;
-				case kGeneratorToGenerator:
-					UpdateTransition(a_deltaTime, STATE::kGenerator, [&](size_t i) {
-						return std::make_pair(transitionSnapshot[i], generator->output[i]);
-					});
-					break;
-				case kGraphSnapshotToGame:
-					UpdateTransition(a_deltaTime, STATE::kIdle, [&](size_t i) {
-						return std::make_pair(transitionSnapshot[i], GetCurrentTransform(i));
-					});
-					break;
-				}
-				break;
-			case STATE::kIdle:
-				break;
+			generator->Generate(a_deltaTime);
+
+			if (flags.all(FLAGS::kTransitioning)) {
+				UpdateTransition(a_deltaTime);
+				PushOutput(blendedPose);
+			} else {
+				PushOutput(generatedPose);
 			}
 		}
+	}
+
+	void Graph::UpdateTransition(float a_deltaTime)
+	{
+		ozz::animation::BlendingJob blendJob;
+		UpdateRestPose();
+		blendJob.rest_pose = ozz::make_span(restPose);
+		blendJob.layers = ozz::make_span(blendLayers);
+		blendJob.output = ozz::make_span(blendedPose);
+		blendJob.threshold = 1.0f;
+
+		transition.localTime += a_deltaTime;
+		if (transition.localTime >= transition.duration) {
+			if (transition.onEnd != nullptr) {
+				transition.onEnd();
+			}
+
+			flags.reset(FLAGS::kTransitioning);
+
+			if (transition.duration < 0.01f) {
+				transition.duration = 0.01f;
+			}
+
+			transition.localTime = transition.duration;
+		}
+
+		float normalizedTime = transition.ease(transition.localTime / transition.duration);
+		if (transition.startLayer >= 0) {
+			blendLayers[transition.startLayer].weight = 1.0f - normalizedTime;
+		}
+		if (transition.endLayer >= 0) {
+			blendLayers[transition.endLayer].weight = normalizedTime;
+		}
+
+		blendJob.Run();
 	}
 
 	void Graph::StartTransition(std::unique_ptr<Generator> a_dest, float a_transitionTime)
 	{
-		transitionLocalTime = 0.0f;
-		transitionDuration = a_transitionTime;
+		const auto SetData = [&](TRANSITION_TYPE t) {
+			switch (t) {
+			case kGameToGraph:
+				transition.startLayer = -1;
+				transition.endLayer = 0;
+				transition.onEnd = nullptr;
+				break;
+			case kGraphToGame:
+				transition.startLayer = 0;
+				transition.endLayer = -1;
+				transition.onEnd = [&]() {
+					flags.reset(FLAGS::kHasGenerator);
+					generator.reset();
+				};
+				break;
+			case kGeneratorToGenerator:
+				SnapshotCurrentPose();
+				blendLayers[0].weight = 0.0f;
+				blendLayers[1].weight = 1.0f;
+				transition.startLayer = 1;
+				transition.endLayer = 0;
+				transition.onEnd = nullptr;
+				break;
+			case kGraphSnapshotToGame:
+				SnapshotCurrentPose();
+				blendLayers[0].weight = 0.0f;
+				blendLayers[1].weight = 1.0f;
+				transition.startLayer = 1;
+				transition.endLayer = -1;
+				transition.onEnd = [&]() {
+					flags.reset(FLAGS::kHasGenerator);
+					generator.reset();
+				};
+				break;
+			}
+		};
 
-		switch (state) {
-		case kIdle:
+		transition.localTime = 0.0f;
+		transition.duration = a_transitionTime;
+
+		if (flags.all(FLAGS::kTransitioning)) {
+			if (a_dest != nullptr) {
+				SetData(TRANSITION_TYPE::kGeneratorToGenerator);
+			} else {
+				SetData(TRANSITION_TYPE::kGraphSnapshotToGame);
+			}
+		} else if (flags.all(FLAGS::kHasGenerator)) {
+			if (a_dest != nullptr) {
+				SetData(TRANSITION_TYPE::kGeneratorToGenerator);
+			} else {
+				SetData(TRANSITION_TYPE::kGraphToGame);
+			}
+		} else {
 			if (a_dest != nullptr) {
 				ResetRootTransform();
-				transitionType = TRANSITION_TYPE::kGameToGraph;
+				SetData(TRANSITION_TYPE::kGameToGraph);
 			} else {
 				return;
 			}
-			break;
-		case kGenerator:
-			if (a_dest != nullptr) {
-				SnapshotTransformsForTransition();
-				transitionType = TRANSITION_TYPE::kGeneratorToGenerator;
-			} else {
-				transitionType = TRANSITION_TYPE::kGraphToGame;
-			}
-			break;
-		case kTransition:
-			SnapshotTransformsForTransition();
-			if (a_dest != nullptr) {
-				transitionType = TRANSITION_TYPE::kGeneratorToGenerator;
-			} else {
-				transitionType = TRANSITION_TYPE::kGraphSnapshotToGame;
-			}
-			break;
 		}
 
-		state = kTransition;
+		flags.set(FLAGS::kTransitioning);
 		if (a_dest != nullptr) {
 			generator = std::move(a_dest);
+			generator->context = &context;
+			generator->output = generatedPose;
+			flags.set(FLAGS::kHasGenerator);
 		}
 	}
 
-	void Graph::UpdateTransition(float a_deltaTime, STATE a_endState, const std::function<std::pair<Transform, Transform>(size_t)>& a_transformsFunc)
-	{
-		generator->Generate(a_deltaTime);
-		transitionLocalTime += a_deltaTime;
-
-		if (transitionLocalTime >= transitionDuration) {
-			state = a_endState;
-			transitionType = TRANSITION_TYPE::kNoTransition;
-
-			if (transitionDuration < 0.01f) {
-				transitionDuration = 0.01f;
-			}
-
-			transitionLocalTime = transitionDuration;
-		}
-
-		auto normalizedTime = transitionEase(Util::NormalizeSpan(0.0f, transitionDuration, transitionLocalTime));
-		size_t count = nodes.size() > generator->output.size() ? generator->output.size() : nodes.size();
-		for (size_t i = 0; i < count; i++) {
-			auto trans = a_transformsFunc(i);
-			if (trans.first.IsIdentity()) {
-				transitionOutput[i] = trans.second;
-			} else if (trans.second.IsIdentity()) {
-				transitionOutput[i] = trans.first;
-			} else {
-				auto& out = transitionOutput[i];
-				transitionPosInterp(trans.first.translate, trans.second.translate, normalizedTime, out.translate);
-				transitionRotInterp(trans.first.rotate, trans.second.rotate, normalizedTime, out.rotate);
-			}
-		}
-
-		if (state == kIdle) {
-			generator.reset();
-		}
-
-		PushOutput(transitionOutput);
-	}
-
-	void Graph::PushOutput(const std::vector<Transform>& a_output)
+	void Graph::PushOutput(const std::vector<ozz::math::SoaTransform>& a_output)
 	{
 		static RE::TransformsManager* transformManager = RE::TransformsManager::GetSingleton();
-		size_t updateCount = nodes.size() > a_output.size() ? a_output.size() : nodes.size();
 
 		if (generator && generator->rootResetRequired) {
 			ResetRootOrientation();
+			generator->localRootTransform.MakeIdentity();
 			generator->rootResetRequired = false;
 		}
 
+		/*
 		if (updateCount > 0) {
 			const auto& rootRelative = a_output[0];
 			rootTransform.rotate = rootRelative.rotate.InvertVector() * rootTransform.rotate;
 			rootTransform.translate += rootOrientation * rootRelative.translate;
 		}
+		*/
 
-		for (size_t i = 1; i < updateCount; i++) {
-			const auto& cur = a_output[i];
-			if (!cur.IsIdentity()) {
-				nodes[i]->SetLocal(cur);
+		Transform::ExtractSoaTransformsReal(a_output, [&](size_t i, const RE::NiMatrix3& rot, const RE::NiPoint3& pos) {
+			if (i > 0 && i < nodes.size()) {
+				nodes[i]->SetLocalReal(rot, pos);
 			}
-		}
+		});
 
 		auto rootXYZ = GetRootXYZ();
 		transformManager->RequestPosRotUpdate(target.get(), rootXYZ.translate, rootXYZ.rotate);
@@ -206,11 +224,14 @@ namespace Animation
 		u->needsUpdate = true;
 	}
 
-	void Graph::SnapshotTransformsForTransition()
+	void Graph::UpdateRestPose()
 	{
-		for (size_t i = 0; i < nodes.size(); i++) {
-			transitionSnapshot[i] = GetCurrentTransform(i);
-		}
+		Transform::StoreSoaTransforms(restPose, std::bind(&Graph::GetCurrentTransform, this, std::placeholders::_1));
+	}
+
+	void Graph::SnapshotCurrentPose()
+	{
+		Transform::StoreSoaTransforms(snapshotPose, std::bind(&Graph::GetCurrentTransform, this, std::placeholders::_1));
 	}
 
 	void Graph::ResetRootTransform()

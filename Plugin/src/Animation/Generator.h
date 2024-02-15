@@ -2,6 +2,7 @@
 #include "Transform.h"
 #include "Timeline.h"
 #include "Interpolation.h"
+#include "Ozz.h"
 
 namespace Animation
 {
@@ -12,7 +13,9 @@ namespace Animation
 		bool paused = false;
 		float localTime = 0.0f;
 		float duration = 0.0f;
-		std::vector<Transform> output;
+		Transform localRootTransform;
+		std::span<ozz::math::SoaTransform> output;
+		ozz::animation::SamplingJob::Context* context = nullptr;
 
 		virtual void Generate(float deltaTime) = 0;
 		virtual ~Generator() {}
@@ -25,25 +28,24 @@ namespace Animation
 		using PositionTimelineType = Timeline<float, RE::NiPoint3, PI>;
 		using RotationTimelineType = Timeline<float, RE::NiQuaternion, RI>;
 
-		std::vector<PositionTimelineType> position;
-		std::vector<RotationTimelineType> rotation;
+		std::shared_ptr<OzzAnimation> anim = nullptr;
 		Transform previousRoot;
 
 		void InitTimelines()
 		{
+			/*
 			for (auto& tl : rotation) {
 				tl.Init();
 			}
 			for (auto& tl : position) {
 				tl.Init();
 			}
+			*/
 		}
 
-		void SetSize(size_t s)
+		void SetSize(size_t)
 		{
-			output.resize(s);
-			position.resize(s);
-			rotation.resize(s);
+			//output.resize((s + 3) / 4);
 		}
 
 		virtual void Generate(float deltaTime) override
@@ -57,18 +59,12 @@ namespace Animation
 				}
 			}
 
-			for (size_t i = 0; i < output.size(); i++) {
-				auto& result = output[i];
-				position[i].GetValueAtTime(localTime, result.translate);
-				rotation[i].GetValueAtTime(localTime, result.rotate);
-			}
-
-			if (!output.empty()) {
-				auto& rootTransform = output[0];
-				Transform temp = rootTransform;
-				rootTransform = rootTransform - previousRoot;
-				previousRoot = temp;
-			}
+			ozz::animation::SamplingJob sampleJob;
+			sampleJob.animation = anim->data.get();
+			sampleJob.context = context;
+			sampleJob.output = ozz::make_span(output);
+			sampleJob.ratio = localTime / duration;
+			sampleJob.Run();
 		}
 
 		virtual ~ClipGenerator() {}

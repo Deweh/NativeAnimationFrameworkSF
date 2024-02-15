@@ -20,6 +20,33 @@ namespace RE
 			FromMatrix(mat);
 		}
 
+		static NiQuaternion Slerp(const NiQuaternion& prev, NiQuaternion next, float t) {
+			NiQuaternion result;
+			float dot = prev.Dot(next);
+			if (dot < 0.0f) {
+				next = -next;
+				dot = -dot;
+			}
+
+			const float epsilon = 1e-6f;
+			if (1.0f - dot > epsilon) {
+				float theta = std::acosf(dot);
+				float sinTheta = std::sinf(theta);
+				float weight1 = std::sinf((1.0f - t) * theta) / sinTheta;
+				float weight2 = std::sinf(t * theta) / sinTheta;
+
+				result = (prev * weight1) + (next * weight2);
+			} else {
+				float tInverse = 1.0f - t;
+				result.w = tInverse * prev.w + t * next.w;
+				result.x = tInverse * prev.x + t * next.x;
+				result.y = tInverse * prev.y + t * next.y;
+				result.z = tInverse * prev.z + t * next.z;
+			}
+
+			return result;
+		}
+
 		static NiQuaternion EulerZXY(const NiPoint3& euler)
 		{
 			NiQuaternion result;
@@ -70,17 +97,69 @@ namespace RE
 
 		void ToMatrix(NiMatrix3& a_mat) const
 		{
-			using func_t = decltype(&NiQuaternion::ToMatrix);
-			REL::Relocation<func_t> func{ REL::ID(77539) };
-			return func(this, a_mat);
+			float wx, wy, wz, xx, yy, yz, xy, xz, zz, x2, y2, z2;
+			x2 = x + x;
+			y2 = y + y;
+			z2 = z + z;
+			xx = x * x2;
+			xy = x * y2;
+			xz = x * z2;
+			yy = y * y2;
+			yz = y * z2;
+			zz = z * z2;
+			wx = w * x2;
+			wy = w * y2;
+			wz = w * z2;
+
+			a_mat[0][0] = 1.0f - (zz + yy);
+			a_mat[0][1] = xy + wz;
+			a_mat[0][2] = xz - wy;
+			a_mat[0][3] = 0.0f;
+
+			a_mat[1][0] = xy - wz;
+			a_mat[1][1] = 1.0f - (zz + xx);
+			a_mat[1][2] = yz + wx;
+			a_mat[1][3] = 0.0f;
+
+			a_mat[2][0] = xz + wy;
+			a_mat[2][1] = yz - wx;
+			a_mat[2][2] = 1.0f - (yy + xx);
+			a_mat[2][3] = 0.0f;
 		}
 
 		void FromMatrix(const NiMatrix3& a_mat)
 		{
-			using func_t = decltype(&NiQuaternion::FromMatrix);
-			REL::Relocation<func_t> func{ REL::ID(210482) };
-			func(this, a_mat);
-			*this = SlowNormalize();
+			auto& q = *this;
+			float trace = a_mat[0][0] + a_mat[1][1] + a_mat[2][2];
+
+			if (trace <= 0.0f) {
+				int i = (a_mat[1][1] > a_mat[0][0]) ? 1 : 0;
+
+				if (a_mat[2][2] > a_mat[i][i]) {
+					i = 2;
+				}
+
+				const int next[4] = {
+					1, 2, 0, 0
+				};
+
+				int j = next[i];
+				int k = next[j];
+
+				float root = std::sqrtf(((a_mat[i][i] - a_mat[j][j]) - a_mat[k][k]) + 1.0f);
+				q[i + 1] = root * 0.5f;
+				root = 0.5f / root;
+				q[0] = (a_mat[j][k] - a_mat[k][j]) * root;
+				q[j + 1] = (a_mat[j][i] + a_mat[i][j]) * root;
+				q[k + 1] = (a_mat[i][k] + a_mat[k][i]) * root;
+			} else {
+				float root = std::sqrtf(trace + 1.0f);
+				q[0] = root * 0.5f;
+				root = 0.5f / root;
+				q[1] = (a_mat[1][2] - a_mat[2][1]) * root;
+				q[2] = (a_mat[2][0] - a_mat[0][2]) * root;
+				q[3] = (a_mat[0][1] - a_mat[1][0]) * root;
+			}
 		}
 
 		float Dot() const
