@@ -15,11 +15,13 @@ namespace Animation
 	void Graph::SetSkeleton(std::shared_ptr<const OzzSkeleton> a_descriptor)
 	{
 		skeleton = a_descriptor;
-		restPose.resize(skeleton->data->num_soa_joints());
-		snapshotPose.resize(skeleton->data->num_soa_joints());
-		generatedPose.resize(skeleton->data->num_soa_joints());
-		blendedPose.resize(skeleton->data->num_soa_joints());
-		context.Resize(skeleton->data->num_joints());
+		int soaSize = skeleton->data->num_soa_joints();
+		int jointSize = skeleton->data->num_joints();
+		restPose.resize(soaSize);
+		snapshotPose.resize(soaSize);
+		generatedPose.resize(soaSize);
+		blendedPose.resize(soaSize);
+		context.Resize(jointSize);
 		blendLayers[0].transform = ozz::make_span(generatedPose);
 		blendLayers[1].transform = ozz::make_span(snapshotPose);
 		if (generator != nullptr) {

@@ -31,23 +31,6 @@ namespace Animation
 		std::shared_ptr<OzzAnimation> anim = nullptr;
 		Transform previousRoot;
 
-		void InitTimelines()
-		{
-			/*
-			for (auto& tl : rotation) {
-				tl.Init();
-			}
-			for (auto& tl : position) {
-				tl.Init();
-			}
-			*/
-		}
-
-		void SetSize(size_t)
-		{
-			//output.resize((s + 3) / 4);
-		}
-
 		virtual void Generate(float deltaTime) override
 		{
 			if (!paused) {

@@ -126,7 +126,8 @@ uint16_t NAFAPI_PlayAnimationFromGLTF(
 		return info.result.error;
 	}
 
-	//Animation::GraphManager::GetSingleton()->AttachGenerator(a_actor, std::move(info.result.generator), a_transitionTime);
+	//Animation::GraphManager::GetSingleton()->AttachGenerator(
+	//	a_actor, Animation::GraphManager::CreateAnimationGenerator(), a_transitionTime);
 	return 0;
 }
 
@@ -161,7 +162,6 @@ void NAFAPI_AttachClipGenerator(
 
 	std::unique_ptr<Animation::LinearClipGenerator> gen = std::make_unique<Animation::LinearClipGenerator>();
 	gen->duration = 0.001f;
-	gen->SetSize(a_timelinesSize);
 
 	for (size_t i = 0; i < a_timelinesSize; i++) {
 		auto& tl = a_timelines[i];
@@ -183,7 +183,6 @@ void NAFAPI_AttachClipGenerator(
 		}
 	}
 
-	gen->InitTimelines();
 	Animation::GraphManager::GetSingleton()->AttachGenerator(a_actor, std::move(gen), a_transitionTime);
 }
 

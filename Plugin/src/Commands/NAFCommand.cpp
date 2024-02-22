@@ -11,6 +11,7 @@ namespace Commands::NAFCommand
 		log->Print("Usage:");
 		log->Print("naf play [file-path]");
 		log->Print("naf stop");
+		log->Print("naf studio");
 	}
 
 	void ShowNoActor(RE::ConsoleLog* log)
@@ -88,11 +89,19 @@ namespace Commands::NAFCommand
 		log->Print("Stopping animation...");
 	}
 
-	void ProcessTest(RE::ConsoleLog* log)
+	void ProcessStudio(RE::ConsoleLog* log)
 	{
-		static volatile RE::NiCamera* worldCam = RE::Main::WorldCamera();
-		auto screenPt = const_cast<RE::NiCamera*>(worldCam)->WorldPtToScreenPt3(RE::PlayerCharacter::GetSingleton()->data.location);
-		log->Print(std::format("X:{:.3f}, Y:{:.3f}, Z:{:.3f}", screenPt.x, screenPt.y, screenPt.z).c_str());
+		const auto hndl = GetModuleHandleA("NAFStudio.dll");
+		if (hndl != NULL) {
+			const auto addr = GetProcAddress(hndl, "OpenStudio");
+			if (addr != NULL) {
+				(reinterpret_cast<void(*)()>(addr))();
+			} else {
+				log->Print("Failed to open NAF Studio.");
+			}
+		} else {
+			log->Print("NAF Studio is not installed.");
+		}
 	}
 
 	void Run(const std::vector<std::string_view>& args, const std::string_view& fullStr, RE::TESObjectREFR* refr)
@@ -108,8 +117,8 @@ namespace Commands::NAFCommand
 			ProcessPlayCommand(args, log, refr);
 		} else if (args[1] == "stop") {
 			ProcessStopCommand(log, refr);
-		} else if (args[1] == "test") {
-			ProcessTest(log);
+		} else if (args[1] == "studio") {
+			ProcessStudio(log);
 		} else {
 			ShowHelp(log);
 		}

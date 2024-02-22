@@ -42,7 +42,6 @@ namespace Animation
 
 		std::mutex lock;
 		SFSE::stl::enumeration<FLAGS, uint16_t> flags = kNoFlags;
-		TRANSITION_TYPE transitionType = kNoTransition;
 		RE::NiPointer<RE::TESObjectREFR> target;
 
 		std::shared_ptr<const OzzSkeleton> skeleton;
