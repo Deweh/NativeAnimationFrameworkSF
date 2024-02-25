@@ -45,6 +45,8 @@ namespace Serialization
 		};
 
 		static void LoadAnimation(AnimationInfo& info);
+		static std::unique_ptr<std::vector<ozz::math::Transform>> CreateRawPose(const fastgltf::Asset* asset, const ozz::animation::Skeleton* skeleton);
+		static std::unique_ptr<ozz::animation::offline::RawAnimation> CreateRawAnimation(const fastgltf::Asset* asset, const fastgltf::Animation* anim, const ozz::animation::Skeleton* skeleton);
 		static ozz::unique_ptr<ozz::animation::Animation> CreateRuntimeAnimation(const fastgltf::Asset* asset, const fastgltf::Animation* anim, const ozz::animation::Skeleton* skeleton);
 		static std::unique_ptr<fastgltf::Asset> LoadGLTF(const std::filesystem::path& fileName);
 	};

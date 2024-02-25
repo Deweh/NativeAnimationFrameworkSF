@@ -17,41 +17,34 @@ namespace Animation
 		std::span<ozz::math::SoaTransform> output;
 		ozz::animation::SamplingJob::Context* context = nullptr;
 
-		virtual void Generate(float deltaTime) = 0;
-		virtual ~Generator() {}
+		virtual void Generate(float deltaTime);
+		virtual void SetOutput(const ozz::span<ozz::math::SoaTransform>& span);
+		virtual void SetContext(ozz::animation::SamplingJob::Context* ctxt);
+
+		virtual ~Generator() = default;
 	};
 
-	template <typename PI = Point3LinearInterpolator, typename RI = QuaternionLinearInterpolator>
-	class ClipGenerator : public Generator
+	class LinearClipGenerator : public Generator
 	{
 	public:
-		using PositionTimelineType = Timeline<float, RE::NiPoint3, PI>;
-		using RotationTimelineType = Timeline<float, RE::NiQuaternion, RI>;
-
 		std::shared_ptr<OzzAnimation> anim = nullptr;
-		Transform previousRoot;
 
-		virtual void Generate(float deltaTime) override
-		{
-			if (!paused) {
-				localTime += deltaTime;
-				if (localTime > duration || localTime < 0.0f) {
-					localTime = std::fmodf(std::abs(localTime), duration);
-					previousRoot.MakeIdentity();
-					rootResetRequired = true;
-				}
-			}
-
-			ozz::animation::SamplingJob sampleJob;
-			sampleJob.animation = anim->data.get();
-			sampleJob.context = context;
-			sampleJob.output = ozz::make_span(output);
-			sampleJob.ratio = localTime / duration;
-			sampleJob.Run();
-		}
-
-		virtual ~ClipGenerator() {}
+		virtual void Generate(float deltaTime) override;
+		virtual ~LinearClipGenerator() = default;
 	};
 
-	typedef ClipGenerator<Point3LinearInterpolator, QuaternionLinearInterpolator> LinearClipGenerator;
+	class AdditiveGenerator : public Generator
+	{
+	public:
+		float additiveWeight = 1.0f;
+		std::vector<ozz::math::SoaTransform> restPose;
+		std::vector<ozz::math::SoaTransform> baseGenOutput;
+		std::unique_ptr<Generator> baseGen = nullptr;
+
+		void SetRestPose(const std::vector<ozz::math::SoaTransform>& pose);
+		virtual void Generate(float deltaTime) override;
+		virtual void SetOutput(const ozz::span<ozz::math::SoaTransform>& span) override;
+		virtual void SetContext(ozz::animation::SamplingJob::Context* ctxt) override;
+		virtual ~AdditiveGenerator() = default;
+	};
 }

@@ -52,7 +52,45 @@ namespace Serialization
 		info.result.error = kSuccess;
 	}
 
-	ozz::unique_ptr<ozz::animation::Animation> GLTFImport::CreateRuntimeAnimation(const fastgltf::Asset* asset, const fastgltf::Animation* anim, const ozz::animation::Skeleton* skeleton)
+	std::unique_ptr<std::vector<ozz::math::Transform>> GLTFImport::CreateRawPose(const fastgltf::Asset* asset, const ozz::animation::Skeleton* skeleton)
+	{
+		//Create a map of GLTF node indexes -> skeleton indexes
+		std::map<std::string, size_t> skeletonMap;
+		auto skeletonJointNames = skeleton->joint_names();
+		for (size_t i = 0; i < skeletonJointNames.size(); i++) {
+			skeletonMap[skeletonJointNames[i]] = i;
+		}
+
+		ozz::math::Transform identity;
+		identity.rotation = { .0f, .0f, .0f, 1.0f };
+		identity.translation = { .0f, .0f, .0f };
+		auto bindPose = std::make_unique<std::vector<ozz::math::Transform>>(skeletonMap.size(), identity);
+
+		for (const auto& n : asset->nodes) {
+			if (auto iter = skeletonMap.find(n.name); iter != skeletonMap.end()) {
+				if (std::holds_alternative<fastgltf::Node::TRS>(n.transform)) {
+					auto& trs = std::get<fastgltf::Node::TRS>(n.transform);
+					auto& b = (*bindPose)[iter->second];
+					b.rotation = {
+						trs.rotation[0],
+						trs.rotation[1],
+						trs.rotation[2],
+						trs.rotation[3]
+					};
+					b.translation = {
+						trs.translation[0],
+						trs.translation[1],
+						trs.translation[2]
+					};
+					b.scale = ozz::math::Float3::one();
+				}
+			}
+		}
+
+		return bindPose;
+	}
+
+	std::unique_ptr<ozz::animation::offline::RawAnimation> GLTFImport::CreateRawAnimation(const fastgltf::Asset* asset, const fastgltf::Animation* anim, const ozz::animation::Skeleton* skeleton)
 	{
 		//Create a map of GLTF node indexes -> skeleton indexes
 		std::vector<size_t> skeletonIdxs;
@@ -94,9 +132,9 @@ namespace Serialization
 		}
 
 		//Create the raw animation
-		ozz::animation::offline::RawAnimation animResult;
-		animResult.duration = 0.001f;
-		animResult.tracks.resize(skeletonMap.size());
+		auto animResult = std::make_unique<ozz::animation::offline::RawAnimation>();
+		animResult->duration = 0.001f;
+		animResult->tracks.resize(skeletonMap.size());
 
 		//Process GLTF data
 		std::vector<float> times;
@@ -109,8 +147,8 @@ namespace Serialization
 			if (idx == UINT64_MAX)
 				continue;
 
-			auto& rTl = animResult.tracks[idx].rotations;
-			auto& pTl = animResult.tracks[idx].translations;
+			auto& rTl = animResult->tracks[idx].rotations;
+			auto& pTl = animResult->tracks[idx].translations;
 
 			if (c.samplerIndex > anim->samplers.size())
 				continue;
@@ -173,8 +211,8 @@ namespace Serialization
 			for (size_t i = 0; i < timeAccessor.count; i++) {
 				float t;
 				std::memcpy(&t, &tBufData.bytes[timeByteOffset + (i * 4)], 4);
-				if (t > animResult.duration)
-					animResult.duration = t;
+				if (t > animResult->duration)
+					animResult->duration = t;
 
 				size_t off = dataByteOffset + (i * elementSize);
 				switch (c.path) {
@@ -193,8 +231,8 @@ namespace Serialization
 		}
 
 		for (size_t i = 0; i < skeletonMap.size(); i++) {
-			auto& rTl = animResult.tracks[i].rotations;
-			auto& pTl = animResult.tracks[i].translations;
+			auto& rTl = animResult->tracks[i].rotations;
+			auto& pTl = animResult->tracks[i].translations;
 			auto& b = bindPose[i];
 			if (rTl.empty()) {
 				ozz::animation::offline::RawAnimation::RotationKey r;
@@ -210,8 +248,14 @@ namespace Serialization
 			}
 		}
 
+		return animResult;
+	}
+
+	ozz::unique_ptr<ozz::animation::Animation> GLTFImport::CreateRuntimeAnimation(const fastgltf::Asset* asset, const fastgltf::Animation* anim, const ozz::animation::Skeleton* skeleton)
+	{
+		auto animResult = CreateRawAnimation(asset, anim, skeleton);
 		ozz::animation::offline::AnimationBuilder builder;
-		return builder(animResult);
+		return builder(*animResult);
 	}
 
 	std::unique_ptr<fastgltf::Asset> GLTFImport::LoadGLTF(const std::filesystem::path& fileName)

@@ -3,24 +3,32 @@
 #include "Animation/GraphManager.h"
 #include "Settings/Settings.h"
 #include "Serialization/GLTFImport.h"
+#include "Animation/Ozz.h"
 namespace
 {
 	class NAFAPI_UserGenerator : public Animation::Generator
 	{
 	public:
 		void* userData;
+		std::vector<Animation::Transform> userOutput;
 		NAFAPI_CustomGeneratorFunction generateFunc = nullptr;
 		NAFAPI_CustomGeneratorFunction onDestroyFunc = nullptr;
 
-		virtual void Generate(float)
+		virtual void Generate(float deltaTime)
 		{
-			//generateFunc(userData, deltaTime, &output[0], paused, localTime, duration);
+			generateFunc(userData, this, deltaTime, { userOutput.data(), userOutput.size() });
+		}
+
+		virtual void SetOutput(const ozz::span<ozz::math::SoaTransform>& span)
+		{
+			Animation::Generator::SetOutput(span);
+			userOutput.resize(span.size() * 4);
 		}
 
 		virtual ~NAFAPI_UserGenerator()
 		{
-			//if (onDestroyFunc != nullptr)
-				//onDestroyFunc(userData, 0.0f, &output[0], paused, localTime, duration);
+			if (onDestroyFunc != nullptr)
+				onDestroyFunc(userData, this, 0.0f, { userOutput.data(), userOutput.size() });
 		}
 	};
 
@@ -95,7 +103,7 @@ namespace
 }
 
 uint16_t NAFAPI_GetFeatureLevel() {
-	return 1;
+	return 2;
 }
 
 void NAFAPI_ReleaseHandle(
@@ -126,8 +134,13 @@ uint16_t NAFAPI_PlayAnimationFromGLTF(
 		return info.result.error;
 	}
 
-	//Animation::GraphManager::GetSingleton()->AttachGenerator(
-	//	a_actor, Animation::GraphManager::CreateAnimationGenerator(), a_transitionTime);
+	auto sharedAnim = std::make_shared<Animation::OzzAnimation>();
+	sharedAnim->data = std::move(info.result.anim);
+
+	Animation::GraphManager::GetSingleton()->AttachGenerator(
+		a_actor,
+		Animation::GraphManager::CreateAnimationGenerator(sharedAnim),
+		a_transitionTime);
 	return 0;
 }
 
@@ -152,56 +165,79 @@ NAFAPI_Handle<NAFAPI_Array<const char*>> NAFAPI_GetSkeletonNodes(
 
 void NAFAPI_AttachClipGenerator(
 	RE::Actor* a_actor,
-	NAFAPI_TimelineData* a_timelines,
-	uint64_t a_timelinesSize,
+	NAFAPI_Array<NAFAPI_TimelineData>* a_timelines,
 	float a_transitionTime,
 	int a_generatorType)
 {
-	if (!a_actor || a_timelinesSize < 1)
+	if (!a_actor || a_timelines->size < 1)
 		return;
 
-	std::unique_ptr<Animation::LinearClipGenerator> gen = std::make_unique<Animation::LinearClipGenerator>();
-	gen->duration = 0.001f;
+	ozz::animation::offline::RawAnimation rawAnim;
+	rawAnim.tracks.resize(a_timelines->size);
+	rawAnim.duration = 0.001f;
 
-	for (size_t i = 0; i < a_timelinesSize; i++) {
-		auto& tl = a_timelines[i];
-		//auto& p = gen->position[i];
-		//auto& r = gen->rotation[i];
+	ozz::animation::offline::RawAnimation::TranslationKey tKey;
+	ozz::animation::offline::RawAnimation::RotationKey rKey;
 
-		for (size_t j = 0; j < tl.positionsSize; j++) {
-			auto& t = tl.positionTimes[j];
-			if (t > gen->duration)
-				gen->duration = t;
-			//p.keys.emplace(t, tl.positions[j]);
+	for (size_t i = 0; i < a_timelines->size; i++) {
+		auto& tl = a_timelines->data[i];
+		auto& track = rawAnim.tracks[i];
+
+		for (size_t j = 0; j < tl.positions.size; j++) {
+			tKey.time = tl.positions.keys[j];
+			if (tKey.time > rawAnim.duration)
+				rawAnim.duration = tKey.time;
+
+			auto& tVal = tl.positions.values[j];
+			tKey.value.x = tVal.x;
+			tKey.value.y = tVal.y;
+			tKey.value.z = tVal.z;
+			
+			track.translations.push_back(tKey);
 		}
 
-		for (size_t j = 0; j < tl.rotationsSize; j++) {
-			auto& t = tl.rotationTimes[j];
-			if (t > gen->duration)
-				gen->duration = t;
-			//r.keys.emplace(t, tl.rotations[j]);
+		for (size_t j = 0; j < tl.rotations.size; j++) {
+			rKey.time = tl.rotations.keys[j];
+			if (rKey.time > rawAnim.duration)
+				rawAnim.duration = rKey.time;
+
+			auto& rVal = tl.rotations.values[j];
+			rKey.value.x = rVal.x;
+			rKey.value.y = rVal.y;
+			rKey.value.z = rVal.z;
+			rKey.value.w = rVal.w;
 		}
 	}
 
-	Animation::GraphManager::GetSingleton()->AttachGenerator(a_actor, std::move(gen), a_transitionTime);
+	ozz::animation::offline::AnimationBuilder builder;
+	auto result = builder(rawAnim);
+
+	if (!result)
+		return;
+
+	auto sharedAnim = std::make_shared<Animation::OzzAnimation>();
+	sharedAnim->data = std::move(result);
+
+	Animation::GraphManager::GetSingleton()->AttachGenerator(
+		a_actor,
+		Animation::GraphManager::CreateAnimationGenerator(sharedAnim),
+		a_transitionTime);
 }
 
 void NAFAPI_AttachCustomGenerator(
 	RE::Actor* a_actor,
-	uint64_t a_outputSize,
 	NAFAPI_CustomGeneratorFunction a_generatorFunc,
 	NAFAPI_CustomGeneratorFunction a_onDestroyFunc,
 	void* a_userData,
 	float a_transitionTime)
 {
-	if (!a_actor || a_outputSize < 1)
+	if (!a_actor)
 		return;
 
 	std::unique_ptr<NAFAPI_UserGenerator> gen = std::make_unique<NAFAPI_UserGenerator>();
 	gen->generateFunc = a_generatorFunc;
 	gen->onDestroyFunc = a_onDestroyFunc;
 	gen->userData = a_userData;
-	//gen->output.resize(a_outputSize);
 
 	Animation::GraphManager::GetSingleton()->AttachGenerator(a_actor, std::move(gen), a_transitionTime);
 }

@@ -2,7 +2,27 @@
 #include "Animation/Transform.h"
 #include "Animation/Generator.h"
 
-typedef void (*NAFAPI_CustomGeneratorFunction)(void* a_data, float a_deltaTime, Animation::Transform* a_output, bool& a_paused, float& a_localTime, float& a_duration);
+template <typename T>
+struct NAFAPI_Array
+{
+	T* data = nullptr;
+	uint64_t size = 0;
+};
+
+template <typename K, typename V>
+struct NAFAPI_Map
+{
+	K* keys = nullptr;
+	V* values = nullptr;
+	uint64_t size = 0;
+};
+
+template <typename T>
+struct NAFAPI_Handle
+{
+	T data;
+	uint64_t handle = 0;
+};
 
 struct NAFAPI_AnimationIdentifer
 {
@@ -19,27 +39,11 @@ struct NAFAPI_AnimationIdentifer
 
 struct NAFAPI_TimelineData
 {
-	float* positionTimes;
-	RE::NiPoint3* positions;
-	uint64_t positionsSize;
-	float* rotationTimes;
-	RE::NiQuaternion* rotations;
-	uint64_t rotationsSize;
+	NAFAPI_Map<float, RE::NiPoint3> positions;
+	NAFAPI_Map<float, RE::NiQuaternion> rotations;
 };
 
-template <typename T>
-struct NAFAPI_Handle
-{
-	T data;
-	uint64_t handle = 0;
-};
-
-template <typename T>
-struct NAFAPI_Array
-{
-	T* data = nullptr;
-	uint64_t size = 0;
-};
+typedef void (*NAFAPI_CustomGeneratorFunction)(void* a_data, Animation::Generator* a_generator, float a_deltaTime, NAFAPI_Array<Animation::Transform> a_output);
 
 extern "C" __declspec(dllexport) uint16_t NAFAPI_GetFeatureLevel();
 
@@ -57,14 +61,12 @@ extern "C" __declspec(dllexport) NAFAPI_Handle<NAFAPI_Array<const char*>> NAFAPI
 
 extern "C" __declspec(dllexport) void NAFAPI_AttachClipGenerator(
 	RE::Actor* a_actor,
-	NAFAPI_TimelineData* a_timelines,
-	uint64_t a_timelinesSize,
+	NAFAPI_Array<NAFAPI_TimelineData>* a_timelines,
 	float a_transitionTime,
 	int a_generatorType);
 
 extern "C" __declspec(dllexport) void NAFAPI_AttachCustomGenerator(
 	RE::Actor* a_actor,
-	uint64_t a_outputSize,
 	NAFAPI_CustomGeneratorFunction a_generatorFunc,
 	NAFAPI_CustomGeneratorFunction a_onDestroyFunc,
 	void* a_userData,

@@ -25,7 +25,7 @@ namespace Animation
 		blendLayers[0].transform = ozz::make_span(generatedPose);
 		blendLayers[1].transform = ozz::make_span(snapshotPose);
 		if (generator != nullptr) {
-			generator->output = generatedPose;
+			generator->SetOutput(ozz::make_span(generatedPose));
 		}
 	}
 
@@ -181,8 +181,8 @@ namespace Animation
 		flags.set(FLAGS::kTransitioning);
 		if (a_dest != nullptr) {
 			generator = std::move(a_dest);
-			generator->context = &context;
-			generator->output = generatedPose;
+			generator->SetContext(&context);
+			generator->SetOutput(ozz::make_span(generatedPose));
 			flags.set(FLAGS::kHasGenerator);
 		}
 	}

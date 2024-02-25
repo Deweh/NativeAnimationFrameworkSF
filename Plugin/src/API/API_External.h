@@ -46,37 +46,54 @@ namespace NAFAPI
 		uint64_t index = 0;
 	};
 
+	template <typename T>
+	struct Array
+	{
+		T* data = nullptr;
+		uint64_t size = 0;
+	};
+
+	template <typename K, typename V>
+	struct Map
+	{
+		K* keys = nullptr;
+		V* values = nullptr;
+		uint64_t size = 0;
+	};
+
+	template <typename K, typename V>
+	struct VectorMap
+	{
+		std::vector<K> keys;
+		std::vector<V> values;
+
+		Map<K, V> data()
+		{
+			if (keys.size() != values.size())
+			{
+				throw std::exception("Keys size must match values size.");
+			}
+
+			return Map<K, V>{ keys.data(), values.data(), keys.size() };
+		}
+	};
+
 	struct Timeline
 	{
-		std::vector<float> positionTimes;
-		std::vector<RE::NiPoint3> positions;
-		std::vector<float> rotationTimes;
-		std::vector<RE::NiQuaternion> rotations;
+		VectorMap<float, RE::NiPoint3> positions;
+		VectorMap<float, RE::NiQuaternion> rotations;
 
 		struct Data
 		{
-			float* positionTimes;
-			RE::NiPoint3* positions;
-			uint64_t positionsSize;
-			float* rotationTimes;
-			RE::NiQuaternion* rotations;
-			uint64_t rotationsSize;
+			Map<float, RE::NiPoint3> positions;
+			Map<float, RE::NiQuaternion> rotations;
 		};
 
 		Data data()
 		{
-			if (positionTimes.size() != positions.size())
-				throw std::exception("Size of position times must match size of positions.");
-			if (rotationTimes.size() != rotations.size())
-				throw std::exception("Size of rotation times must match size of rotations.");
-
 			return {
-				positionTimes.data(),
 				positions.data(),
-				positions.size(),
-				rotationTimes.data(),
-				rotations.data(),
-				rotations.size()
+				rotations.data()
 			};
 		}
 	};
@@ -85,13 +102,6 @@ namespace NAFAPI
 	{
 		RE::NiQuaternion rotate;
 		RE::NiPoint3 translate;
-	};
-
-	template <typename T>
-	struct Array
-	{
-		T* data = nullptr;
-		uint64_t size = 0;
 	};
 
 	//Similar to a std::unique_ptr.
@@ -132,6 +142,15 @@ namespace NAFAPI
 		}
 	};
 
+	struct Generator
+	{
+		bool rootResetRequired = false;
+		bool paused = false;
+		float localTime = 0.0f;
+		float duration = 0.0f;
+		Transform localRootTransform;
+	};
+
 	enum GeneratorType : int
 	{
 		kLinear = 0
@@ -160,19 +179,17 @@ namespace NAFAPI
 
 	/*
 	* a_data - The a_userData pointer passed into the AttachCustomGenerator function.
+	* a_generator - A pointer to the actual generator instance within NAF that this function is attached to.
 	* a_deltaTime - The time since the last call, in seconds.
 	* a_output - An array of transforms that will be applied to the actor after the call. The size of the array is equal to the a_outputSize value passed into the AttachCustomGenerator function.
-	* a_paused - A reference to the generator's "paused" value. If this is set to true, the generator should pause whatever it is doing.
-	* a_localTime - A reference to the generator's "localTime" value. This can be incremented to keep track of how far along the generator is. This value may be read & changed by NAF for synchronizing paired animations.
-	* a_duration - A reference to the generator's "duration" value. This can be set to keep track of a generator's duration.
 	*/
-	typedef void (*CustomGeneratorFunction)(void* a_data, float a_deltaTime, Transform* a_output, bool& a_paused, float& a_localTime, float& a_duration);
+	typedef void (*CustomGeneratorFunction)(void* a_data, Generator* a_generator, float a_deltaTime, Array<Transform> a_output);
 
 	typedef uint16_t (*GetFeatureLevel_Def)();
 	typedef GLTFErrorCode (*PlayAnimationFromGLTF_Def)(RE::Actor* a_actor, float a_transitionTime, const char* a_fileName, const AnimationIdentifer& a_id);
 	typedef Handle<Array<const char*>> (*GetSkeletonNodes_Def)(const char* a_raceEditorId);
-	typedef void (*AttachClipGenerator_Def)(RE::Actor* a_actor, Timeline::Data* a_timelines, uint64_t a_timelinesSize, float a_transitionTime, int a_generatorType);
-	typedef void (*AttachCustomGenerator_Def)(RE::Actor* a_actor, uint64_t a_outputSize, CustomGeneratorFunction a_generatorFunc, CustomGeneratorFunction a_onDestroyFunc, void* a_userData, float a_transitionTime);
+	typedef void (*AttachClipGenerator_Def)(RE::Actor* a_actor, Array<Timeline::Data>* a_timelines, float a_transitionTime, int a_generatorType);
+	typedef void (*AttachCustomGenerator_Def)(RE::Actor* a_actor, CustomGeneratorFunction a_generatorFunc, CustomGeneratorFunction a_onDestroyFunc, void* a_userData, float a_transitionTime);
 	typedef bool (*DetachGenerator_Def)(RE::Actor* a_actor, float a_transitionTime);
 
 	//API Functions
@@ -238,15 +255,16 @@ namespace NAFAPI
 	* a_transitionTime - The amount of time that the transition to the new generator will take, in seconds.
 	* a_generatorType - The interpolation mode for the genderator. Currently only Linear is available.
 	*/
-	void AttachClipGenerator(RE::Actor* a_actor, std::vector<NAFAPI::Timeline> a_timelines, float a_transitionTime, GeneratorType a_generatorType = GeneratorType::kLinear)
+	void AttachClipGenerator(RE::Actor* a_actor, std::vector<Timeline>& a_timelines, float a_transitionTime, GeneratorType a_generatorType = GeneratorType::kLinear)
 	{
-		std::vector<NAFAPI::Timeline::Data> data;
+		std::vector<Timeline::Data> data;
 		data.reserve(a_timelines.size());
 		for (auto& tl : a_timelines) {
 			data.push_back(tl.data());
 		}
 
-		invoke<AttachClipGenerator_Def>("NAFAPI_AttachClipGenerator", a_actor, data.data(), data.size(), a_transitionTime, static_cast<int>(a_generatorType));
+		Array<Timeline::Data> arr{ data.data(), data.size() };
+		invoke<AttachClipGenerator_Def>("NAFAPI_AttachClipGenerator", a_actor, &arr, a_transitionTime, static_cast<int>(a_generatorType));
 	}
 
 	/*
@@ -259,9 +277,9 @@ namespace NAFAPI
 	* a_userData - A pointer that will be passed as the first param of the a_generatorFunc function with each call.
 	* a_transitionTime - The amount of time that the transition to the new generator will take, in seconds.
 	*/
-	void AttachCustomGenerator(RE::Actor* a_actor, uint64_t a_outputSize, CustomGeneratorFunction a_generatorFunc, CustomGeneratorFunction a_onDestroyFunc, void* a_userData, float a_transitionTime)
+	void AttachCustomGenerator(RE::Actor* a_actor, CustomGeneratorFunction a_generatorFunc, CustomGeneratorFunction a_onDestroyFunc, void* a_userData, float a_transitionTime)
 	{
-		invoke<AttachCustomGenerator_Def>("NAFAPI_AttachCustomGenerator", a_actor, a_outputSize, a_generatorFunc, a_onDestroyFunc, a_userData, a_transitionTime);
+		invoke<AttachCustomGenerator_Def>("NAFAPI_AttachCustomGenerator", a_actor, a_generatorFunc, a_onDestroyFunc, a_userData, a_transitionTime);
 	}
 
 	/*

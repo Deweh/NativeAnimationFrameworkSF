@@ -1,4 +1,5 @@
 ﻿#pragma once
+#define NDEBUG
 
 // c
 #include <cassert>
@@ -154,6 +155,7 @@ DLLEXPORT constinit auto SFSEPlugin_Version = []() noexcept {
 #include "ozz/base/maths/simd_math.h"
 #include "ozz/base/maths/transform.h"
 #include "ozz/base/maths/soa_float4x4.h"
+#include "ozz/base/maths/soa_quaternion.h"
 #include "ozz/animation/offline/additive_animation_builder.h"
 #include "ozz/animation/offline/animation_builder.h"
 #include "ozz/animation/offline/animation_optimizer.h"

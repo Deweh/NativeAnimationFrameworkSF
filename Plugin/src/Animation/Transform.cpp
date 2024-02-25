@@ -20,6 +20,22 @@ namespace Animation
 		FromReal(t);
 	}
 
+	Transform::Transform(const ozz::math::Transform& t)
+	{
+		FromOzz(t);
+	}
+
+	void Transform::FromOzz(const ozz::math::Transform& t)
+	{
+		rotate.x = t.rotation.x;
+		rotate.y = t.rotation.y;
+		rotate.z = t.rotation.z;
+		rotate.w = t.rotation.w;
+		translate.x = t.translation.x;
+		translate.y = t.translation.y;
+		translate.z = t.translation.z;
+	}
+
 	void Transform::ExtractSoaTransform(const ozz::math::SoaTransform& in, std::array<Transform, 4>& out)
 	{
 		alignas(16) float components[8][4];

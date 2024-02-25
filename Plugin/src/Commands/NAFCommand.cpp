@@ -9,7 +9,8 @@ namespace Commands::NAFCommand
 	void ShowHelp(RE::ConsoleLog* log)
 	{
 		log->Print("Usage:");
-		log->Print("naf play [file-path]");
+		log->Print("naf play [anim-file]");
+		log->Print("naf retarget [src-pose-file] [dest-pose-file] [anim-file]");
 		log->Print("naf stop");
 		log->Print("naf studio");
 	}
@@ -89,7 +90,7 @@ namespace Commands::NAFCommand
 		log->Print("Stopping animation...");
 	}
 
-	void ProcessStudio(RE::ConsoleLog* log)
+	void ProcessStudioCommand(RE::ConsoleLog* log)
 	{
 		const auto hndl = GetModuleHandleA("NAFStudio.dll");
 		if (hndl != NULL) {
@@ -102,6 +103,106 @@ namespace Commands::NAFCommand
 		} else {
 			log->Print("NAF Studio is not installed.");
 		}
+	}
+
+	void ProcessRetargetCommand(const std::vector<std::string_view>& args, RE::ConsoleLog* log, RE::TESObjectREFR* refr)
+	{
+		if (args.size() < 5) {
+			ShowHelp(log);
+			return;
+		}
+
+		if (!refr) {
+			ShowNoActor(log);
+			return;
+		}
+
+		auto actor = starfield_cast<RE::Actor*>(refr);
+		if (!actor) {
+			ShowNoActor(log);
+			return;
+		}
+
+		auto skeleton = Settings::GetSkeleton(actor);
+		if (Settings::IsDefaultSkeleton(skeleton)) {
+			log->Print("No configured skeleton for selected actor's race.");
+			return;
+		}
+
+		static const auto LoadPose = [](const std::string_view& path, const ozz::animation::Skeleton* skeleton) {
+			std::unique_ptr<std::vector<ozz::math::Transform>> result = nullptr;
+			auto file = Serialization::GLTFImport::LoadGLTF(path);
+			if (!file) {
+				return result;
+			}
+
+			result = Serialization::GLTFImport::CreateRawPose(file.get(), skeleton);
+			return result;
+		};
+
+		using clock = std::chrono::high_resolution_clock;
+		auto start = clock::now();
+
+		auto srcBindPose = LoadPose(args[2], skeleton->data.get());
+		if (!srcBindPose)
+		{
+			log->Print("Failed to load source pose GLTF/GLB.");
+			return;
+		}
+
+		auto destBindPose = LoadPose(args[3], skeleton->data.get());
+		if (!srcBindPose) {
+			log->Print("Failed to load destination pose GLTF/GLB.");
+			return;
+		}
+
+		std::unique_ptr<ozz::animation::offline::RawAnimation> targetAnim = nullptr;
+		{
+			auto animFile = Serialization::GLTFImport::LoadGLTF(args[4]);
+			if (!animFile || animFile->animations.empty()) {
+				log->Print("Failed to load animation GLTF/GLB.");
+				return;
+			}
+
+			targetAnim = Serialization::GLTFImport::CreateRawAnimation(animFile.get(), &animFile->animations[0], skeleton->data.get());
+		}
+		
+		if (!targetAnim) {
+			log->Print("Failed to process animation GLTF/GLB.");
+			return;
+		}
+		
+		ozz::animation::offline::RawAnimation rawResult;
+		{
+			ozz::animation::offline::AdditiveAnimationBuilder builder;
+			builder(*targetAnim, ozz::make_span(*srcBindPose), &rawResult);
+		}
+
+		auto sharedAnim = std::make_shared<Animation::OzzAnimation>();
+		{
+			ozz::animation::offline::AnimationBuilder builder;
+			sharedAnim->data = builder(rawResult);
+		}
+
+		std::vector<ozz::math::SoaTransform> finalRestPose;
+		finalRestPose.resize(skeleton->data->num_soa_joints());
+		Animation::Transform::StoreSoaTransforms(finalRestPose, [&destBindPose](size_t i) {
+			if (i < destBindPose->size()) {
+				return Animation::Transform{ destBindPose->at(i) };
+			}
+			return Animation::Transform();
+		});
+
+		auto gen = std::make_unique<Animation::AdditiveGenerator>();
+		gen->SetRestPose(finalRestPose);
+		gen->baseGen = Animation::GraphManager::CreateAnimationGenerator(sharedAnim);
+
+		Animation::GraphManager::GetSingleton()->AttachGenerator(
+			actor,
+			std::move(gen),
+			1.0f
+		);
+		log->Print(std::format("Retargeting finished in {:.3f}ms, playing animation...", std::chrono::duration<double>(clock::now() - start).count() * 1000).c_str());
 	}
 
 	void Run(const std::vector<std::string_view>& args, const std::string_view& fullStr, RE::TESObjectREFR* refr)
@@ -118,7 +219,9 @@ namespace Commands::NAFCommand
 		} else if (args[1] == "stop") {
 			ProcessStopCommand(log, refr);
 		} else if (args[1] == "studio") {
-			ProcessStudio(log);
+			ProcessStudioCommand(log);
+		} else if (args[1] == "retarget") {
+			ProcessRetargetCommand(args, log, refr);
 		} else {
 			ShowHelp(log);
 		}
