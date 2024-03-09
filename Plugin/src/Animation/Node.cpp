@@ -33,6 +33,11 @@ namespace Animation
 		n->local.translate = pos;
 	}
 
+	const char* GameNode::GetName()
+	{
+		return n->name.c_str();
+	}
+
 	GameNode::~GameNode() {}
 
 	Transform NullNode::GetLocal() { return Transform(); }
@@ -40,5 +45,6 @@ namespace Animation
 	void NullNode::SetLocal(const Transform&) {}
 	void NullNode::SetWorld(const Transform&) {}
 	void NullNode::SetLocalReal(const RE::NiMatrix3&, const RE::NiPoint3&) {}
+	const char* NullNode::GetName() { return ""; }
 	NullNode::~NullNode() {}
 }

@@ -242,6 +242,30 @@ void NAFAPI_AttachCustomGenerator(
 	Animation::GraphManager::GetSingleton()->AttachGenerator(a_actor, std::move(gen), a_transitionTime);
 }
 
+void NAFAPI_VisitGraph(
+	RE::Actor* a_actor,
+	NAFAPI_VisitGraphFunction a_visitFunc,
+	void* a_userData)
+{
+	if (!a_actor)
+		return;
+
+	NAFAPI_GraphData data;
+	std::vector<Animation::Node*> nodePtrs;
+	Animation::GraphManager::GetSingleton()->VisitGraph(a_actor, [&](Animation::Graph* g) {
+		nodePtrs.reserve(g->nodes.size());
+		for (auto& n : g->nodes) {
+			nodePtrs.push_back(n.get());
+		}
+		data.flags = &g->flags;
+		data.nodes.data = nodePtrs.data();
+		data.nodes.size = nodePtrs.size();
+		data.rootNode = g->rootNode;
+		data.rootTransform = &g->rootTransform;
+		a_visitFunc(a_userData, &data);
+	});
+}
+
 bool NAFAPI_DetachGenerator(
 	RE::Actor* a_actor,
 	float a_transitionTime)

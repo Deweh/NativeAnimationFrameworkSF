@@ -1,6 +1,7 @@
 #pragma once
 #include "Animation/Transform.h"
 #include "Animation/Generator.h"
+#include "Animation/Graph.h"
 
 template <typename T>
 struct NAFAPI_Array
@@ -43,7 +44,16 @@ struct NAFAPI_TimelineData
 	NAFAPI_Map<float, RE::NiQuaternion> rotations;
 };
 
+struct NAFAPI_GraphData
+{
+	SFSE::stl::enumeration<Animation::Graph::FLAGS, uint16_t>* flags;
+	NAFAPI_Array<Animation::Node*> nodes;
+	RE::NiAVObject* rootNode;
+	Animation::Transform* rootTransform;
+};
+
 typedef void (*NAFAPI_CustomGeneratorFunction)(void* a_data, Animation::Generator* a_generator, float a_deltaTime, NAFAPI_Array<Animation::Transform> a_output);
+typedef void (*NAFAPI_VisitGraphFunction)(void*, NAFAPI_GraphData*);
 
 extern "C" __declspec(dllexport) uint16_t NAFAPI_GetFeatureLevel();
 
@@ -71,6 +81,11 @@ extern "C" __declspec(dllexport) void NAFAPI_AttachCustomGenerator(
 	NAFAPI_CustomGeneratorFunction a_onDestroyFunc,
 	void* a_userData,
 	float a_transitionTime);
+
+extern "C" __declspec(dllexport) void NAFAPI_VisitGraph(
+	RE::Actor* a_actor,
+	NAFAPI_VisitGraphFunction a_visitFunc,
+	void* a_userData);
 
 extern "C" __declspec(dllexport) bool NAFAPI_DetachGenerator(
 	RE::Actor* a_actor,

@@ -11,6 +11,7 @@ namespace Animation
 		virtual void SetLocal(const Transform& t) = 0;
 		virtual void SetWorld(const Transform& t) = 0;
 		virtual void SetLocalReal(const RE::NiMatrix3& rot, const RE::NiPoint3& pos) = 0;
+		virtual const char* GetName() = 0;
 		virtual ~Node();
 	};
 
@@ -26,6 +27,7 @@ namespace Animation
 		virtual void SetLocal(const Transform& t);
 		virtual void SetWorld(const Transform& t);
 		virtual void SetLocalReal(const RE::NiMatrix3& rot, const RE::NiPoint3& pos);
+		virtual const char* GetName();
 		virtual ~GameNode();
 	};
 
@@ -37,6 +39,7 @@ namespace Animation
 		virtual void SetLocal(const Transform& t);
 		virtual void SetWorld(const Transform& t);
 		virtual void SetLocalReal(const RE::NiMatrix3& rot, const RE::NiPoint3& pos);
+		virtual const char* GetName();
 		virtual ~NullNode();
 	};
 }

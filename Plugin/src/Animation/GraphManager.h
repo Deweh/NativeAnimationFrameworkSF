@@ -21,6 +21,7 @@ namespace Animation
 		bool AttachGenerator(RE::Actor* a_actor, std::unique_ptr<Generator> a_gen, float a_transitionTime);
 		bool DetachGenerator(RE::Actor* a_actor, float a_transitionTime);
 		bool DetachGraph(RE::IAnimationGraphManagerHolder* a_graphHolder);
+		void VisitGraph(RE::Actor* a_actor, const std::function<void(Graph*)> visitFunc);
 		void InstallHooks();
 		void Reset();
 

@@ -151,6 +151,37 @@ namespace NAFAPI
 		Transform localRootTransform;
 	};
 
+	class Node
+	{
+	public:
+		virtual Transform GetLocal() = 0;
+		virtual Transform GetWorld() = 0;
+		virtual void SetLocal(const Transform& t) = 0;
+		virtual void SetWorld(const Transform& t) = 0;
+		virtual void SetLocalReal(const RE::NiMatrix3& rot, const RE::NiPoint3& pos) = 0;
+		virtual const char* GetName() = 0;
+		virtual ~Node();
+	};
+
+	struct GraphData
+	{
+		enum FLAGS : uint16_t
+		{
+			kNoFlags = 0,
+			kTemporary = 1u << 0,
+			kUnloaded3D = 1u << 1,
+			kNoActiveIKChains = 1u << 2,
+
+			kTransitioning = 1u << 3,
+			kHasGenerator = 1u << 4
+		};
+
+		SFSE::stl::enumeration<FLAGS, uint16_t>* flags;
+		Array<Node*> nodes;
+		RE::NiAVObject* rootNode;
+		Transform* rootTransform;
+	};
+
 	enum GeneratorType : int
 	{
 		kLinear = 0
@@ -184,12 +215,14 @@ namespace NAFAPI
 	* a_output - An array of transforms that will be applied to the actor after the call. The size of the array is equal to the a_outputSize value passed into the AttachCustomGenerator function.
 	*/
 	typedef void (*CustomGeneratorFunction)(void* a_data, Generator* a_generator, float a_deltaTime, Array<Transform> a_output);
+	typedef void (*VisitGraphFunction)(void* a_data, GraphData* a_graphData);
 
 	typedef uint16_t (*GetFeatureLevel_Def)();
 	typedef GLTFErrorCode (*PlayAnimationFromGLTF_Def)(RE::Actor* a_actor, float a_transitionTime, const char* a_fileName, const AnimationIdentifer& a_id);
 	typedef Handle<Array<const char*>> (*GetSkeletonNodes_Def)(const char* a_raceEditorId);
 	typedef void (*AttachClipGenerator_Def)(RE::Actor* a_actor, Array<Timeline::Data>* a_timelines, float a_transitionTime, int a_generatorType);
 	typedef void (*AttachCustomGenerator_Def)(RE::Actor* a_actor, CustomGeneratorFunction a_generatorFunc, CustomGeneratorFunction a_onDestroyFunc, void* a_userData, float a_transitionTime);
+	typedef void (*VisitGraph_Def)(RE::Actor* a_actor, VisitGraphFunction a_visitFunc, void* a_userData);
 	typedef bool (*DetachGenerator_Def)(RE::Actor* a_actor, float a_transitionTime);
 
 	//API Functions
@@ -280,6 +313,21 @@ namespace NAFAPI
 	void AttachCustomGenerator(RE::Actor* a_actor, CustomGeneratorFunction a_generatorFunc, CustomGeneratorFunction a_onDestroyFunc, void* a_userData, float a_transitionTime)
 	{
 		invoke<AttachCustomGenerator_Def>("NAFAPI_AttachCustomGenerator", a_actor, a_generatorFunc, a_onDestroyFunc, a_userData, a_transitionTime);
+	}
+
+	/*
+	* Provides temporary access to an actor's internal NAF animation graph.
+	* Can be used to get data on an actor's nodes, animation graph flags, and get/set their world position.
+	* NOTE: This function locks mutexes internally, so it is not safe to make nested calls to VisitGraph.
+	* IMPORTANT: GraphData pointers should not be accessed outside the VisitGraphFunction, doing so is undefined behavior.
+	*
+	* a_actor - The target actor.
+	* a_visitFunc - The function to pass the GraphData to.
+	* a_userData - A pointer to any data, which will also be passed to the visitFunc.
+	*/
+	void VisitGraph(RE::Actor* a_actor, VisitGraphFunction a_visitFunc, void* a_userData)
+	{
+		invoke<VisitGraph_Def>("NAFAPI_VisitGraph", a_actor, a_visitFunc, a_userData);
 	}
 
 	/*

@@ -100,6 +100,14 @@ namespace Animation
 		return GetGraphLockless(a_actor, create);
 	}
 
+	std::shared_ptr<Graph> CreateGraph(RE::Actor* a_actor)
+	{
+		std::shared_ptr<Graph> g = std::make_shared<Graph>();
+		g->target.reset(a_actor);
+		g->SetSkeleton(Settings::GetSkeleton(a_actor));
+		return g;
+	}
+
 	std::shared_ptr<Graph> GraphManager::GetGraphLockless(RE::Actor* a_actor, bool create)
 	{
 		if (auto iter = state->graphMap.find(a_actor); iter != state->graphMap.end())
@@ -108,10 +116,7 @@ namespace Animation
 		if (!create)
 			return nullptr;
 
-		std::shared_ptr<Graph> g = std::make_shared<Graph>();
-		g->target.reset(a_actor);
-		g->SetSkeleton(Settings::GetSkeleton(a_actor));
-
+		std::shared_ptr<Graph> g = CreateGraph(a_actor);
 		state->graphMap[a_actor] = g;
 		return g;
 	}
@@ -124,6 +129,26 @@ namespace Animation
 			return true;
 		}
 		return false;
+	}
+
+	void GraphManager::VisitGraph(RE::Actor* a_actor, const std::function<void(Graph*)> visitFunc)
+	{
+		std::shared_lock ls{ stateLock };
+		
+		if (auto iter = state->graphMap.find(a_actor); iter != state->graphMap.end())
+		{
+			std::unique_lock gl{ iter->second->lock };
+			visitFunc(iter->second.get());
+		} else {
+			ls.unlock();
+			std::unique_lock lu{ stateLock };
+			std::shared_ptr<Graph> g = CreateGraph(a_actor);
+			state->graphMap[a_actor] = g;
+
+			std::unique_lock gl{ g->lock };
+			g->Update(0.0f);
+			visitFunc(g.get());
+		}
 	}
 
 	GraphManager& graphManager = *GraphManager::GetSingleton();
