@@ -4,6 +4,7 @@
 #include "Settings/Settings.h"
 #include "Serialization/GLTFImport.h"
 #include "Animation/Ozz.h"
+#include "Animation/Transform.h"
 namespace
 {
 	class NAFAPI_UserGenerator : public Animation::Generator
@@ -17,6 +18,9 @@ namespace
 		virtual void Generate(float deltaTime)
 		{
 			generateFunc(userData, this, deltaTime, { userOutput.data(), userOutput.size() });
+			Animation::Transform::StoreSoaTransforms(output, [&](size_t i) {
+				return userOutput[i];
+			});
 		}
 
 		virtual void SetOutput(const ozz::span<ozz::math::SoaTransform>& span)

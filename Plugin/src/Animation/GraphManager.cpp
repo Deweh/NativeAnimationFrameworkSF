@@ -26,8 +26,8 @@ namespace Animation
 		if (a_actors.empty() || a_actors.size() != a_gens.size())
 			return false;
 
-		RE::NiPoint3A rootAngle;
-		RE::NiPoint3A rootLoc;
+		RE::NiPoint3 rootAngle;
+		RE::NiPoint3 rootLoc;
 		if (auto& a = a_actors.front(); a != nullptr) {
 			rootAngle = a->data.angle;
 			rootLoc = a->data.location;

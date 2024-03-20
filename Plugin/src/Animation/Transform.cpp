@@ -106,6 +106,21 @@ namespace Animation
 		}
 	}
 
+	void Transform::StoreSoaTransforms(std::span<ozz::math::SoaTransform>& out, const std::function<Transform(size_t)> func)
+	{
+		size_t s = out.size();
+		std::array<Transform, 4> arr;
+
+		for (size_t i = 0; i < s; i++) {
+			size_t j = i * 4;
+			arr[0] = func(j);
+			arr[1] = func(j + 1);
+			arr[2] = func(j + 2);
+			arr[3] = func(j + 3);
+			StoreSoaTransform(arr, out[i]);
+		}
+	}
+
 	void Transform::ExtractSoaMatrixPoint(const ozz::math::SoaFloat4x4& mat_in, const ozz::math::SoaFloat3& pt_in, std::array<RE::NiMatrix3, 4>& mat_out, std::array<RE::NiPoint3, 4>& pt_out)
 	{
 		alignas(16) float ptComp[3][4];
