@@ -5,18 +5,26 @@
 namespace Settings
 {
 	const std::filesystem::path skeletonsDir = Util::String::GetDataPath() / "Skeletons";
-
-	std::shared_ptr<Animation::OzzSkeleton> defaultSkeleton;
-
 	std::mutex lock;
-	std::unordered_map<std::string, std::shared_ptr<Animation::OzzSkeleton>> skeletons;
+
+	std::shared_ptr<Animation::OzzSkeleton> GetDefaultSkeleton()
+	{
+		static std::shared_ptr<Animation::OzzSkeleton> defaultSkeleton = std::make_shared<Animation::OzzSkeleton>();
+		return defaultSkeleton;
+	}
+
+	std::unordered_map<std::string, std::shared_ptr<Animation::OzzSkeleton>>& GetSkeletonMap()
+	{
+		static std::unordered_map<std::string, std::shared_ptr<Animation::OzzSkeleton>> skeletons;
+		return skeletons;
+	}
 
 	void InitDefaultSkeleton()
 	{
 		SkeletonDescriptor skele;
 		skele.nodeNames.push_back("COM");
-		defaultSkeleton = std::make_shared<Animation::OzzSkeleton>();
-		defaultSkeleton->data = skele.ToOzz();
+		auto d = skele.ToOzz();
+		GetDefaultSkeleton()->data = std::move(d);
 	}
 
 	void Load()
@@ -25,6 +33,7 @@ namespace Settings
 
 		ozz::animation::offline::SkeletonBuilder skeletonBuilder;
 		simdjson::ondemand::parser parser;
+		auto& skeletons = GetSkeletonMap();
 		for (auto& f : std::filesystem::directory_iterator(skeletonsDir)) {
 			if (auto p = f.path(); f.exists() && !f.is_directory() && p.has_extension() && p.extension() == ".json") {
 				SkeletonDescriptor skele;
@@ -58,23 +67,24 @@ namespace Settings
 	std::shared_ptr<const Animation::OzzSkeleton> GetSkeleton(const std::string& a_raceId)
 	{
 		std::unique_lock l{ lock };
+		auto& skeletons = GetSkeletonMap();
 		if (auto iter = skeletons.find(a_raceId); iter != skeletons.end()) {
 			return iter->second;
 		} else {
-			return defaultSkeleton;
+			return GetDefaultSkeleton();
 		}
 	}
 
 	std::shared_ptr<const Animation::OzzSkeleton> GetSkeleton(RE::Actor* a_actor)
 	{
 		if (!a_actor)
-			return defaultSkeleton;
+			return GetDefaultSkeleton();
 
 		return GetSkeleton(a_actor->race->formEditorID.c_str());
 	}
 
 	bool IsDefaultSkeleton(std::shared_ptr<const Animation::OzzSkeleton> a_skeleton)
 	{
-		return a_skeleton.get() == defaultSkeleton.get();
+		return a_skeleton.get() == GetDefaultSkeleton().get();
 	}
 }
