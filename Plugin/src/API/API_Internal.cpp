@@ -14,25 +14,34 @@ namespace
 		std::vector<Animation::Transform> userOutput;
 		NAFAPI_CustomGeneratorFunction generateFunc = nullptr;
 		NAFAPI_CustomGeneratorFunction onDestroyFunc = nullptr;
+		bool detaching = false;
 
-		virtual void Generate(float deltaTime)
+		virtual void Generate(float deltaTime) override
 		{
+			if (detaching) [[unlikely]]
+				return;
+
 			generateFunc(userData, this, deltaTime, { userOutput.data(), userOutput.size() });
 			Animation::Transform::StoreSoaTransforms(output, [&](size_t i) {
 				return userOutput[i];
 			});
 		}
 
-		virtual void SetOutput(const ozz::span<ozz::math::SoaTransform>& span)
+		virtual void SetOutput(const ozz::span<ozz::math::SoaTransform>& span) override
 		{
 			Animation::Generator::SetOutput(span);
 			userOutput.resize(span.size() * 4);
 		}
 
-		virtual ~NAFAPI_UserGenerator()
+		virtual void OnDetaching() override
 		{
+			detaching = true;
 			if (onDestroyFunc != nullptr)
 				onDestroyFunc(userData, this, 0.0f, { userOutput.data(), userOutput.size() });
+		}
+
+		virtual ~NAFAPI_UserGenerator()
+		{
 		}
 	};
 

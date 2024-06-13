@@ -2,6 +2,8 @@
 #include "Settings/Settings.h"
 #include "Serialization/GLTFImport.h"
 #include "Util/String.h"
+#include "Graph.h"
+#include "FileManager.h"
 
 namespace Animation
 {
@@ -19,6 +21,18 @@ namespace Animation
 		gen->anim = anim;
 		gen->duration = anim->data->duration();
 		return gen;
+	}
+
+	bool GraphManager::LoadAndStartAnimation(RE::Actor* a_actor, const std::string_view a_filePath, const std::string_view a_animId, float a_transitionTime)
+	{
+		if (!a_actor)
+			return false;
+		
+		auto g = GetGraph(a_actor, true);
+		g->transition.queuedDuration = a_transitionTime;
+		g->flags.set(Graph::FLAGS::kLoadingAnimation);
+		FileManager::GetSingleton()->RequestAnimation(FileID(a_filePath, a_animId), a_actor->race->formEditorID.c_str(), g);
+		return true;
 	}
 
 	bool GraphManager::AttachGeneratorsSynced(const std::vector<RE::Actor*>& a_actors, std::vector<std::unique_ptr<Generator>>& a_gens, float a_transitionTime, bool alignRoots)
@@ -77,6 +91,7 @@ namespace Animation
 			return false;
 
 		std::unique_lock l{ g->lock };
+		g->flags.reset(Graph::FLAGS::kLoadingAnimation);
 		g->StartTransition(nullptr, a_transitionTime);
 		return true;
 	}
@@ -105,6 +120,7 @@ namespace Animation
 		std::shared_ptr<Graph> g = std::make_shared<Graph>();
 		g->target.reset(a_actor);
 		g->SetSkeleton(Settings::GetSkeleton(a_actor));
+		g->requesterHandle = g;
 		return g;
 	}
 
@@ -165,7 +181,7 @@ namespace Animation
 			std::unique_lock gl{ g->lock };
 			g->Update(a_updateData->timeDelta);
 
-			if (g->flags.none(Graph::FLAGS::kHasGenerator, Graph::FLAGS::kTransitioning) &&
+			if (g->flags.none(Graph::FLAGS::kHasGenerator, Graph::FLAGS::kTransitioning, Graph::FLAGS::kLoadingAnimation) &&
 				g->flags.all(Graph::FLAGS::kTemporary, Graph::FLAGS::kNoActiveIKChains)) {
 				l.unlock();
 				graphManager.DetachGraph(a_graphHolder);

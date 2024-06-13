@@ -37,7 +37,7 @@ namespace Commands::NAFCommand
 			ShowNoActor(log);
 			return;
 		}
-
+		/*
 		using clock = std::chrono::high_resolution_clock;
 		auto start = clock::now();
 		Serialization::GLTFImport::AnimationInfo animInfo{ .targetActor = actor, .fileName = std::string(args[2]) };
@@ -70,7 +70,9 @@ namespace Commands::NAFCommand
 			Animation::GraphManager::CreateAnimationGenerator(sharedAnim),
 			1.0f
 		);
-		log->Print(std::format("Loaded animation in {:.3f}ms", std::chrono::duration<double>(clock::now() - start).count() * 1000).c_str());
+		*/
+		Animation::GraphManager::GetSingleton()->LoadAndStartAnimation(actor, args[2]);
+		log->Print("Starting animation...");
 	}
 
 	void ProcessStopCommand(RE::ConsoleLog* log, RE::TESObjectREFR* refr)

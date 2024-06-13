@@ -70,7 +70,11 @@ add_library(
  "src/Util/String.cpp"
  "src/Commands/Commands.cpp"
  "src/Commands/NAFCommand.cpp"
- "src/Tasks/SaveLoadListener.cpp" "src/Animation/Generator.cpp")
+ "src/Tasks/SaveLoadListener.cpp"
+ "src/Animation/Generator.cpp"
+ "src/Animation/IKTwoBoneData.cpp"
+ "src/Animation/FileManager.cpp" 
+ "src/Animation/Ozz.cpp")
 
 # copy to Starfield directory
 set(STARFIELD_PATH "C:/Program Files (x86)/Steam/steamapps/common/Starfield/Data/SFSE/Plugins")

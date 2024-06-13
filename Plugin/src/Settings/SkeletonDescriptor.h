@@ -15,6 +15,7 @@ namespace Settings
 	{
 		std::vector<IKChainDescriptor> chains;
 		std::vector<std::string> nodeNames;
+		std::string raceId;
 
 		ozz::unique_ptr<ozz::animation::Skeleton> ToOzz();
 		void MakeNodeNamesUnique();

@@ -25,6 +25,19 @@ namespace Util
 		return *DataPath;
 	}
 
+	std::string String::ToLower(const std::string_view s)
+	{
+		std::string result(s);
+		std::transform(result.begin(), result.end(), result.begin(), [](unsigned char c) { return std::tolower(c); });
+		return result;
+	}
+
+	std::string_view String::TransformToLower(std::string& s)
+	{
+		std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::tolower(c); });
+		return s;
+	}
+
 	std::vector<std::string_view> String::Split(const std::string_view& s, const std::string_view& delimiter, const std::optional<char>& escapeChar)
 	{
 		std::vector<std::string_view> substrings;

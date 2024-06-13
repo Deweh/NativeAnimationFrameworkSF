@@ -1,9 +1,11 @@
 #pragma once
-#include "Graph.h"
 #include "Ozz.h"
 
 namespace Animation
 {
+	class Graph;
+	class Generator;
+
 	class GraphManager
 	{
 	public:
@@ -17,6 +19,7 @@ namespace Animation
 
 		static GraphManager* GetSingleton();
 		static std::unique_ptr<Generator> CreateAnimationGenerator(std::shared_ptr<OzzAnimation> anim);
+		bool LoadAndStartAnimation(RE::Actor* a_actor, const std::string_view a_filePath, const std::string_view a_animId = "", float a_transitionTime = 1.0f);
 		bool AttachGeneratorsSynced(const std::vector<RE::Actor*>& a_actors, std::vector<std::unique_ptr<Generator>>& a_gens, float a_transitionTime, bool alignRoots);
 		bool AttachGenerator(RE::Actor* a_actor, std::unique_ptr<Generator> a_gen, float a_transitionTime);
 		bool DetachGenerator(RE::Actor* a_actor, float a_transitionTime);

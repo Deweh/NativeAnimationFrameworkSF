@@ -12,6 +12,25 @@ namespace Animation
 		blendLayers[1].weight = .0f;
 	}
 
+	void Graph::OnAnimationReady(const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim)
+	{
+		std::unique_lock l{ lock };
+		if (flags.all(FLAGS::kLoadingAnimation)) {
+			flags.reset(FLAGS::kLoadingAnimation);
+			if (a_anim != nullptr) {
+				auto gen = std::make_unique<LinearClipGenerator>();
+				gen->anim = a_anim;
+				gen->duration = a_anim->data->duration();
+				StartTransition(std::move(gen), transition.queuedDuration);
+			}
+		}
+	}
+
+	void Graph::OnAnimationRequested(const FileID& a_id)
+	{
+
+	}
+
 	void Graph::SetSkeleton(std::shared_ptr<const OzzSkeleton> a_descriptor)
 	{
 		skeleton = a_descriptor;
@@ -78,6 +97,30 @@ namespace Animation
 				PushOutput(generatedPose);
 			}
 		}
+	}
+
+	IKTwoBoneData* Graph::AddIKJob(const std::span<std::string_view, 3> a_nodeNames, const RE::NiTransform& a_initialTargetWorld, const RE::NiPoint3& a_initialPolePtModel, float a_transitionTime)
+	{
+		ikJobs.emplace_back(std::make_unique<IKTwoBoneData>());
+		IKTwoBoneData* d = ikJobs.back().get();
+		d->targetWorld = a_initialTargetWorld;
+		d->polePtModel = a_initialPolePtModel;
+		for (size_t i = 0; i < a_nodeNames.size(); i++) {
+			d->nodeNames[i] = a_nodeNames[i];
+		}
+		d->TransitionIn(a_transitionTime);
+		return d;
+	}
+
+	bool Graph::RemoveIKJob(IKTwoBoneData* a_jobData, float a_transitionTime)
+	{
+		for (auto& d : ikJobs) {
+			if (d.get() == a_jobData) {
+				d->TransitionOut(a_transitionTime, true);
+				return true;
+			}
+		}
+		return false;
 	}
 
 	void Graph::UpdateTransition(float a_deltaTime)
@@ -176,6 +219,10 @@ namespace Animation
 			} else {
 				return;
 			}
+		}
+
+		if (generator != nullptr) {
+			generator->OnDetaching();
 		}
 
 		flags.set(FLAGS::kTransitioning);

@@ -4,10 +4,12 @@
 #include "Easing.h"
 #include "Node.h"
 #include "Ozz.h"
+#include "IKTwoBoneData.h"
+#include "FileManager.h"
 
 namespace Animation
 {
-	class Graph
+	class Graph : public FileRequesterBase
 	{
 	public:
 		struct TransitionData
@@ -16,6 +18,7 @@ namespace Animation
 			int endLayer;
 			float localTime = 0.0f;
 			float duration = 0.0f;
+			float queuedDuration = 0.0f;
 			std::function<void()> onEnd = nullptr;
 			CubicInOutEase<float> ease;
 		};
@@ -28,7 +31,9 @@ namespace Animation
 			kNoActiveIKChains = 1u << 2,
 
 			kTransitioning = 1u << 3,
-			kHasGenerator = 1u << 4
+			kHasGenerator = 1u << 4,
+
+			kLoadingAnimation = 1u << 5
 		};
 
 		enum TRANSITION_TYPE : uint8_t
@@ -56,15 +61,22 @@ namespace Animation
 		std::vector<ozz::math::SoaTransform> generatedPose;
 		std::vector<ozz::math::SoaTransform> blendedPose;
 		std::array<ozz::animation::BlendingJob::Layer, 2> blendLayers;
+		std::vector<std::unique_ptr<IKTwoBoneData>> ikJobs;
 		std::unique_ptr<Generator> generator = nullptr;
 		TransitionData transition;
 
 		Graph();
+		virtual ~Graph() noexcept = default;
+
+		virtual void OnAnimationReady(const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim);
+		virtual void OnAnimationRequested(const FileID& a_id);
 
 		void SetSkeleton(std::shared_ptr<const OzzSkeleton> a_descriptor);
 		void GetSkeletonNodes(RE::BGSFadeNode* a_rootNode);
 		Transform GetCurrentTransform(size_t nodeIdx);
 		void Update(float a_deltaTime);
+		IKTwoBoneData* AddIKJob(const std::span<std::string_view, 3> a_nodeNames, const RE::NiTransform& a_initialTargetWorld, const RE::NiPoint3& a_initialPolePtModel, float a_transitionTime);
+		bool RemoveIKJob(IKTwoBoneData* a_jobData, float a_transitionTime);
 		void StartTransition(std::unique_ptr<Generator> a_dest, float a_transitionTime);
 		void UpdateTransition(float a_deltaTime);
 		void PushOutput(const std::vector<ozz::math::SoaTransform>& a_output);

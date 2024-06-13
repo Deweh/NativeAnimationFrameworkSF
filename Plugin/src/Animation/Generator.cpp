@@ -5,6 +5,7 @@ namespace Animation
 	void Generator::Generate(float) {}
 	void Generator::SetOutput(const ozz::span<ozz::math::SoaTransform>& span) { output = span; }
 	void Generator::SetContext(ozz::animation::SamplingJob::Context* ctxt) { context = ctxt; }
+	void Generator::OnDetaching() {}
 
 	void LinearClipGenerator::Generate(float deltaTime)
 	{

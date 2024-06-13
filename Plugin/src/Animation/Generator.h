@@ -20,6 +20,7 @@ namespace Animation
 		virtual void Generate(float deltaTime);
 		virtual void SetOutput(const ozz::span<ozz::math::SoaTransform>& span);
 		virtual void SetContext(ozz::animation::SamplingJob::Context* ctxt);
+		virtual void OnDetaching();
 
 		virtual ~Generator() = default;
 	};
