@@ -83,7 +83,6 @@ namespace Animation
 	private:
 		std::jthread workerThread;
 		std::condition_variable workCV;
-		Util::Guarded<RequestData> activeRequest;
 		Util::Guarded<std::list<RequestData>> requests;
 		Util::Guarded<std::map<AnimID, LoadedAnimData>> loadedAnimations;
 	};

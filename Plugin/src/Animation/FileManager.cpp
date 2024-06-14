@@ -117,12 +117,11 @@ namespace Animation
 
 		while (true) {
 			l.lock();
-			if (!reqData.empty()) {
-				nextReq = reqData.front();
-				reqData.pop_front();
-			} else {
+			if (reqData.empty()) {
 				workCV.wait(l, [&]() { return !reqData.empty(); });
 			}
+			nextReq = reqData.front();
+			reqData.pop_front();
 			l.unlock();
 
 			auto anim = DoLoadAnimation(nextReq.anim);

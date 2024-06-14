@@ -3,6 +3,7 @@
 #include "Settings/Settings.h"
 #include "Animation/GraphManager.h"
 #include "Animation/Ozz.h"
+#include "Util/String.h"
 
 namespace Commands::NAFCommand
 {
@@ -20,6 +21,46 @@ namespace Commands::NAFCommand
 		log->Print("No actor selected.");
 	}
 
+	RE::Actor* StrToActor(const std::string_view s, bool verbose = false, RE::ConsoleLog* log = nullptr)
+	{
+		auto id = Util::String::HexToUInt(std::string{ s });
+		if (!id.has_value()) {
+			if (verbose)
+				log->Print("Provided form ID is invalid.");
+			return nullptr;
+		}
+		auto frm = RE::TESForm::LookupByID(id.value());
+		if (!frm) {
+			if (verbose)
+				log->Print("Provided form ID is invalid.");
+			return nullptr;
+		}
+		RE::Actor* actor = starfield_cast<RE::Actor*>(frm);
+		if (!actor) {
+			if (verbose)
+				log->Print("Provided form ID does not point to an actor.");
+			return nullptr;
+		}
+		return actor;
+	}
+
+	RE::Actor* ActorStrOrSelection(size_t argPos, const std::vector<std::string_view>& args, RE::ConsoleLog* log, RE::TESObjectREFR* refr)
+	{
+		if (args.size() > argPos) {
+			return StrToActor(args[argPos], true, log);
+		} else {
+			if (!refr) {
+				ShowNoActor(log);
+				return nullptr;
+			}
+			RE::Actor* result = starfield_cast<RE::Actor*>(refr);
+			if (!result) {
+				ShowNoActor(log);
+			}
+			return result;
+		}
+	}
+
 	void ProcessPlayCommand(const std::vector<std::string_view>& args, RE::ConsoleLog* log, RE::TESObjectREFR* refr)
 	{
 		if (args.size() < 3) {
@@ -27,16 +68,11 @@ namespace Commands::NAFCommand
 			return;
 		}
 
-		if (!refr) {
-			ShowNoActor(log);
-			return;
-		}
-
-		auto actor = starfield_cast<RE::Actor*>(refr);
+		RE::Actor* actor = ActorStrOrSelection(3, args, log, refr);
 		if (!actor) {
-			ShowNoActor(log);
 			return;
 		}
+		
 		/*
 		using clock = std::chrono::high_resolution_clock;
 		auto start = clock::now();
@@ -75,16 +111,10 @@ namespace Commands::NAFCommand
 		log->Print("Starting animation...");
 	}
 
-	void ProcessStopCommand(RE::ConsoleLog* log, RE::TESObjectREFR* refr)
+	void ProcessStopCommand(const std::vector<std::string_view>& args, RE::ConsoleLog* log, RE::TESObjectREFR* refr)
 	{
-		if (!refr) {
-			ShowNoActor(log);
-			return;
-		}
-
-		auto actor = starfield_cast<RE::Actor*>(refr);
+		RE::Actor* actor = ActorStrOrSelection(2, args, log, refr);
 		if (!actor) {
-			ShowNoActor(log);
 			return;
 		}
 
@@ -207,19 +237,49 @@ namespace Commands::NAFCommand
 		log->Print(std::format("Retargeting finished in {:.3f}ms, playing animation...", std::chrono::duration<double>(clock::now() - start).count() * 1000).c_str());
 	}
 
+	void ProcessPapyrusCommand(const std::vector<std::string_view>& args, RE::ConsoleLog* log, RE::TESObjectREFR* refr)
+	{
+		if (args.size() < 3) {
+			return;
+		}
+
+		auto& type = args[2];
+		if (type == "p" && args.size() > 4) {
+			auto a = StrToActor(args[4]);
+			if (!a) {
+				return;
+			}
+
+			Animation::GraphManager::GetSingleton()->LoadAndStartAnimation(a, args[3], "", 1.0f);
+		} else if (type == "s" && args.size() > 3) {
+			auto a = StrToActor(args[3]);
+			if (!a) {
+				return;
+			}
+
+			Animation::GraphManager::GetSingleton()->DetachGenerator(a, 1.0f);
+		}
+	}
+
 	void Run(const std::vector<std::string_view>& args, const std::string_view& fullStr, RE::TESObjectREFR* refr)
 	{
 		auto log = RE::ConsoleLog::GetSingleton();
-		log->Print(fullStr.data());
 		if (args.size() < 2) {
 			ShowHelp(log);
 			return;
 		}
 
+		if (args[1] == "s") {
+			ProcessPapyrusCommand(args, log, refr);
+			return;
+		}
+
+		log->Print(fullStr.data());
+
 		if (args[1] == "play") {
 			ProcessPlayCommand(args, log, refr);
 		} else if (args[1] == "stop") {
-			ProcessStopCommand(log, refr);
+			ProcessStopCommand(args, log, refr);
 		} else if (args[1] == "studio") {
 			ProcessStudioCommand(log);
 		} else if (args[1] == "retarget") {

@@ -71,4 +71,15 @@ namespace Util
 
 		return substrings;
 	}
+
+	std::optional<uint32_t> String::HexToUInt(const std::string&& s)
+	{
+		try {
+			uint32_t result = std::stoul(s, nullptr, 16);
+			return result;
+		}
+		catch (std::exception) {
+			return std::nullopt;
+		}
+	}
 }
