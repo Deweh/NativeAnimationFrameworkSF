@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.21)
 # info
 project(
 	NativeAnimationFrameworkSF
-	VERSION 1.0.5
+	VERSION 1.0.6
 	LANGUAGES CXX
 )
 
@@ -68,7 +68,6 @@ add_library(
  "src/Animation/Node.cpp"  
  "src/Serialization/GLTFImport.cpp"
  "src/Util/String.cpp"
- "src/Commands/Commands.cpp"
  "src/Commands/NAFCommand.cpp"
  "src/Tasks/SaveLoadListener.cpp"
  "src/Animation/Generator.cpp"

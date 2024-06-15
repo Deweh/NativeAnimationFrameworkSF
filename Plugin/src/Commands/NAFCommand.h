@@ -1,6 +1,7 @@
 #pragma once
+#include "API/CCF_API.h"
 
 namespace Commands::NAFCommand
 {
-	void Run(const std::vector<std::string_view>& args, const std::string_view& fullStr, RE::TESObjectREFR* refr);
+	void Run(const CCF::simple_array<CCF::simple_string_view>& a_args, const char* a_fullString, CCF::ConsoleInterface* a_intfc);
 }
