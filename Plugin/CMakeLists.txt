@@ -73,7 +73,8 @@ add_library(
  "src/Animation/Generator.cpp"
  "src/Animation/IKTwoBoneData.cpp"
  "src/Animation/FileManager.cpp" 
- "src/Animation/Ozz.cpp")
+ "src/Animation/Ozz.cpp"
+ "src/Animation/SyncInstance.cpp")
 
 # copy to Starfield directory
 set(STARFIELD_PATH "C:/Program Files (x86)/Steam/steamapps/common/Starfield/Data/SFSE/Plugins")

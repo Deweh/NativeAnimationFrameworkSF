@@ -6,6 +6,7 @@
 #include "Ozz.h"
 #include "IKTwoBoneData.h"
 #include "FileManager.h"
+#include "SyncInstance.h"
 
 namespace Animation
 {
@@ -64,9 +65,10 @@ namespace Animation
 		std::vector<std::unique_ptr<IKTwoBoneData>> ikJobs;
 		std::unique_ptr<Generator> generator = nullptr;
 		TransitionData transition;
+		std::shared_ptr<SyncInstance> syncInst = nullptr;
 
 		Graph();
-		virtual ~Graph() noexcept = default;
+		virtual ~Graph() noexcept;
 
 		virtual void OnAnimationReady(const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim);
 		virtual void OnAnimationRequested(const FileID& a_id);
@@ -84,6 +86,9 @@ namespace Animation
 		void SnapshotCurrentPose();
 		void ResetRootTransform();
 		void ResetRootOrientation();
+		void MakeSyncOwner();
+		void SyncToGraph(Graph* a_grph);
+		void StopSyncing();
 		XYZTransform GetRootXYZ();
 	};
 }

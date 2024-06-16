@@ -12,6 +12,13 @@ namespace Animation
 		blendLayers[1].weight = .0f;
 	}
 
+	Graph::~Graph() noexcept
+	{
+		if (syncInst != nullptr && syncInst->GetOwner() == this) {
+			syncInst->SetOwner(nullptr);
+		}
+	}
+
 	void Graph::OnAnimationReady(const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim)
 	{
 		std::unique_lock l{ lock };
@@ -88,7 +95,23 @@ namespace Animation
 		}
 		
 		if (rootNode != nullptr && generator != nullptr) {
-			generator->Generate(a_deltaTime);
+			if (syncInst != nullptr) {
+				auto sOwner = syncInst->GetOwner();
+				if (sOwner == this) {
+					generator->Generate(a_deltaTime);
+					syncInst->NotifyOwnerUpdate(generator->localTime, rootTransform);
+				} else if (sOwner == nullptr) {
+					syncInst = nullptr;
+					generator->Generate(a_deltaTime);
+				} else {
+					auto data = syncInst->NotifyGraphUpdate(this);
+					generator->localTime = data.time;
+					rootTransform = data.rootTransform;
+					generator->Generate(data.hasOwnerUpdated ? 0.0f : a_deltaTime);
+				}
+			} else {
+				generator->Generate(a_deltaTime);
+			}
 
 			if (flags.all(FLAGS::kTransitioning)) {
 				UpdateTransition(a_deltaTime);
@@ -121,6 +144,24 @@ namespace Animation
 			}
 		}
 		return false;
+	}
+
+	void Graph::MakeSyncOwner()
+	{
+		if (syncInst == nullptr) {
+			syncInst = std::make_shared<SyncInstance>();
+		}
+		syncInst->SetOwner(this);
+	}
+
+	void Graph::SyncToGraph(Graph* a_grph)
+	{
+		syncInst = a_grph->syncInst;
+	}
+
+	void Graph::StopSyncing()
+	{
+		syncInst = nullptr;
 	}
 
 	void Graph::UpdateTransition(float a_deltaTime)

@@ -125,6 +125,45 @@ namespace Commands::NAFCommand
 		}
 	}
 
+	void ProcessSyncCommand()
+	{
+		if (args.size() < 3) {
+			return;
+		}
+
+		std::vector<RE::Actor*> vec;
+		for (size_t i = 1; i < args.size(); i++) {
+			auto frm = itfc->HexStrToForm(args[i]);
+			if (!frm)
+				continue;
+
+			auto actor = starfield_cast<RE::Actor*>(frm);
+			if (!actor)
+				continue;
+
+			vec.push_back(actor);
+		}
+
+		Animation::GraphManager::GetSingleton()->SyncGraphs(vec);
+	}
+
+	void ProcessStopSyncCommand()
+	{
+		if (args.size() < 2) {
+			return;
+		}
+
+		auto frm = itfc->HexStrToForm(args[1]);
+		if (!frm)
+			return;
+
+		auto actor = starfield_cast<RE::Actor*>(frm);
+		if (!actor)
+			return;
+
+		Animation::GraphManager::GetSingleton()->StopSyncing(actor);
+	}
+
 	void Run(const CCF::simple_array<CCF::simple_string_view>& a_args, const char* a_fullString, CCF::ConsoleInterface* a_intfc)
 	{
 		args = a_args;
@@ -146,6 +185,10 @@ namespace Commands::NAFCommand
 			ProcessStopCommand();
 		} else if (type == "studio") {
 			ProcessStudioCommand();
+		} else if (type == "sync") {
+			ProcessSyncCommand();
+		} else if (type == "stopsync") {
+			ProcessStopSyncCommand();
 		} else {
 			ShowHelp();
 		}

@@ -29,44 +29,43 @@ namespace Animation
 			return false;
 		
 		auto g = GetGraph(a_actor, true);
+		std::unique_lock l{ g->lock };
 		g->transition.queuedDuration = a_transitionTime;
 		g->flags.set(Graph::FLAGS::kLoadingAnimation);
 		FileManager::GetSingleton()->RequestAnimation(FileID(a_filePath, a_animId), a_actor->race->formEditorID.c_str(), g);
 		return true;
 	}
 
-	bool GraphManager::AttachGeneratorsSynced(const std::vector<RE::Actor*>& a_actors, std::vector<std::unique_ptr<Generator>>& a_gens, float a_transitionTime, bool alignRoots)
+	void GraphManager::SyncGraphs(const std::vector<RE::Actor*>& a_actors)
 	{
-		if (a_actors.empty() || a_actors.size() != a_gens.size())
-			return false;
-
-		RE::NiPoint3 rootAngle;
-		RE::NiPoint3 rootLoc;
-		if (auto& a = a_actors.front(); a != nullptr) {
-			rootAngle = a->data.angle;
-			rootLoc = a->data.location;
-		}
+		if (a_actors.size() < 2)
+			return;
 
 		std::unique_lock sl{ stateLock };
-		for (size_t i = 0; i < a_actors.size(); i++) {
-			auto& a = a_actors[i];
-			auto& gen = a_gens[i];
-			if (!a)
-				return false;
-
-			auto grph = GetGraphLockless(a, true);
-
-			std::unique_lock l{ grph->lock };
-			grph->StartTransition(std::move(gen), a_transitionTime);
-
-			if (alignRoots) {
-				a->data.angle = rootAngle;
-				a->data.location = rootLoc;
-				grph->ResetRootTransform();
-			}
+		auto owner = GetGraphLockless(*a_actors.begin(), true);
+		std::unique_lock ol{ owner->lock };
+		owner->MakeSyncOwner();
+		owner->ResetRootTransform();
+		owner->syncInst->data.lock()->rootTransform = owner->rootTransform;
+		ol.unlock();
+		for (size_t i = 1; i < a_actors.size(); i++) {
+			auto g = GetGraphLockless(a_actors[i], true);
+			std::unique_lock l{ g->lock };
+			g->SyncToGraph(owner.get());
 		}
+	}
 
-		return true;
+	void GraphManager::StopSyncing(RE::Actor* a_actor)
+	{
+		if (!a_actor)
+			return;
+		
+		auto g = GetGraph(a_actor, false);
+		if (!g)
+			return;
+
+		std::unique_lock l{ g->lock };
+		g->StopSyncing();
 	}
 
 	bool GraphManager::AttachGenerator(RE::Actor* a_actor, std::unique_ptr<Generator> a_gen, float a_transitionTime)
