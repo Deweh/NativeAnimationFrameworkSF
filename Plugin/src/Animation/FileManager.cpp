@@ -30,7 +30,7 @@ namespace Animation
 
 	bool FileID::operator<(const FileID& a_rhs) const
 	{
-		return filePath < a_rhs.filePath &&
+		return filePath < a_rhs.filePath ||
 		       id < a_rhs.id;
 	}
 
@@ -229,6 +229,6 @@ namespace Animation
 
 	bool FileManager::AnimID::operator<(const AnimID& other) const
 	{
-		return file < other.file && skeleton < other.skeleton;
+		return file < other.file || skeleton < other.skeleton;
 	}
 }
