@@ -161,6 +161,9 @@ namespace Animation
 
 	void Graph::StopSyncing()
 	{
+		if (syncInst != nullptr && syncInst->GetOwner() == this) {
+			syncInst->SetOwner(nullptr);
+		}
 		syncInst = nullptr;
 	}
 

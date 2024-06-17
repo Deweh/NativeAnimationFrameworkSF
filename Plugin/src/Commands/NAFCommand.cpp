@@ -41,49 +41,52 @@ namespace Commands::NAFCommand
 		return actor;
 	}
 
-	RE::Actor* ActorStrOrSelection(size_t argPos)
+	RE::Actor* ActorStrOrSelection(size_t argPos, bool verbose = false)
 	{
 		if (args.size() > argPos) {
-			return StrToActor(args[argPos], true);
+			return StrToActor(args[argPos], verbose);
 		} else {
 			auto refr = itfc->GetSelectedReference();
 			if (refr.get() == nullptr) {
-				ShowNoActor();
+				if (verbose)
+					ShowNoActor();
 				return nullptr;
 			}
 			RE::Actor* result = starfield_cast<RE::Actor*>(refr.get());
-			if (!result) {
+			if (!result && verbose) {
 				ShowNoActor();
 			}
 			return result;
 		}
 	}
 
-	void ProcessPlayCommand()
+	void ProcessPlayCommand(uint64_t idxStart = 1, bool verbose = true)
 	{
-		if (args.size() < 2) {
+		if (args.size() < (idxStart + 1)) {
 			ShowHelp();
 			return;
 		}
 
-		RE::Actor* actor = ActorStrOrSelection(2);
+		RE::Actor* actor = ActorStrOrSelection(idxStart + 1, verbose);
 		if (!actor) {
 			return;
 		}
 
-		Animation::GraphManager::GetSingleton()->LoadAndStartAnimation(actor, args[1]);
-		itfc->PrintLn("Starting animation...");
+		Animation::GraphManager::GetSingleton()->LoadAndStartAnimation(actor, args[idxStart]);
+		if (verbose)
+			itfc->PrintLn("Starting animation...");
 	}
 
-	void ProcessStopCommand()
+	void ProcessStopCommand(uint64_t idxStart = 1, bool verbose = true)
 	{
-		RE::Actor* actor = ActorStrOrSelection(1);
+		RE::Actor* actor = ActorStrOrSelection(idxStart, verbose);
 		if (!actor) {
 			return;
 		}
 
 		Animation::GraphManager::GetSingleton()->DetachGenerator(actor, 1.0f);
-		itfc->PrintLn("Stopping animation...");
+		if (verbose)
+			itfc->PrintLn("Stopping animation...");
 	}
 
 	void ProcessStudioCommand()
@@ -101,38 +104,14 @@ namespace Commands::NAFCommand
 		}
 	}
 
-	void ProcessPapyrusCommand()
+	void ProcessSyncCommand(uint64_t idxStart = 1)
 	{
-		if (args.size() < 2) {
-			return;
-		}
-
-		auto type = args[1].get();
-		if (type == "p" && args.size() > 3) {
-			auto a = StrToActor(args[3]);
-			if (!a) {
-				return;
-			}
-
-			Animation::GraphManager::GetSingleton()->LoadAndStartAnimation(a, args[2], "", 1.0f);
-		} else if (type == "s" && args.size() > 2) {
-			auto a = StrToActor(args[2]);
-			if (!a) {
-				return;
-			}
-
-			Animation::GraphManager::GetSingleton()->DetachGenerator(a, 1.0f);
-		}
-	}
-
-	void ProcessSyncCommand()
-	{
-		if (args.size() < 3) {
+		if (args.size() < (idxStart + 2)) {
 			return;
 		}
 
 		std::vector<RE::Actor*> vec;
-		for (size_t i = 1; i < args.size(); i++) {
+		for (size_t i = idxStart; i < args.size(); i++) {
 			auto frm = itfc->HexStrToForm(args[i]);
 			if (!frm)
 				continue;
@@ -147,21 +126,31 @@ namespace Commands::NAFCommand
 		Animation::GraphManager::GetSingleton()->SyncGraphs(vec);
 	}
 
-	void ProcessStopSyncCommand()
+	void ProcessStopSyncCommand(uint64_t idxStart = 1, bool verbose = true)
+	{
+		auto actor = ActorStrOrSelection(idxStart, verbose);
+		if (!actor)
+			return;
+
+		Animation::GraphManager::GetSingleton()->StopSyncing(actor);
+	}
+
+	void ProcessSilentCommand()
 	{
 		if (args.size() < 2) {
 			return;
 		}
 
-		auto frm = itfc->HexStrToForm(args[1]);
-		if (!frm)
-			return;
-
-		auto actor = starfield_cast<RE::Actor*>(frm);
-		if (!actor)
-			return;
-
-		Animation::GraphManager::GetSingleton()->StopSyncing(actor);
+		auto type = args[1].get();
+		if (type == "play") {
+			ProcessPlayCommand(2, false);
+		} else if (type == "stop") {
+			ProcessStopCommand(2, false);
+		} else if (type == "sync") {
+			ProcessSyncCommand(2);
+		} else if (type == "stopsync") {
+			ProcessStopSyncCommand(2, false);
+		}
 	}
 
 	void Run(const CCF::simple_array<CCF::simple_string_view>& a_args, const char* a_fullString, CCF::ConsoleInterface* a_intfc)
@@ -178,7 +167,7 @@ namespace Commands::NAFCommand
 		auto type = args[0].get();
 		if (type == "s") {
 			itfc->PreventDefaultPrint();
-			ProcessPapyrusCommand();
+			ProcessSilentCommand();
 		} else if (type == "play") {
 			ProcessPlayCommand();
 		} else if (type == "stop") {
