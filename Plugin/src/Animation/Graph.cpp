@@ -220,7 +220,6 @@ namespace Animation
 				};
 				break;
 			case kGeneratorToGenerator:
-				SnapshotCurrentPose();
 				blendLayers[0].weight = 0.0f;
 				blendLayers[1].weight = 1.0f;
 				transition.startLayer = 1;
@@ -228,7 +227,6 @@ namespace Animation
 				transition.onEnd = nullptr;
 				break;
 			case kGraphSnapshotToGame:
-				SnapshotCurrentPose();
 				blendLayers[0].weight = 0.0f;
 				blendLayers[1].weight = 1.0f;
 				transition.startLayer = 1;
@@ -245,6 +243,7 @@ namespace Animation
 		transition.duration = a_transitionTime;
 
 		if (flags.all(FLAGS::kTransitioning)) {
+			SnapshotBlend();
 			if (a_dest != nullptr) {
 				SetData(TRANSITION_TYPE::kGeneratorToGenerator);
 			} else {
@@ -252,6 +251,7 @@ namespace Animation
 			}
 		} else if (flags.all(FLAGS::kHasGenerator)) {
 			if (a_dest != nullptr) {
+				SnapshotGenerator();
 				SetData(TRANSITION_TYPE::kGeneratorToGenerator);
 			} else {
 				SetData(TRANSITION_TYPE::kGraphToGame);
@@ -322,9 +322,18 @@ namespace Animation
 		Transform::StoreSoaTransforms(restPose, std::bind(&Graph::GetCurrentTransform, this, std::placeholders::_1));
 	}
 
-	void Graph::SnapshotCurrentPose()
+	void Graph::SnapshotBlend()
 	{
-		Transform::StoreSoaTransforms(snapshotPose, std::bind(&Graph::GetCurrentTransform, this, std::placeholders::_1));
+		for (size_t i = 0; i < snapshotPose.size(); i++) {
+			snapshotPose[i] = blendedPose[i];
+		}
+	}
+
+	void Graph::SnapshotGenerator()
+	{
+		for (size_t i = 0; i < snapshotPose.size(); i++) {
+			snapshotPose[i] = generatedPose[i];
+		}
 	}
 
 	void Graph::ResetRootTransform()

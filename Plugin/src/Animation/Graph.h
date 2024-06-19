@@ -83,7 +83,8 @@ namespace Animation
 		void UpdateTransition(float a_deltaTime);
 		void PushOutput(const std::vector<ozz::math::SoaTransform>& a_output);
 		void UpdateRestPose();
-		void SnapshotCurrentPose();
+		void SnapshotBlend();
+		void SnapshotGenerator();
 		void ResetRootTransform();
 		void ResetRootOrientation();
 		void MakeSyncOwner();
