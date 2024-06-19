@@ -2,6 +2,7 @@
 #include "Util/Math.h"
 #include "Tasks/MainLoop.h"
 #include "Node.h"
+#include "Face/Manager.h"
 
 namespace Animation
 {
@@ -17,6 +18,7 @@ namespace Animation
 		if (syncInst != nullptr && syncInst->GetOwner() == this) {
 			syncInst->SetOwner(nullptr);
 		}
+		SetNoBlink(false);
 	}
 
 	void Graph::OnAnimationReady(const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim)
@@ -60,6 +62,7 @@ namespace Animation
 		rootNode = a_rootNode;
 
 		if (a_rootNode != nullptr) {
+			SetNoBlink(true);
 			ResetRootTransform();
 			for (auto& name : skeleton->data->joint_names()) {
 				RE::NiAVObject* n = a_rootNode->GetObjectByName(name);
@@ -165,6 +168,34 @@ namespace Animation
 			syncInst->SetOwner(nullptr);
 		}
 		syncInst = nullptr;
+	}
+
+	void Graph::SetNoBlink(bool a_noBlink)
+	{
+		if (!rootNode) {
+			return;
+		}
+
+		auto m = rootNode->bgsModelNode;
+		if (!m) {
+			return;
+		}
+
+		if (m->facegenNodes.size < 1) {
+			return;
+		}
+
+		auto fn = m->facegenNodes.data[0];
+		if (!fn) {
+			return;
+		}
+
+		auto fanim = fn->faceGenAnimData;
+		if (!fanim) {
+			return;
+		}
+
+		Face::Manager::GetSingleton()->SetNoBlink(target->formID, fanim, a_noBlink);
 	}
 
 	void Graph::UpdateTransition(float a_deltaTime)

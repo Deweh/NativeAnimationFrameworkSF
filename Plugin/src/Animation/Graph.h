@@ -90,6 +90,7 @@ namespace Animation
 		void MakeSyncOwner();
 		void SyncToGraph(Graph* a_grph);
 		void StopSyncing();
+		void SetNoBlink(bool a_noBlink);
 		XYZTransform GetRootXYZ();
 	};
 }

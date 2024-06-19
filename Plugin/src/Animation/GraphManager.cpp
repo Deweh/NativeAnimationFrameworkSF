@@ -4,6 +4,7 @@
 #include "Util/String.h"
 #include "Graph.h"
 #include "FileManager.h"
+#include "Util/Trampoline.h"
 
 namespace Animation
 {
@@ -190,9 +191,11 @@ namespace Animation
 
 	void GraphManager::InstallHooks()
 	{
-		//IAnimationGraphManagerHolder::UpdateAnimationGraphManager(IAnimationGraphManagerHolder*, BSAnimationUpdateData*, Graph*)
-		REL::Relocation<uintptr_t> hookLoc{ REL::ID(118488), 0x61 };
-		OriginalGraphUpdate = reinterpret_cast<GraphUpdateFunc>(SFSE::GetTrampoline().write_call<5>(hookLoc.address(), &UpdateGraph));
-		INFO("Installed graph update hook.");
+		Util::Trampoline::AddHook(14, [](SFSE::Trampoline& t) {
+			//IAnimationGraphManagerHolder::UpdateAnimationGraphManager(IAnimationGraphManagerHolder*, BSAnimationUpdateData*, Graph*)
+			REL::Relocation<uintptr_t> hookLoc{ REL::ID(118488), 0x61 };
+			OriginalGraphUpdate = reinterpret_cast<GraphUpdateFunc>(SFSE::GetTrampoline().write_call<5>(hookLoc.address(), &UpdateGraph));
+			INFO("Installed graph update hook.");
+		});
 	}
 }
