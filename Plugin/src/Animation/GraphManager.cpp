@@ -121,6 +121,7 @@ namespace Animation
 		g->target.reset(a_actor);
 		g->SetSkeleton(Settings::GetSkeleton(a_actor));
 		g->requesterHandle = g;
+		g->Update(0.0f);
 		return g;
 	}
 

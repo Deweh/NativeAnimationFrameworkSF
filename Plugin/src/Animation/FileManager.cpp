@@ -144,13 +144,13 @@ namespace Animation
 		fastgltf::Animation* storedAnim = nullptr;
 		auto id = a_id.file.QID();
 		if (id.empty()) {
-			if (!file->animations.empty()) {
-				storedAnim = std::addressof(file->animations[0]);
+			if (!file->asset.animations.empty()) {
+				storedAnim = std::addressof(file->asset.animations[0]);
 			} else {
 				return nullptr;
 			}
 		} else {
-			for (auto& a : file->animations) {
+			for (auto& a : file->asset.animations) {
 				if (Util::String::ToLower(a.name) == id) {
 					storedAnim = std::addressof(a);
 					break;
@@ -162,9 +162,7 @@ namespace Animation
 		}
 
 		auto skele = Settings::GetSkeleton(a_id.skeleton);
-		auto runtimeAnim = std::make_shared<OzzAnimation>();
-		runtimeAnim->data = Serialization::GLTFImport::CreateRuntimeAnimation(file.get(), storedAnim, skele->data.get());
-		return runtimeAnim;
+		return Serialization::GLTFImport::CreateRuntimeAnimation(file.get(), storedAnim, skele->data.get());
 	}
 
 	std::shared_ptr<OzzAnimation> FileManager::GetLoadedAnimation(const AnimID& a_id)

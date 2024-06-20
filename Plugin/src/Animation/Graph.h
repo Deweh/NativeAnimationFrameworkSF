@@ -7,6 +7,7 @@
 #include "IKTwoBoneData.h"
 #include "FileManager.h"
 #include "SyncInstance.h"
+#include "Face/Manager.h"
 
 namespace Animation
 {
@@ -15,8 +16,8 @@ namespace Animation
 	public:
 		struct TransitionData
 		{
-			int startLayer;
-			int endLayer;
+			int startLayer = 0;
+			int endLayer = 0;
 			float localTime = 0.0f;
 			float duration = 0.0f;
 			float queuedDuration = 0.0f;
@@ -66,6 +67,8 @@ namespace Animation
 		std::unique_ptr<Generator> generator = nullptr;
 		TransitionData transition;
 		std::shared_ptr<SyncInstance> syncInst = nullptr;
+		RE::BSFaceGenAnimationData* faceAnimData = nullptr;
+		std::shared_ptr<Face::MorphData> faceMorphData = nullptr;
 
 		Graph();
 		virtual ~Graph() noexcept;
@@ -90,7 +93,9 @@ namespace Animation
 		void MakeSyncOwner();
 		void SyncToGraph(Graph* a_grph);
 		void StopSyncing();
+		void UpdateFaceAnimData();
 		void SetNoBlink(bool a_noBlink);
+		void SetFaceMorphsControlled(bool a_controlled);
 		XYZTransform GetRootXYZ();
 	};
 }

@@ -18,7 +18,7 @@ namespace Animation
 		if (syncInst != nullptr && syncInst->GetOwner() == this) {
 			syncInst->SetOwner(nullptr);
 		}
-		SetNoBlink(false);
+		Face::Manager::GetSingleton()->OnAnimDataChange(faceAnimData, nullptr);
 	}
 
 	void Graph::OnAnimationReady(const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim)
@@ -37,7 +37,7 @@ namespace Animation
 
 	void Graph::OnAnimationRequested(const FileID& a_id)
 	{
-
+		
 	}
 
 	void Graph::SetSkeleton(std::shared_ptr<const OzzSkeleton> a_descriptor)
@@ -62,6 +62,10 @@ namespace Animation
 		rootNode = a_rootNode;
 
 		if (a_rootNode != nullptr) {
+			RE::BSFaceGenAnimationData* oldFaceAnimData = faceAnimData;
+			UpdateFaceAnimData();
+			Face::Manager::GetSingleton()->OnAnimDataChange(oldFaceAnimData, faceAnimData);
+
 			SetNoBlink(true);
 			ResetRootTransform();
 			for (auto& name : skeleton->data->joint_names()) {
@@ -172,30 +176,45 @@ namespace Animation
 
 	void Graph::SetNoBlink(bool a_noBlink)
 	{
+		Face::Manager::GetSingleton()->SetNoBlink(faceAnimData, a_noBlink);
+	}
+
+	void Graph::SetFaceMorphsControlled(bool a_controlled)
+	{
+		if (a_controlled && !faceMorphData) {
+			faceMorphData = std::make_shared<Face::MorphData>();
+			Face::Manager::GetSingleton()->AttachMorphData(faceAnimData, faceMorphData);
+		} else if (!a_controlled && faceMorphData) {
+			Face::Manager::GetSingleton()->DetachMorphData(faceAnimData);
+			faceMorphData = nullptr;
+		}
+	}
+
+	void Graph::UpdateFaceAnimData()
+	{
 		if (!rootNode) {
+			faceAnimData = nullptr;
 			return;
 		}
 
 		auto m = rootNode->bgsModelNode;
 		if (!m) {
+			faceAnimData = nullptr;
 			return;
 		}
 
 		if (m->facegenNodes.size < 1) {
+			faceAnimData = nullptr;
 			return;
 		}
 
 		auto fn = m->facegenNodes.data[0];
 		if (!fn) {
+			faceAnimData = nullptr;
 			return;
 		}
 
-		auto fanim = fn->faceGenAnimData;
-		if (!fanim) {
-			return;
-		}
-
-		Face::Manager::GetSingleton()->SetNoBlink(target->formID, fanim, a_noBlink);
+		faceAnimData = fn->faceGenAnimData;
 	}
 
 	void Graph::UpdateTransition(float a_deltaTime)
@@ -305,6 +324,14 @@ namespace Animation
 			generator = std::move(a_dest);
 			generator->SetContext(&context);
 			generator->SetOutput(ozz::make_span(generatedPose));
+
+			if (generator->HasFaceAnimation()) {
+				SetFaceMorphsControlled(true);
+				generator->SetFaceMorphData(faceMorphData.get());
+			} else {
+				SetFaceMorphsControlled(false);
+			}
+
 			flags.set(FLAGS::kHasGenerator);
 		}
 	}

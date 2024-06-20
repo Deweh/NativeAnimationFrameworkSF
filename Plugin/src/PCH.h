@@ -138,8 +138,9 @@ DLLEXPORT constinit auto SFSEPlugin_Version = []() noexcept {
 
 #include "RE/RE.h"
 //Other dependencies
-#include "fastgltf/parser.hpp"
+#include "fastgltf/core.hpp"
 #include "fastgltf/types.hpp"
+#include "fastgltf/tools.hpp"
 #include "ozz/animation/runtime/animation.h"
 #include "ozz/animation/runtime/animation_utils.h"
 #include "ozz/animation/runtime/blending_job.h"

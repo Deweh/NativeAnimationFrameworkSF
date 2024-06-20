@@ -3,6 +3,15 @@
 #include "Settings/Settings.h"
 #include "Util/String.h"
 #include "zstr.hpp"
+#include "simdjson.h"
+
+template <>
+struct fastgltf::ElementTraits<ozz::math::Quaternion> : fastgltf::ElementTraitsBase<ozz::math::Quaternion, AccessorType::Vec4, float>
+{};
+
+template <>
+struct fastgltf::ElementTraits<ozz::math::Float3> : fastgltf::ElementTraitsBase<ozz::math::Float3, AccessorType::Vec3, float>
+{};
 
 namespace Serialization
 {
@@ -19,18 +28,20 @@ namespace Serialization
 			return;
 		}
 
-		auto asset = LoadGLTF(Util::String::GetDataPath() / info.fileName);
-		if (!asset) {
+		auto assetData = LoadGLTF(Util::String::GetDataPath() / info.fileName);
+		if (!assetData) {
 			info.result.error = kFailedToLoad;
 			return;
 		}
+
+		auto asset = &assetData->asset;
 
 		fastgltf::Animation* anim = nullptr;
 		if (info.id.type == AnimationIdentifer::Type::kIndex && info.id.index < asset->animations.size()) {
 			anim = &asset->animations[info.id.index];
 		} else if (info.id.type == AnimationIdentifer::Type::kName) {
 			for (auto& a : asset->animations) {
-				if (a.name == info.id.name) {
+				if (a.name == info.id.name.c_str()) {
 					anim = &a;
 					break;
 				}
@@ -42,13 +53,13 @@ namespace Serialization
 			return;
 		}
 
-		auto runtimeAnim = CreateRuntimeAnimation(asset.get(), anim, skeleton->data.get());
+		auto runtimeAnim = CreateRuntimeAnimation(assetData.get(), anim, skeleton->data.get());
 		if (!runtimeAnim) {
 			info.result.error = kFailedToMakeClip;
 			return;
 		}
 
-		info.result.anim = std::move(runtimeAnim);
+		info.result.anim = std::move(runtimeAnim->data);
 		info.result.error = kSuccess;
 	}
 
@@ -67,9 +78,9 @@ namespace Serialization
 		auto bindPose = std::make_unique<std::vector<ozz::math::Transform>>(skeletonMap.size(), identity);
 
 		for (const auto& n : asset->nodes) {
-			if (auto iter = skeletonMap.find(n.name); iter != skeletonMap.end()) {
-				if (std::holds_alternative<fastgltf::Node::TRS>(n.transform)) {
-					auto& trs = std::get<fastgltf::Node::TRS>(n.transform);
+			if (auto iter = skeletonMap.find(n.name.c_str()); iter != skeletonMap.end()) {
+				if (std::holds_alternative<fastgltf::TRS>(n.transform)) {
+					auto& trs = std::get<fastgltf::TRS>(n.transform);
 					auto& b = (*bindPose)[iter->second];
 					b.rotation = {
 						trs.rotation[0],
@@ -90,8 +101,85 @@ namespace Serialization
 		return bindPose;
 	}
 
-	std::unique_ptr<ozz::animation::offline::RawAnimation> GLTFImport::CreateRawAnimation(const fastgltf::Asset* asset, const fastgltf::Animation* anim, const ozz::animation::Skeleton* skeleton)
+	void ParseMorphChannel(const GLTFImport::AssetData* assetData, const fastgltf::Animation* anim, const fastgltf::AnimationChannel& channel, Animation::RawOzzAnimation* rawAnim)
 	{
+		auto asset = &assetData->asset;
+		auto& targetNode = asset->nodes[channel.nodeIndex.value()];
+
+		if (!targetNode.meshIndex.has_value())
+			return;
+
+		auto iter = assetData->morphTargets.find(targetNode.meshIndex.value());
+		if (iter == assetData->morphTargets.end())
+			return;
+
+		auto& morphTargets = iter->second;
+
+		//Create a map of GLTF morph indexes -> game morph indexes
+		std::vector<size_t> morphIdxs;
+		auto gameIdxs = Settings::GetFaceMorphIndexMap();
+		bool hasMorphs = false;
+
+		for (auto mt : morphTargets) {
+			if (auto iter = gameIdxs.find(mt); iter != gameIdxs.end()) {
+				morphIdxs.push_back(iter->second);
+				hasMorphs = true;
+			} else {
+				morphIdxs.push_back(UINT64_MAX);
+			}
+		}
+
+		if (!hasMorphs)
+			return;
+
+		//Process GLTF data
+		if (channel.samplerIndex > anim->samplers.size())
+			return;
+
+		auto& sampler = anim->samplers[channel.samplerIndex];
+		if (sampler.inputAccessor > asset->accessors.size() || sampler.outputAccessor > asset->accessors.size())
+			return;
+
+		auto& timeAccessor = asset->accessors[sampler.inputAccessor];
+		auto& dataAccessor = asset->accessors[sampler.outputAccessor];
+
+		if (timeAccessor.count != (dataAccessor.count / morphTargets.size()))
+			return;
+
+		if (!std::holds_alternative<std::pmr::vector<double>>(timeAccessor.max))
+			return;
+
+		auto timeMax = std::get_if<std::pmr::vector<double>>(&timeAccessor.max);
+		if (!timeMax || timeMax->empty())
+			return;
+
+		float duration = static_cast<float>((*timeMax)[0]);
+
+		if (rawAnim->faceData == nullptr) {
+			rawAnim->faceData = std::make_unique<Animation::RawOzzFaceAnimation>();
+			rawAnim->faceData->duration = duration;
+		}
+
+		ozz::animation::offline::RawTrackKeyframe<float> kf{};
+		kf.interpolation = ozz::animation::offline::RawTrackInterpolation::kLinear;
+		for (size_t i = 0; i < timeAccessor.count; i++) {
+			kf.ratio = (fastgltf::getAccessorElement<float>(*asset, timeAccessor, i) / duration);
+
+			for (size_t j = 0; j < morphTargets.size(); j++) {
+				auto idx = morphIdxs[j];
+				if (idx == UINT64_MAX)
+					continue;
+
+				kf.value = fastgltf::getAccessorElement<float>(*asset, dataAccessor, (i * morphTargets.size()) + j);
+				rawAnim->faceData->tracks[idx].keyframes.push_back(kf);
+			}
+		}
+	}
+
+	std::unique_ptr<Animation::RawOzzAnimation> GLTFImport::CreateRawAnimation(const AssetData* assetData, const fastgltf::Animation* anim, const ozz::animation::Skeleton* skeleton)
+	{
+		auto asset = &assetData->asset;
+
 		//Create a map of GLTF node indexes -> skeleton indexes
 		std::vector<size_t> skeletonIdxs;
 		skeletonIdxs.reserve(asset->nodes.size());
@@ -107,11 +195,12 @@ namespace Serialization
 		identity.translation = { .0f, .0f, .0f };
 		std::vector<ozz::math::Transform> bindPose(skeletonMap.size(), identity);
 
+		//Save skeleton bind pose.
 		for (const auto& n : asset->nodes) {
-			if (auto iter = skeletonMap.find(n.name); iter != skeletonMap.end()) {
+			if (auto iter = skeletonMap.find(n.name.c_str()); iter != skeletonMap.end()) {
 				skeletonIdxs.push_back(iter->second);
-				if (std::holds_alternative<fastgltf::Node::TRS>(n.transform)) {
-					auto& trs = std::get<fastgltf::Node::TRS>(n.transform);
+				if (std::holds_alternative<fastgltf::TRS>(n.transform)) {
+					auto& trs = std::get<fastgltf::TRS>(n.transform);
 					auto& b = bindPose[iter->second];
 					b.rotation = {
 						trs.rotation[0],
@@ -132,7 +221,9 @@ namespace Serialization
 		}
 
 		//Create the raw animation
-		auto animResult = std::make_unique<ozz::animation::offline::RawAnimation>();
+		auto rawAnimResult = std::make_unique<Animation::RawOzzAnimation>();
+		rawAnimResult->data = ozz::make_unique<ozz::animation::offline::RawAnimation>();
+		auto& animResult = rawAnimResult->data;
 		animResult->duration = 0.001f;
 		animResult->tracks.resize(skeletonMap.size());
 
@@ -140,10 +231,15 @@ namespace Serialization
 		std::vector<float> times;
 		for (auto& c : anim->channels) {
 			times.clear();
-			if (c.nodeIndex > asset->nodes.size())
+			if (!c.nodeIndex.has_value() || c.nodeIndex > asset->nodes.size())
 				continue;
 
-			auto idx = skeletonIdxs[c.nodeIndex];
+			if (c.path == fastgltf::AnimationPath::Weights) {
+				ParseMorphChannel(assetData, anim, c, rawAnimResult.get());
+				continue;
+			}
+
+			auto idx = skeletonIdxs[c.nodeIndex.value()];
 			if (idx == UINT64_MAX)
 				continue;
 
@@ -160,69 +256,24 @@ namespace Serialization
 			auto& timeAccessor = asset->accessors[sampler.inputAccessor];
 			auto& dataAccessor = asset->accessors[sampler.outputAccessor];
 
-			size_t elementSize = 0;
-			switch (c.path) {
-			case fastgltf::AnimationPath::Rotation:
-				if (dataAccessor.type != fastgltf::AccessorType::Vec4)
-					continue;
-				elementSize = 16;
-				break;
-			case fastgltf::AnimationPath::Translation:
-				if (dataAccessor.type != fastgltf::AccessorType::Vec3)
-					continue;
-				elementSize = 12;
-				break;
-			default:
-				continue;
-			}
-
-			if (timeAccessor.count != dataAccessor.count ||
-				dataAccessor.componentType != fastgltf::ComponentType::Float ||
-				timeAccessor.componentType != fastgltf::ComponentType::Float ||
-				timeAccessor.type != fastgltf::AccessorType::Scalar ||
-				!timeAccessor.bufferViewIndex.has_value() ||
-				!dataAccessor.bufferViewIndex.has_value())
-				continue;
-
-			auto& timeBV = asset->bufferViews[timeAccessor.bufferViewIndex.value()];
-			auto& dataBV = asset->bufferViews[dataAccessor.bufferViewIndex.value()];
-
-			size_t timeByteOffset = timeAccessor.byteOffset + timeBV.byteOffset;
-			size_t dataByteOffset = dataAccessor.byteOffset + dataBV.byteOffset;
-			size_t timeByteCount =  timeAccessor.count * 4;
-			size_t dataByteCount = dataAccessor.count * elementSize;
-
-			auto& timeBuffer = asset->buffers[timeBV.bufferIndex];
-			auto& dataBuffer = asset->buffers[dataBV.bufferIndex];
-				
-			if (!std::holds_alternative<fastgltf::sources::Vector>(timeBuffer.data) ||
-				!std::holds_alternative<fastgltf::sources::Vector>(dataBuffer.data))
-				continue;
-
-			auto& tBufData = std::get<fastgltf::sources::Vector>(timeBuffer.data);
-			auto& dBufData = std::get<fastgltf::sources::Vector>(dataBuffer.data);
-
-			if (timeByteOffset + (timeByteCount) > tBufData.bytes.size() ||
-				dataByteOffset + (dataByteCount) > dBufData.bytes.size())
+			if (timeAccessor.count != dataAccessor.count)
 				continue;
 
 			ozz::animation::offline::RawAnimation::RotationKey r;
 			ozz::animation::offline::RawAnimation::TranslationKey p;
 			for (size_t i = 0; i < timeAccessor.count; i++) {
-				float t;
-				std::memcpy(&t, &tBufData.bytes[timeByteOffset + (i * 4)], 4);
+				float t = fastgltf::getAccessorElement<float>(*asset, timeAccessor, i);
 				if (t > animResult->duration)
 					animResult->duration = t;
 
-				size_t off = dataByteOffset + (i * elementSize);
 				switch (c.path) {
 				case fastgltf::AnimationPath::Rotation:
-					std::memcpy(&r.value.x, &dBufData.bytes[off], elementSize);
+					r.value = fastgltf::getAccessorElement<ozz::math::Quaternion>(*asset, dataAccessor, i);
 					r.time = t;
 					rTl.push_back(r);
 					break;
 				case fastgltf::AnimationPath::Translation:
-					std::memcpy(&p.value.x, &dBufData.bytes[off], elementSize);
+					p.value = fastgltf::getAccessorElement<ozz::math::Float3>(*asset, dataAccessor, i);
 					p.time = t;
 					pTl.push_back(p);
 					break;
@@ -248,17 +299,43 @@ namespace Serialization
 			}
 		}
 
-		return animResult;
+		if (rawAnimResult->faceData != nullptr) {
+			auto faceResult = rawAnimResult->faceData.get();
+			ozz::animation::offline::RawTrackKeyframe<float> kf{};
+			kf.interpolation = ozz::animation::offline::RawTrackInterpolation::kLinear;
+			kf.ratio = 0.0f;
+			kf.value = 0.0f;
+			for (auto& t : faceResult->tracks) {
+				if (t.keyframes.empty()) {
+					t.keyframes.push_back(kf);
+				}
+			}
+		}
+
+		return rawAnimResult;
 	}
 
-	ozz::unique_ptr<ozz::animation::Animation> GLTFImport::CreateRuntimeAnimation(const fastgltf::Asset* asset, const fastgltf::Animation* anim, const ozz::animation::Skeleton* skeleton)
+	std::unique_ptr<Animation::OzzAnimation> GLTFImport::CreateRuntimeAnimation(const AssetData* assetData, const fastgltf::Animation* anim, const ozz::animation::Skeleton* skeleton)
 	{
-		auto animResult = CreateRawAnimation(asset, anim, skeleton);
+		auto result = std::make_unique<Animation::OzzAnimation>();
+
+		auto animResult = CreateRawAnimation(assetData, anim, skeleton);
 		ozz::animation::offline::AnimationBuilder builder;
-		return builder(*animResult);
+		result->data = builder(*animResult->data);
+
+		if (animResult->faceData.get() != nullptr) {
+			ozz::animation::offline::TrackBuilder trackBuilder;
+			result->faceData = std::make_unique<Animation::OzzFaceAnimation>();
+			result->faceData->duration = animResult->faceData->duration;
+			for (size_t i = 0; i < animResult->faceData->tracks.size(); i++) {
+				result->faceData->tracks[i] = std::move(*trackBuilder(animResult->faceData->tracks[i]));
+			}
+		}
+
+		return result;
 	}
 
-	std::unique_ptr<fastgltf::Asset> GLTFImport::LoadGLTF(const std::filesystem::path& fileName)
+	std::unique_ptr<GLTFImport::AssetData> GLTFImport::LoadGLTF(const std::filesystem::path& fileName)
 	{
 		try {
 			zstr::ifstream file(fileName.generic_string(), std::ios::binary);
@@ -285,23 +362,47 @@ namespace Serialization
 				fastgltf::Options::LoadGLBBuffers |
 				fastgltf::Options::DecomposeNodeMatrices;
 
-			auto type = fastgltf::determineGltfFileType(&data);
-			std::unique_ptr<fastgltf::glTF> gltf;
-			if (type == fastgltf::GltfType::glTF) {
-				gltf = parser.loadGLTF(&data, fileName.parent_path(), gltfOptions);
-			} else if (type == fastgltf::GltfType::GLB) {
-				gltf = parser.loadBinaryGLTF(&data, fileName.parent_path(), gltfOptions);
-			} else {
+			auto gltfCategories =
+				fastgltf::Category::Animations |
+				fastgltf::Category::Nodes |
+				fastgltf::Category::Meshes |
+				fastgltf::Category::Buffers |
+				fastgltf::Category::BufferViews |
+				fastgltf::Category::Samplers |
+				fastgltf::Category::Accessors;
+
+			auto assetData = std::make_unique<AssetData>();
+			parser.setUserPointer(assetData.get());
+			parser.setExtrasParseCallback([](simdjson::dom::object* extras, std::size_t objectIndex, fastgltf::Category objectType, void* userPointer) {
+				auto assetData = static_cast<AssetData*>(userPointer);
+				if (objectType != fastgltf::Category::Meshes) {
+					return;
+				}
+
+				auto arr = (*extras)["targetNames"].get_array();
+				if (arr.error() != simdjson::error_code::SUCCESS) {
+					return;
+				}
+
+				std::string_view name;
+				auto& target = assetData->morphTargets[objectIndex];
+				for (auto ele : arr) {
+					if (ele.get_string().get(name) == simdjson::error_code::SUCCESS) {
+						target.emplace_back(name);
+					} else {
+						assetData->morphTargets.erase(objectIndex);
+						return;
+					}
+				}
+			});
+
+			auto gltf = parser.loadGltf(&data, fileName.parent_path(), gltfOptions, gltfCategories);
+			if (auto err = gltf.error(); err != fastgltf::Error::None) {
 				return nullptr;
 			}
 
-			if (!gltf)
-				return nullptr;
-
-			if (gltf->parse(fastgltf::Category::OnlyAnimations | fastgltf::Category::Nodes) != fastgltf::Error::None || gltf->validate() != fastgltf::Error::None)
-				return nullptr;
-
-			return gltf->getParsedAsset();
+			assetData->asset = std::move(gltf.get());
+			return assetData;
 		} catch (const std::exception&) {
 			return nullptr;
 		}

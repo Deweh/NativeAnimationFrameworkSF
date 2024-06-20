@@ -40,11 +40,12 @@ source_group(
 find_package(libzippp CONFIG REQUIRED)
 find_package(PolyHook_2 CONFIG REQUIRED)
 find_package(simdjson CONFIG REQUIRED)
-find_package(fastgltf CONFIG REQUIRED)
+#find_package(fastgltf CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_dependency_path(DKUtil include/DKUtil/Logger.hpp)
 find_dependency_path(CommonLibSF CommonLibSF/include/SFSE/SFSE.h)
 find_dependency_path(ozz-animation include/ozz/animation/runtime/animation.h)
+find_dependency_path(fastgltf include/fastgltf/core.hpp)
 
 # cmake target
 # runtime

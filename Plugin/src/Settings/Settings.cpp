@@ -87,4 +87,31 @@ namespace Settings
 	{
 		return a_skeleton.get() == GetDefaultSkeleton().get();
 	}
+
+	struct PerformanceMorph
+	{
+		RE::BSFixedString name;
+		bool someFlag;
+		uint8_t pad09;
+		uint16_t pad0A;
+		uint32_t pad0C;
+	};
+
+	PerformanceMorph* GetMorphNames()
+	{
+		REL::Relocation<PerformanceMorph*> ptr(REL::ID(872948));
+		return ptr.get();
+	}
+
+	const std::map<std::string, size_t>& GetFaceMorphIndexMap()
+	{
+		static std::map<std::string, size_t> idxMap;
+		if (idxMap.empty()) {
+			auto names = GetMorphNames();
+			for (size_t i = 0; i < RE::BSFaceGenAnimationData::morphSize; i++) {
+				idxMap[names[i].name.c_str()] = i;
+			}
+		}
+		return idxMap;
+	}
 }

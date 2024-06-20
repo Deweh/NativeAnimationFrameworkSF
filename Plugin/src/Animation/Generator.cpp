@@ -3,6 +3,8 @@
 namespace Animation
 {
 	void Generator::Generate(float) {}
+	bool Generator::HasFaceAnimation() { return false; }
+	void Generator::SetFaceMorphData(Face::MorphData* morphData){}
 	void Generator::SetOutput(const ozz::span<ozz::math::SoaTransform>& span) { output = span; }
 	void Generator::SetContext(ozz::animation::SamplingJob::Context* ctxt) { context = ctxt; }
 	void Generator::OnDetaching() {}
@@ -23,6 +25,27 @@ namespace Animation
 		sampleJob.output = ozz::make_span(output);
 		sampleJob.ratio = localTime / duration;
 		sampleJob.Run();
+
+		if (anim->faceData != nullptr) {
+			ozz::animation::FloatTrackSamplingJob trackSampleJob;
+			trackSampleJob.ratio = sampleJob.ratio;
+			auto d = faceMorphData->lock();
+			for (size_t i = 0; i < RE::BSFaceGenAnimationData::morphSize; i++) {
+				trackSampleJob.result = &(*d)[i];
+				trackSampleJob.track = &anim->faceData->tracks[i];
+				trackSampleJob.Run();
+			}
+		}
+	}
+
+	bool LinearClipGenerator::HasFaceAnimation()
+	{
+		return anim->faceData != nullptr;
+	}
+
+	void LinearClipGenerator::SetFaceMorphData(Face::MorphData* morphData)
+	{
+		faceMorphData = morphData;
 	}
 
 	void AdditiveGenerator::SetRestPose(const std::vector<ozz::math::SoaTransform>& pose)

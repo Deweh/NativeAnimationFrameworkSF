@@ -7,3 +7,6 @@
 [submodule "extern/ozz-animation"]
 	path = extern/ozz-animation
 	url = https://github.com/guillaumeblanc/ozz-animation
+[submodule "extern/fastgltf"]
+	path = extern/fastgltf
+	url = https://github.com/spnda/fastgltf

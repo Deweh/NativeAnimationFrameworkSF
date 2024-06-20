@@ -3,6 +3,7 @@
 #include "Timeline.h"
 #include "Interpolation.h"
 #include "Ozz.h"
+#include "Face/Manager.h"
 
 namespace Animation
 {
@@ -18,6 +19,8 @@ namespace Animation
 		ozz::animation::SamplingJob::Context* context = nullptr;
 
 		virtual void Generate(float deltaTime);
+		virtual bool HasFaceAnimation();
+		virtual void SetFaceMorphData(Face::MorphData* morphData);
 		virtual void SetOutput(const ozz::span<ozz::math::SoaTransform>& span);
 		virtual void SetContext(ozz::animation::SamplingJob::Context* ctxt);
 		virtual void OnDetaching();
@@ -29,8 +32,11 @@ namespace Animation
 	{
 	public:
 		std::shared_ptr<OzzAnimation> anim = nullptr;
+		Face::MorphData* faceMorphData = nullptr;
 
 		virtual void Generate(float deltaTime) override;
+		virtual bool HasFaceAnimation() override;
+		virtual void SetFaceMorphData(Face::MorphData* morphData) override;
 		virtual ~LinearClipGenerator() = default;
 	};
 
