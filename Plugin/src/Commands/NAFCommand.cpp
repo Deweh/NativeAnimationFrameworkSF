@@ -1,5 +1,6 @@
 #include "NAFCommand.h"
 #include "Serialization/GLTFImport.h"
+#include "Serialization/GLTFExport.h"
 #include "Settings/Settings.h"
 #include "Animation/GraphManager.h"
 #include "Animation/Ozz.h"
@@ -135,6 +136,46 @@ namespace Commands::NAFCommand
 		Animation::GraphManager::GetSingleton()->StopSyncing(actor);
 	}
 
+	void ProcessOptimizeCommand(uint64_t idxStart = 1, bool verbose = true)
+	{
+		if (args.size() < idxStart + 1) {
+			return;
+		}
+
+		auto actor = ActorStrOrSelection(idxStart + 1, verbose);
+		if (!actor)
+			return;
+
+		auto skele = Settings::GetSkeleton(actor);
+		if (Settings::IsDefaultSkeleton(skele)) {
+			if (verbose)
+				itfc->PrintLn("No skeleton for provided actor.");
+			return;
+		}
+
+		auto baseFile = Serialization::GLTFImport::LoadGLTF(args[idxStart].get());
+		if (!baseFile || baseFile->asset.animations.empty()) {
+			if (verbose)
+				itfc->PrintLn("Failed to load file.");
+			return;
+		}
+
+		auto rawAnim = Serialization::GLTFImport::CreateRawAnimation(baseFile.get(), &baseFile->asset.animations[0], skele->data.get());
+		if (!rawAnim) {
+			if (verbose)
+				itfc->PrintLn("Failed to load anim.");
+			return;
+		}
+
+		baseFile.reset();
+		auto optimizedAsset = Serialization::GLTFExport::CreateOptimizedAsset(rawAnim.get(), skele->data.get());
+
+		fastgltf::FileExporter exporter;
+		exporter.writeGltfBinary(*optimizedAsset, std::string(args[idxStart].get()) + ".optimized.glb", fastgltf::ExportOptions::None);
+		if (verbose)
+			itfc->PrintLn("Done.");
+	}
+
 	void ProcessSilentCommand()
 	{
 		if (args.size() < 2) {
@@ -178,6 +219,8 @@ namespace Commands::NAFCommand
 			ProcessSyncCommand();
 		} else if (type == "stopsync") {
 			ProcessStopSyncCommand();
+		} else if (type == "optimize") {
+			ProcessOptimizeCommand();	
 		} else {
 			ShowHelp();
 		}

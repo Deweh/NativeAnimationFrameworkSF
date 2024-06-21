@@ -323,12 +323,20 @@ namespace Serialization
 		ozz::animation::offline::AnimationBuilder builder;
 		result->data = builder(*animResult->data);
 
+		if (!result->data) {
+			return nullptr;
+		}
+
 		if (animResult->faceData.get() != nullptr) {
 			ozz::animation::offline::TrackBuilder trackBuilder;
 			result->faceData = std::make_unique<Animation::OzzFaceAnimation>();
 			result->faceData->duration = animResult->faceData->duration;
 			for (size_t i = 0; i < animResult->faceData->tracks.size(); i++) {
-				result->faceData->tracks[i] = std::move(*trackBuilder(animResult->faceData->tracks[i]));
+				auto t = trackBuilder(animResult->faceData->tracks[i]);
+				if (!t) {
+					return nullptr;
+				}
+				result->faceData->tracks[i] = std::move(*t);
 			}
 		}
 
