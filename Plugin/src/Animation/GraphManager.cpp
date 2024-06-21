@@ -32,7 +32,6 @@ namespace Animation
 		auto g = GetGraph(a_actor, true);
 		std::unique_lock l{ g->lock };
 		g->transition.queuedDuration = a_transitionTime;
-		g->flags.set(Graph::FLAGS::kLoadingAnimation);
 		FileManager::GetSingleton()->RequestAnimation(FileID(a_filePath, a_animId), a_actor->race->formEditorID.c_str(), g);
 		return true;
 	}

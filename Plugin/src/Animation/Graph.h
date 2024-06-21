@@ -69,6 +69,7 @@ namespace Animation
 		std::shared_ptr<SyncInstance> syncInst = nullptr;
 		RE::BSFaceGenAnimationData* faceAnimData = nullptr;
 		std::shared_ptr<Face::MorphData> faceMorphData = nullptr;
+		FileID activeFile;
 
 		Graph();
 		virtual ~Graph() noexcept;

@@ -26,6 +26,10 @@ namespace Animation
 	{
 		std::unique_lock l{ lock };
 		if (flags.all(FLAGS::kLoadingAnimation)) {
+			if (a_id != activeFile) {
+				return;
+			}
+
 			flags.reset(FLAGS::kLoadingAnimation);
 			if (a_anim != nullptr) {
 				auto gen = std::make_unique<LinearClipGenerator>();
@@ -38,7 +42,14 @@ namespace Animation
 
 	void Graph::OnAnimationRequested(const FileID& a_id)
 	{
+		std::unique_lock l{ lock };
+		if (flags.all(FLAGS::kLoadingAnimation)) {
+			FileManager::GetSingleton()->CancelAnimationRequest(activeFile, requesterHandle);
+		} else {
+			flags.set(FLAGS::kLoadingAnimation);
+		}
 		
+		activeFile = a_id;
 	}
 
 	void Graph::SetSkeleton(std::shared_ptr<const OzzSkeleton> a_descriptor)

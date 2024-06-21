@@ -1,5 +1,6 @@
 #include "SaveLoadListener.h"
 #include "Animation/GraphManager.h"
+#include "Animation/Face/Manager.h"
 
 namespace Tasks::SaveLoadListener
 {
@@ -9,6 +10,7 @@ namespace Tasks::SaveLoadListener
 
 	int64_t PlayerLoadGame(RE::PlayerCharacter* a1, RE::BGSLoadFormBuffer* a2) {
 		Animation::GraphManager::GetSingleton()->Reset();
+		Animation::Face::Manager::GetSingleton()->Reset();
 		return OriginalLoadGame(a1, a2);
 	}
 

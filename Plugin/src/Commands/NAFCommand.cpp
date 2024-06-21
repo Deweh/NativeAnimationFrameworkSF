@@ -6,12 +6,21 @@
 #include "Animation/Ozz.h"
 #include "Util/String.h"
 #include "zstr.hpp"
+#include "Tasks/Input.h"
 
 namespace Commands::NAFCommand
 {
 	CCF::ConsoleInterface* itfc;
 	CCF::simple_array<CCF::simple_string_view> args;
 	const char* fullStr = nullptr;
+	RE::Actor* lastActor = nullptr;
+	std::filesystem::path lastFile;
+
+	void SetLastAnimInfo(std::string_view file, RE::Actor* actor)
+	{
+		lastActor = actor;
+		lastFile = Util::String::GetDataPath() / file;
+	}
 
 	void ShowHelp()
 	{
@@ -75,6 +84,7 @@ namespace Commands::NAFCommand
 		}
 
 		Animation::GraphManager::GetSingleton()->LoadAndStartAnimation(actor, args[idxStart]);
+		SetLastAnimInfo(args[idxStart], actor);
 		if (verbose)
 			itfc->PrintLn("Starting animation...");
 	}
@@ -133,6 +143,10 @@ namespace Commands::NAFCommand
 		auto actor = ActorStrOrSelection(idxStart, verbose);
 		if (!actor)
 			return;
+
+		if (actor == lastActor) {
+			lastActor = nullptr;
+		}
 
 		Animation::GraphManager::GetSingleton()->StopSyncing(actor);
 	}
@@ -234,5 +248,72 @@ namespace Commands::NAFCommand
 		} else {
 			ShowHelp();
 		}
+	}
+
+	void ScrollAnims(Tasks::Input::BS_BUTTON_CODE a_key, bool a_down)
+	{
+		if (!a_down || lastFile.empty() || lastActor == nullptr)
+			return;
+
+		std::vector<std::filesystem::path> files;
+		try {
+			std::string ext;
+
+			for (auto& f : std::filesystem::directory_iterator(std::filesystem::path(lastFile).parent_path())) {
+				ext = Util::String::ToLower(f.path().extension().generic_string());
+
+				if (ext != ".gltf" && ext != ".glb") {
+					continue;
+				}
+
+				files.push_back(f.path());
+			}
+		}
+		catch (const std::exception&) {
+		}
+
+		if (files.size() < 2)
+			return;
+
+		uint64_t currentIdx = UINT64_MAX;
+		for (size_t i = 0; i < files.size(); i++) {
+			if (std::filesystem::equivalent(files[i], lastFile)) {
+				currentIdx = i;
+				break;
+			}
+		}
+
+		auto gm = Animation::GraphManager::GetSingleton();
+
+		const auto StartFile = [](const std::filesystem::path& a_file) {
+			Animation::GraphManager::GetSingleton()->LoadAndStartAnimation(lastActor, a_file.lexically_relative(Util::String::GetDataPath()).generic_string());
+			lastFile = a_file;
+		};
+		
+		if (currentIdx == UINT64_MAX) {
+			StartFile(files[0]);
+			return;
+		}
+
+		if (a_key == Tasks::Input::BS_BUTTON_CODE::kDown) {
+			if (currentIdx >= (files.size() - 1)) {
+				StartFile(files[0]);
+			} else {
+				StartFile(files[currentIdx + 1]);
+			}
+		} else {
+			if (currentIdx == 0) {
+				StartFile(files.back());
+			} else {
+				StartFile(files[currentIdx - 1]);
+			}
+		}
+	}
+
+	void RegisterKeybinds()
+	{
+		auto im = Tasks::Input::GetSingleton();
+		im->RegisterForKey(Tasks::Input::BS_BUTTON_CODE::kDown, &ScrollAnims);
+		im->RegisterForKey(Tasks::Input::BS_BUTTON_CODE::kUp, &ScrollAnims);
 	}
 }

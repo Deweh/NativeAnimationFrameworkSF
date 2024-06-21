@@ -6,6 +6,7 @@
 #include "API/CCF_API.h"
 #include "Util/Trampoline.h"
 #include "Animation/Face/Manager.h"
+#include "Tasks/Input.h"
 #define NDEBUG
 
 namespace
@@ -28,6 +29,7 @@ namespace
 		Animation::GraphManager::GetSingleton()->InstallHooks();
 		Animation::Face::Manager::GetSingleton()->InstallHooks();
 		Tasks::SaveLoadListener::InstallHooks();
+		Tasks::Input::GetSingleton()->InstallHooks();
 		Util::Trampoline::ProcessHooks();
 	}
 }
@@ -40,6 +42,7 @@ DLLEXPORT bool SFSEAPI SFSEPlugin_Load(const SFSE::LoadInterface* a_sfse)
 	INFO("Starfield Offset: {:X}", REL::Module::get().base());
 
 	InstallHooks();
+	Commands::NAFCommand::RegisterKeybinds();
 	Settings::Load();
 	SFSE::GetMessagingInterface()->RegisterListener(MessageCallback);
 	//SFSE::GetTaskInterface()->AddPermanentTask(Tasks::MainLoop::GetSingleton());

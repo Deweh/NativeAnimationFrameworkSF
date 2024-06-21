@@ -79,7 +79,7 @@ add_library(
  "src/Util/Trampoline.cpp"
  "src/Animation/Face/Manager.cpp"
  "src/Util/Timing.cpp"
- "src/Serialization/GLTFExport.cpp")
+ "src/Serialization/GLTFExport.cpp" "src/Tasks/Input.cpp")
 
 # copy to Starfield directory
 set(STARFIELD_PATH "C:/Program Files (x86)/Steam/steamapps/common/Starfield/Data/SFSE/Plugins")
