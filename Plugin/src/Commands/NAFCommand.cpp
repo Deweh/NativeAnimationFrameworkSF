@@ -5,6 +5,7 @@
 #include "Animation/GraphManager.h"
 #include "Animation/Ozz.h"
 #include "Util/String.h"
+#include "zstr.hpp"
 
 namespace Commands::NAFCommand
 {
@@ -153,7 +154,8 @@ namespace Commands::NAFCommand
 			return;
 		}
 
-		auto baseFile = Serialization::GLTFImport::LoadGLTF(args[idxStart].get());
+		std::string filePath = (Util::String::GetDataPath() / args[idxStart].get()).generic_string();
+		auto baseFile = Serialization::GLTFImport::LoadGLTF(filePath);
 		if (!baseFile || baseFile->asset.animations.empty()) {
 			if (verbose)
 				itfc->PrintLn("Failed to load file.");
@@ -170,8 +172,16 @@ namespace Commands::NAFCommand
 		baseFile.reset();
 		auto optimizedAsset = Serialization::GLTFExport::CreateOptimizedAsset(rawAnim.get(), skele->data.get());
 
-		fastgltf::FileExporter exporter;
-		exporter.writeGltfBinary(*optimizedAsset, std::string(args[idxStart].get()) + ".optimized.glb", fastgltf::ExportOptions::None);
+		try {
+			zstr::ofstream file(filePath, std::ios::binary);
+			file.write(reinterpret_cast<char*>(optimizedAsset.data()), optimizedAsset.size());
+		}
+		catch (const std::exception&) {
+			if (verbose)
+				itfc->PrintLn("Failed to save file.");
+			return;
+		}
+
 		if (verbose)
 			itfc->PrintLn("Done.");
 	}

@@ -107,11 +107,23 @@ namespace Settings
 	{
 		static std::map<std::string, size_t> idxMap;
 		if (idxMap.empty()) {
-			auto names = GetMorphNames();
-			for (size_t i = 0; i < RE::BSFaceGenAnimationData::morphSize; i++) {
-				idxMap[names[i].name.c_str()] = i;
+			auto& names = GetFaceMorphs();
+			for (size_t i = 0; i < names.size(); i++) {
+				idxMap[names[i]] = i;
 			}
 		}
 		return idxMap;
+	}
+
+	const std::vector<std::string>& GetFaceMorphs()
+	{
+		static std::vector<std::string> data;
+		if (data.empty()) {
+			auto names = GetMorphNames();
+			for (size_t i = 0; i < RE::BSFaceGenAnimationData::morphSize; i++) {
+				data.push_back(names[i].name.c_str());
+			}
+		}
+		return data;
 	}
 }

@@ -92,8 +92,6 @@ namespace Animation
 	}
 
 	void Graph::Update(float a_deltaTime) {
-		auto start = Util::Timing::HighResTimeNow();
-
 		auto dataLock = target->loadedData.lock_write();
 		auto& loadedRefData = *dataLock;
 		if (loadedRefData == nullptr || loadedRefData->data3D.get() == nullptr) {
@@ -130,8 +128,6 @@ namespace Animation
 				PushOutput(generatedPose);
 			}
 		}
-
-		INFO("Graph: {:.3f}ms", Util::Timing::HighResTimeDiffMilliSec(start));
 	}
 
 	IKTwoBoneData* Graph::AddIKJob(const std::span<std::string_view, 3> a_nodeNames, const RE::NiTransform& a_initialTargetWorld, const RE::NiPoint3& a_initialPolePtModel, float a_transitionTime)

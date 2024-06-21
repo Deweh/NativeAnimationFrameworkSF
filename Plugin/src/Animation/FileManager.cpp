@@ -137,7 +137,6 @@ namespace Animation
 
 	std::shared_ptr<OzzAnimation> FileManager::DoLoadAnimation(const AnimID& a_id)
 	{
-		auto start = Util::Timing::HighResTimeNow();
 		auto file = Serialization::GLTFImport::LoadGLTF(Util::String::GetDataPath() / a_id.file.QPath());
 		if (!file) {
 			return nullptr;
@@ -165,7 +164,6 @@ namespace Animation
 
 		auto skele = Settings::GetSkeleton(a_id.skeleton);
 		auto result = Serialization::GLTFImport::CreateRuntimeAnimation(file.get(), storedAnim, skele->data.get());
-		INFO("Anim loaded in {:.3f}ms", Util::Timing::HighResTimeDiffMilliSec(start));
 		return result;
 	}
 

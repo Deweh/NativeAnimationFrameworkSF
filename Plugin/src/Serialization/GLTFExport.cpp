@@ -1,5 +1,5 @@
 #include "GLTFExport.h"
-#include "GLTFImport.h"
+#include "Settings/Settings.h"
 
 namespace Serialization
 {
@@ -13,7 +13,8 @@ namespace Serialization
 		{
 			Rot,
 			Time,
-			Trans
+			Trans,
+			Morphs
 		};
 
 		struct ExportUtil
@@ -148,7 +149,7 @@ namespace Serialization
 		};
 	}
 
-	std::unique_ptr<fastgltf::Asset> GLTFExport::CreateOptimizedAsset(Animation::RawOzzAnimation* anim, const ozz::animation::Skeleton* skeleton)
+	std::vector<std::byte> GLTFExport::CreateOptimizedAsset(Animation::RawOzzAnimation* anim, const ozz::animation::Skeleton* skeleton)
 	{
 		ExportUtil util;
 		auto& asset = util.asset;
@@ -209,7 +210,82 @@ namespace Serialization
 			transChnl.samplerIndex = (assetAnim.samplers.size() - 1);
 		}
 
+		if (anim->faceData != nullptr) {
+			auto& n = asset->nodes.emplace_back();
+			n.name = "_MorphTarget_";
+			n.meshIndex = 0;
+
+			auto& mesh = asset->meshes.emplace_back();
+			mesh.name = "_MorphTarget_";
+			auto& mPrim = mesh.primitives.emplace_back();
+			auto& a = mPrim.attributes.emplace_back();
+			a.first = "POSITION";
+			a.second = 0;
+
+			size_t timeSize = anim->faceData->tracks[0].keyframes.size();
+
+			auto& smplr = assetAnim.samplers.emplace_back();
+			smplr.interpolation = fastgltf::AnimationInterpolation::Linear;
+			smplr.inputAccessor = util.WriteAccessor(
+				0.0f,
+				anim->faceData->duration,
+				fastgltf::AccessorType::Scalar,
+				timeSize,
+				BufferType::Time,
+				[&](size_t i) {
+					auto& r = anim->faceData->tracks[0].keyframes[i].ratio;
+					r *= anim->faceData->duration;
+					return &r;
+				}
+			);
+
+			std::vector<float> combinedWeights;
+			combinedWeights.reserve(RE::BSFaceGenAnimationData::morphSize * timeSize);
+
+			for (size_t i = 0; i < timeSize; i++) {
+				for (size_t j = 0; j < RE::BSFaceGenAnimationData::morphSize; j++) {
+					combinedWeights.push_back(anim->faceData->tracks[j].keyframes[i].value);
+				}
+			}
+
+			smplr.outputAccessor = util.WriteAccessor(
+				0.0f,
+				0.0f,
+				fastgltf::AccessorType::Scalar,
+				combinedWeights.size(),
+				BufferType::Morphs,
+				[&](size_t i) { return &combinedWeights[i]; }
+			);
+
+			auto& chnl = assetAnim.channels.emplace_back();
+			chnl.nodeIndex = (asset->nodes.size() - 1);
+			chnl.path = fastgltf::AnimationPath::Weights;
+			chnl.samplerIndex = (assetAnim.samplers.size() - 1);
+		}
+
 		util.CombineBuffers();
-		return std::move(util.asset);
+		fastgltf::Exporter exp;
+		exp.setExtrasWriteCallback([](std::size_t objectIndex, fastgltf::Category objectType, void* userPointer) -> std::optional<std::string> {
+			if (objectType != fastgltf::Category::Meshes)
+				return std::nullopt;
+
+			auto& morphNames = Settings::GetFaceMorphs();
+			std::string result = R"({"targetNames":[)";
+			for (size_t i = 0; i < morphNames.size(); i++) {
+				result += "\"" + morphNames[i] + "\"";
+				if ((i + 1) < morphNames.size()) {
+					result += ",";
+				}
+			}
+			result += "]}";
+			return result;
+		});
+
+		auto result = exp.writeGltfBinary(*util.asset.get(), fastgltf::ExportOptions::None);
+		if (result.error() != fastgltf::Error::None) {
+			return {};
+		}
+
+		return std::move(result.get().output);
 	}
 }
