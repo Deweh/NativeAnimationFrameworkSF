@@ -93,9 +93,16 @@ namespace Serialization
 
 				auto bufIdx = WriteBuffer(unitSize, length, bufType, getFunc);
 				bufferMap[bufType].insert(bufIdx);
+				
+				//Prevent accessor duplication.
+				if (auto iter = bufferAccMap.find(bufIdx); iter != bufferAccMap.end()) {
+					return iter->second;
+				}
 
 				auto bvIdx = MakeBView(bufIdx, unitSize * length);
-				return MakeAccessor(min, max, type, length, bvIdx);
+				auto accIdx = MakeAccessor(min, max, type, length, bvIdx);
+				bufferAccMap[bufIdx] = accIdx;
+				return accIdx;
 			}
 
 			size_t DedupeLastBuffer(BufferType bufType, fastgltf::sources::Vector& cmp)
@@ -135,15 +142,23 @@ namespace Serialization
 					bVec.bytes.insert(bVec.bytes.end(), curVec.bytes.begin(), curVec.bytes.end());
 				}
 
-				finalBuf.byteLength = bVec.bytes.size();
+				size_t bufSize = bVec.bytes.size();
+				finalBuf.byteLength = bufSize;
 				asset->buffers = std::move(finalVec);
 
-				for (auto& bv : asset->bufferViews) {
-					bv.byteOffset = idxPosMap[bv.bufferIndex];
-					bv.bufferIndex = 0;
+				for (auto& acc : asset->accessors) {
+					acc.byteOffset = idxPosMap[acc.bufferViewIndex.value()];
+					acc.bufferViewIndex = 0;
 				}
+
+				asset->bufferViews = std::vector<fastgltf::BufferView>();
+				auto& finalBV = asset->bufferViews.emplace_back();
+				finalBV.bufferIndex = 0;
+				finalBV.byteLength = bufSize;
+				finalBV.byteOffset = 0;
 			}
 
+			std::map<size_t, size_t> bufferAccMap;
 			std::map<BufferType, std::set<size_t>> bufferMap;
 			std::unique_ptr<fastgltf::Asset> asset;
 		};
@@ -157,6 +172,17 @@ namespace Serialization
 
 		auto& assetAnim = asset->animations.emplace_back();
 		assetAnim.name = "Animation";
+
+		const auto DedupeSampler = [&](const fastgltf::AnimationSampler& smplr) -> size_t {
+			for (size_t i = 0; i < (assetAnim.samplers.size() - 1); i++) {
+				auto& s = assetAnim.samplers[i];
+				if (s.inputAccessor == smplr.inputAccessor && s.outputAccessor == smplr.outputAccessor) {
+					assetAnim.samplers.pop_back();
+					return i;
+				}
+			}
+			return (assetAnim.samplers.size() - 1);
+		};
 
 		for (size_t i = 0; i < anim->data->tracks.size(); i++) {
 			auto& trck = anim->data->tracks[i];
@@ -183,7 +209,7 @@ namespace Serialization
 			auto& rotChnl = assetAnim.channels.emplace_back();
 			rotChnl.nodeIndex = i;
 			rotChnl.path = fastgltf::AnimationPath::Rotation;
-			rotChnl.samplerIndex = (assetAnim.samplers.size() - 1);
+			rotChnl.samplerIndex = DedupeSampler(rotSmplr);
 
 			auto& transSmplr = assetAnim.samplers.emplace_back();
 			transSmplr.interpolation = fastgltf::AnimationInterpolation::Linear;
@@ -207,7 +233,7 @@ namespace Serialization
 			auto& transChnl = assetAnim.channels.emplace_back();
 			transChnl.nodeIndex = i;
 			transChnl.path = fastgltf::AnimationPath::Translation;
-			transChnl.samplerIndex = (assetAnim.samplers.size() - 1);
+			transChnl.samplerIndex = DedupeSampler(transSmplr);
 		}
 
 		if (anim->faceData != nullptr) {
