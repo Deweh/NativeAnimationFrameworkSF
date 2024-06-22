@@ -167,6 +167,12 @@ namespace Animation::Face
 		static Manager* m = Manager::GetSingleton();
 		if (!m->data.lock_read_only()->noBlink.contains(a1)) {
 			OriginalBlinkUpdate(a1, a2);
+		} else {
+			//eyeClosed L/R
+			a1->morphs[25] = 0.0f;
+			a1->morphs[26] = 0.0f;
+			a1->morphs2[25] = 0.0f;
+			a1->morphs2[26] = 0.0f;
 		}
 	}
 
