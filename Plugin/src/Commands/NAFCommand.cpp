@@ -25,9 +25,12 @@ namespace Commands::NAFCommand
 	void ShowHelp()
 	{
 		itfc->PrintLn("Usage:");
-		itfc->PrintLn("naf play [anim-file]");
-		itfc->PrintLn("naf stop");
-		itfc->PrintLn("naf studio");
+		itfc->PrintLn("naf play <file_path> <optional: actor_form_id>");
+		itfc->PrintLn("naf playk <file_path> <optional: actor_form_id>");
+		itfc->PrintLn("naf stop <optional: actor_form_id>");
+		itfc->PrintLn("naf sync <actor_form_id> <actor_form_id> <any # more...>");
+		itfc->PrintLn("naf stopsync <optional: actor_form_id>");
+		itfc->PrintLn("naf optimize <file_path> <optional: actor_form_id>");
 	}
 
 	void ShowNoActor()
@@ -71,7 +74,7 @@ namespace Commands::NAFCommand
 		}
 	}
 
-	void ProcessPlayCommand(uint64_t idxStart = 1, bool verbose = true)
+	void ProcessPlayCommand(uint64_t idxStart = 1, bool verbose = true, bool initKeys = false)
 	{
 		if (args.size() < (idxStart + 1)) {
 			ShowHelp();
@@ -84,7 +87,8 @@ namespace Commands::NAFCommand
 		}
 
 		Animation::GraphManager::GetSingleton()->LoadAndStartAnimation(actor, args[idxStart]);
-		SetLastAnimInfo(args[idxStart], actor);
+		if (initKeys)
+			SetLastAnimInfo(args[idxStart], actor);
 		if (verbose)
 			itfc->PrintLn("Starting animation...");
 	}
@@ -94,6 +98,11 @@ namespace Commands::NAFCommand
 		RE::Actor* actor = ActorStrOrSelection(idxStart, verbose);
 		if (!actor) {
 			return;
+		}
+
+		if (actor == lastActor) {
+			lastActor = nullptr;
+			lastFile.clear();
 		}
 
 		Animation::GraphManager::GetSingleton()->DetachGenerator(actor, 1.0f);
@@ -143,10 +152,6 @@ namespace Commands::NAFCommand
 		auto actor = ActorStrOrSelection(idxStart, verbose);
 		if (!actor)
 			return;
-
-		if (actor == lastActor) {
-			lastActor = nullptr;
-		}
 
 		Animation::GraphManager::GetSingleton()->StopSyncing(actor);
 	}
@@ -244,7 +249,9 @@ namespace Commands::NAFCommand
 		} else if (type == "stopsync") {
 			ProcessStopSyncCommand();
 		} else if (type == "optimize") {
-			ProcessOptimizeCommand();	
+			ProcessOptimizeCommand();
+		} else if (type == "playk") {
+			ProcessPlayCommand(1, true, true);
 		} else {
 			ShowHelp();
 		}
