@@ -19,7 +19,8 @@ namespace Animation
 		if (syncInst != nullptr && syncInst->GetOwner() == this) {
 			syncInst->SetOwner(nullptr);
 		}
-		Face::Manager::GetSingleton()->OnAnimDataChange(faceAnimData, nullptr);
+		SetNoBlink(false);
+		SetFaceMorphsControlled(false, 1.0f);
 	}
 
 	void Graph::OnAnimationReady(const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim)
@@ -191,13 +192,17 @@ namespace Animation
 		Face::Manager::GetSingleton()->SetNoBlink(faceAnimData, a_noBlink);
 	}
 
-	void Graph::SetFaceMorphsControlled(bool a_controlled)
+	void Graph::SetFaceMorphsControlled(bool a_controlled, float a_transitionTime)
 	{
-		if (a_controlled && !faceMorphData) {
-			faceMorphData = std::make_shared<Face::MorphData>();
-			Face::Manager::GetSingleton()->AttachMorphData(faceAnimData, faceMorphData);
+		if (a_controlled && faceAnimData) {
+			if (faceMorphData) {
+				faceMorphData->lock()->BeginTween(a_transitionTime, faceAnimData);
+			} else if (!faceMorphData) {
+				faceMorphData = std::make_shared<Face::MorphData>();
+				Face::Manager::GetSingleton()->AttachMorphData(faceAnimData, faceMorphData, a_transitionTime);
+			}
 		} else if (!a_controlled && faceMorphData) {
-			Face::Manager::GetSingleton()->DetachMorphData(faceAnimData);
+			Face::Manager::GetSingleton()->DetachMorphData(faceAnimData, a_transitionTime);
 			faceMorphData = nullptr;
 		}
 	}
@@ -338,13 +343,15 @@ namespace Animation
 			generator->SetOutput(ozz::make_span(generatedPose));
 
 			if (generator->HasFaceAnimation()) {
-				SetFaceMorphsControlled(true);
+				SetFaceMorphsControlled(true, a_transitionTime);
 				generator->SetFaceMorphData(faceMorphData.get());
 			} else {
-				SetFaceMorphsControlled(false);
+				SetFaceMorphsControlled(false, a_transitionTime);
 			}
 
 			flags.set(FLAGS::kHasGenerator);
+		} else {
+			SetFaceMorphsControlled(false, a_transitionTime);
 		}
 	}
 

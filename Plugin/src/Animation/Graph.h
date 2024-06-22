@@ -96,7 +96,7 @@ namespace Animation
 		void StopSyncing();
 		void UpdateFaceAnimData();
 		void SetNoBlink(bool a_noBlink);
-		void SetFaceMorphsControlled(bool a_controlled);
+		void SetFaceMorphsControlled(bool a_controlled, float a_transitionTime);
 		XYZTransform GetRootXYZ();
 	};
 }

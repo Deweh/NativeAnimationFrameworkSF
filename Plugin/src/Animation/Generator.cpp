@@ -31,7 +31,7 @@ namespace Animation
 			trackSampleJob.ratio = sampleJob.ratio;
 			auto d = faceMorphData->lock();
 			for (size_t i = 0; i < RE::BSFaceGenAnimationData::morphSize; i++) {
-				trackSampleJob.result = &(*d)[i];
+				trackSampleJob.result = &d->current[i];
 				trackSampleJob.track = &anim->faceData->tracks[i];
 				trackSampleJob.Run();
 			}
