@@ -248,7 +248,15 @@ namespace Serialization
 			a.first = "POSITION";
 			a.second = 0;
 
-			size_t timeSize = anim->faceData->tracks[0].keyframes.size();
+			size_t timeSize = 1;
+			ozz::animation::offline::RawFloatTrack* timeTrack = &anim->faceData->tracks[0];
+			for (auto& t : anim->faceData->tracks) {
+				if (t.keyframes.size() > 1) {
+					timeSize = t.keyframes.size();
+					timeTrack = &t;
+					break;
+				}
+			}
 
 			auto& smplr = assetAnim.samplers.emplace_back();
 			smplr.interpolation = fastgltf::AnimationInterpolation::Linear;
@@ -259,7 +267,7 @@ namespace Serialization
 				timeSize,
 				BufferType::Time,
 				[&](size_t i) {
-					auto& r = anim->faceData->tracks[0].keyframes[i].ratio;
+					auto& r = timeTrack->keyframes[i].ratio;
 					r *= anim->faceData->duration;
 					return &r;
 				}
