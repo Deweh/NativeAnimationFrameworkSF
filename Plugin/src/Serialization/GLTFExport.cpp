@@ -271,7 +271,7 @@ namespace Serialization
 			for (size_t i = 0; i < timeSize; i++) {
 				for (size_t j = 0; j < RE::BSFaceGenAnimationData::morphSize; j++) {
 					auto& kfs = anim->faceData->tracks[j].keyframes;
-					combinedWeights.push_back(i >= kfs.size() ? 0.0f : kfs[i].value);
+					combinedWeights.push_back(i >= kfs.size() ? kfs.back().value : kfs[i].value);
 				}
 			}
 

@@ -210,7 +210,6 @@ namespace RE
 		void*         unk3E8;
 		BSFixedString morphNames[morphSize];  //These are sometimes missing
 	};
-	constexpr size_t tst{ offsetof(BSFaceGenAnimationData, BSFaceGenAnimationData::morphs2) };
 
 	class BSFaceGenNiNode : public NiNode
 	{

@@ -54,6 +54,15 @@ namespace Settings
 					auto sName = p.stem().generic_string();
 					auto sharedSkele = std::make_shared<Animation::OzzSkeleton>();
 					sharedSkele->data = skele.ToOzz();
+
+					for (size_t i = 0; i < skele.nodeNames.size(); i++) {
+						if (skele.nodeNames[i] == "L_Eye") {
+							sharedSkele->lEyeIdx = i;
+						} else if (skele.nodeNames[i] == "R_Eye") {
+							sharedSkele->rEyeIdx = i;
+						}
+					}
+
 					skeletons[sName] = sharedSkele;
 					INFO("Loaded {} skeleton.", sName);
 				}

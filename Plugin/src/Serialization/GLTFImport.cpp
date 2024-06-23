@@ -122,8 +122,13 @@ namespace Serialization
 
 		for (auto mt : morphTargets) {
 			if (auto iter = gameIdxs.find(mt); iter != gameIdxs.end()) {
-				morphIdxs.push_back(iter->second);
-				hasMorphs = true;
+				//If this track has been populated by a different weights channel already, skip over it.
+				if (rawAnim->faceData != nullptr && !rawAnim->faceData->tracks[iter->second].keyframes.empty()) [[unlikely]] {
+					morphIdxs.push_back(UINT64_MAX);
+				} else {
+					morphIdxs.push_back(iter->second);
+					hasMorphs = true;
+				}
 			} else {
 				morphIdxs.push_back(UINT64_MAX);
 			}
@@ -172,6 +177,23 @@ namespace Serialization
 
 				kf.value = fastgltf::getAccessorElement<float>(*asset, dataAccessor, (i * morphTargets.size()) + j);
 				rawAnim->faceData->tracks[idx].keyframes.push_back(kf);
+			}
+		}
+
+		for (size_t i = 0; i < morphTargets.size(); i++) {
+			auto idx = morphIdxs[i];
+			if (idx == UINT64_MAX)
+				continue;
+
+			bool allZero = true;
+			for (auto& k : rawAnim->faceData->tracks[idx].keyframes) {
+				if (k.value != 0.0f) {
+					allZero = false;
+					break;
+				}
+			}
+			if (allZero) {
+				rawAnim->faceData->tracks[idx].keyframes.clear();
 			}
 		}
 	}

@@ -31,5 +31,7 @@ namespace Animation
 	struct OzzSkeleton
 	{
 		ozz::unique_ptr<ozz::animation::Skeleton> data = nullptr;
+		size_t lEyeIdx = UINT64_MAX;
+		size_t rEyeIdx = UINT64_MAX;
 	};
 }
