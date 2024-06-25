@@ -40,6 +40,14 @@ namespace RE::ModelDB
 
 namespace RE::EyeTracking
 {
+	struct EyeData
+	{
+		NiPointer<NiNode> head;
+		NiPointer<NiNode> leftEye;
+		NiPointer<NiNode> rightEye;
+		NiPointer<NiNode> eyeTarget;
+	};
+
 	struct EyeNodes
 	{
 		inline EyeNodes()
@@ -55,7 +63,7 @@ namespace RE::EyeTracking
 		inline EyeNodes(EyeNodes&& other) noexcept {
 			data = other.data;
 			mutex = other.mutex;
-			other.data = other.data;
+			other.data = std::span<EyeData>();
 			other.mutex = nullptr;
 		}
 
@@ -73,16 +81,16 @@ namespace RE::EyeTracking
 		}
 
 		uint64_t* mutex = nullptr;
-		std::span<NiPointer<NiNode>> data;
+		std::span<EyeData> data;
 	};
 
 	inline EyeNodes GetEyeNodes()
 	{
-		REL::Relocation<NiPointer<NiNode>*> eyeTargetNodes(REL::ID(858268));
-		REL::Relocation<uint32_t*> eyeTargetIdx(REL::ID(880003));
+		REL::Relocation<EyeData*> eyeTargetNodes(REL::ID(858268));
+		//REL::Relocation<uint32_t*> eyeTargetIdx(REL::ID(880003));
 
 		EyeNodes result;
-		result.data = std::span<NiPointer<NiNode>>(eyeTargetNodes.get(), 800);
+		result.data = std::span<EyeData>(eyeTargetNodes.get(), 200);
 
 		return result;
 	}

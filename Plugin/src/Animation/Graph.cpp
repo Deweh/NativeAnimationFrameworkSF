@@ -21,17 +21,7 @@ namespace Animation
 		}
 		SetNoBlink(false);
 		SetFaceMorphsControlled(false, 1.0f);
-		if (eyeTrackData && eyeTrackData->eyeTarget) {
-			auto eyeNodes = RE::EyeTracking::GetEyeNodes();
-			auto& expectedLEye = eyeNodes.data[eyeTrackData->originalLIdx];
-			auto& expectedREye = eyeNodes.data[eyeTrackData->originalRIdx];
-			if (expectedLEye.get() == eyeTrackData->eyeTarget) {
-				expectedLEye = RE::NiPointer<RE::NiNode>(eyeTrackData->lEye);
-			}
-			if (expectedREye.get() == eyeTrackData->eyeTarget) {
-				expectedREye = RE::NiPointer<RE::NiNode>(eyeTrackData->rEye);
-			}
-		}
+		EnableEyeTracking();
 	}
 
 	void Graph::OnAnimationReady(const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim)
@@ -89,6 +79,7 @@ namespace Animation
 	void Graph::GetSkeletonNodes(RE::BGSFadeNode* a_rootNode) {
 		nodes.clear();
 		rootNode = a_rootNode;
+		EnableEyeTracking();
 
 		if (eyeTrackData) {
 			eyeTrackData->lEye = nullptr;
@@ -149,17 +140,7 @@ namespace Animation
 		} else if (loadedRefData->data3D.get() != rootNode) {
 			GetSkeletonNodes(static_cast<RE::BGSFadeNode*>(loadedRefData->data3D.get()));
 		} else if (flags.all(FLAGS::kRequiresEyeTrackUpdate)) {
-			auto eyeNodes = RE::EyeTracking::GetEyeNodes();
-			for (size_t i = 0; i < eyeNodes.data.size(); i++) {
-				auto& n = eyeNodes.data[i];
-				if (n.get() == eyeTrackData->lEye && n != nullptr) {
-					eyeTrackData->originalLIdx = i;
-					n = RE::NiPointer<RE::NiNode>(eyeTrackData->eyeTarget);
-				} else if (n.get() == eyeTrackData->rEye && n != nullptr) {
-					eyeTrackData->originalRIdx = i;
-					n = RE::NiPointer<RE::NiNode>(eyeTrackData->eyeTarget);
-				}
-			}
+			DisableEyeTracking();
 			flags.reset(FLAGS::kRequiresEyeTrackUpdate);
 		}
 		
@@ -253,6 +234,36 @@ namespace Animation
 		} else if (!a_controlled && faceMorphData) {
 			Face::Manager::GetSingleton()->DetachMorphData(faceAnimData, a_transitionTime);
 			faceMorphData = nullptr;
+		}
+	}
+
+	void Graph::DisableEyeTracking()
+	{
+		if (!eyeTrackData || !eyeTrackData->lEye || !eyeTrackData->rEye)
+			return;
+
+		auto eyeNodes = RE::EyeTracking::GetEyeNodes();
+		for (auto& n : eyeNodes.data) {
+			if (n.leftEye.get() == eyeTrackData->lEye && n.rightEye.get() == eyeTrackData->rEye) {
+				n.leftEye.reset(eyeTrackData->eyeTarget);
+				n.rightEye.reset(eyeTrackData->eyeTarget);
+				break;
+			}
+		}
+	}
+
+	void Graph::EnableEyeTracking()
+	{
+		if (!eyeTrackData || !eyeTrackData->eyeTarget)
+			return;
+
+		auto eyeNodes = RE::EyeTracking::GetEyeNodes();
+		for (auto& n : eyeNodes.data) {
+			if (n.leftEye.get() == eyeTrackData->eyeTarget && n.rightEye.get() == eyeTrackData->eyeTarget) {
+				n.leftEye.reset(eyeTrackData->lEye);
+				n.rightEye.reset(eyeTrackData->rEye);
+				break;
+			}
 		}
 	}
 

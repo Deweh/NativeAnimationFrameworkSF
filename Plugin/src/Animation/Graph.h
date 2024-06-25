@@ -30,8 +30,6 @@ namespace Animation
 			RE::NiNode* lEye = nullptr;
 			RE::NiNode* rEye = nullptr;
 			RE::NiNode* eyeTarget = nullptr;
-			size_t originalLIdx = 0;
-			size_t originalRIdx = 0;
 		};
 
 		enum FLAGS : uint16_t
@@ -108,6 +106,8 @@ namespace Animation
 		void UpdateFaceAnimData();
 		void SetNoBlink(bool a_noBlink);
 		void SetFaceMorphsControlled(bool a_controlled, float a_transitionTime);
+		void DisableEyeTracking();
+		void EnableEyeTracking();
 		XYZTransform GetRootXYZ();
 	};
 }
