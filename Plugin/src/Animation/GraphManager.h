@@ -28,9 +28,9 @@ namespace Animation
 		void VisitGraph(RE::Actor* a_actor, const std::function<void(Graph*)> visitFunc);
 		void InstallHooks();
 		void Reset();
+		std::shared_ptr<Graph> GetGraph(RE::Actor* a_actor, bool create);
 
 	private:
-		std::shared_ptr<Graph> GetGraph(RE::Actor* a_actor, bool create);
 		std::shared_ptr<Graph> GetGraphLockless(RE::Actor* a_actor, bool create);
 	};
 }

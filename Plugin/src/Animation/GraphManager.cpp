@@ -9,6 +9,7 @@
 namespace Animation
 {
 	typedef void (*GraphUpdateFunc)(RE::IAnimationGraphManagerHolder*, RE::BSAnimationUpdateData*, void*);
+	typedef void* (*PlayerPerspectiveSwitchFunc)(void*, void*);
 
 	GraphManager* GraphManager::GetSingleton()
 	{
@@ -189,12 +190,31 @@ namespace Animation
 		}
 	}
 
+	PlayerPerspectiveSwitchFunc OriginalPerspectiveSwitch;
+
+	void* PlayerPerspectiveSwitch(void* a1, void* a2)
+	{
+		void* res = OriginalPerspectiveSwitch(a1, a2);
+		
+		if (auto g = graphManager.GetGraph(RE::PlayerCharacter::GetSingleton(), false); g) {
+			std::unique_lock l{ g->lock };
+			g->flags.set(Graph::FLAGS::kRequiresEyeTrackUpdate);
+		}
+
+		return res;
+	}
+
 	void GraphManager::InstallHooks()
 	{
 		Util::Trampoline::AddHook(14, [](SFSE::Trampoline& t) {
 			//IAnimationGraphManagerHolder::UpdateAnimationGraphManager(IAnimationGraphManagerHolder*, BSAnimationUpdateData*, Graph*)
 			REL::Relocation<uintptr_t> hookLoc{ REL::ID(118488), 0x61 };
 			OriginalGraphUpdate = reinterpret_cast<GraphUpdateFunc>(SFSE::GetTrampoline().write_call<5>(hookLoc.address(), &UpdateGraph));
+
+			//`anonymous namespace'::HandlePlayerPerspectiveSwitchForEyeTracking(void*, void*)
+			REL::Relocation<uintptr_t> vtbl{ REL::ID(422984) };
+			OriginalPerspectiveSwitch = reinterpret_cast<PlayerPerspectiveSwitchFunc>(vtbl.write_vfunc(1, &PlayerPerspectiveSwitch));
+
 			INFO("Installed graph update hook.");
 		});
 	}
