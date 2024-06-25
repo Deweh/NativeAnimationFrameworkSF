@@ -25,6 +25,15 @@ namespace Animation
 			CubicInOutEase<float> ease;
 		};
 
+		struct EyeTrackingData
+		{
+			RE::NiNode* lEye = nullptr;
+			RE::NiNode* rEye = nullptr;
+			RE::NiNode* eyeTarget = nullptr;
+			size_t originalLIdx = 0;
+			size_t originalRIdx = 0;
+		};
+
 		enum FLAGS : uint16_t
 		{
 			kNoFlags = 0,
@@ -35,7 +44,8 @@ namespace Animation
 			kTransitioning = 1u << 3,
 			kHasGenerator = 1u << 4,
 
-			kLoadingAnimation = 1u << 5
+			kLoadingAnimation = 1u << 5,
+			kRequiresEyeTrackUpdate = 1u << 6
 		};
 
 		enum TRANSITION_TYPE : uint8_t
@@ -67,8 +77,9 @@ namespace Animation
 		std::unique_ptr<Generator> generator = nullptr;
 		TransitionData transition;
 		std::shared_ptr<SyncInstance> syncInst = nullptr;
-		RE::BSFaceGenAnimationData* faceAnimData = nullptr;
 		std::shared_ptr<Face::MorphData> faceMorphData = nullptr;
+		RE::BSFaceGenAnimationData* faceAnimData = nullptr;
+		std::unique_ptr<EyeTrackingData> eyeTrackData;
 		FileID activeFile;
 
 		Graph();

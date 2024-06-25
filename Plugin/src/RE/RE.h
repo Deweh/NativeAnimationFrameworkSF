@@ -37,3 +37,53 @@ namespace RE::ModelDB
 		return entry;
 	}
 }
+
+namespace RE::EyeTracking
+{
+	struct EyeNodes
+	{
+		inline EyeNodes()
+		{
+			REL::Relocation<uint64_t*> eyeTargetMutex(REL::ID(858265));
+			REL::Relocation<void(uint64_t*)> LockWrite(REL::ID(34125));
+			mutex = eyeTargetMutex.get();
+			LockWrite(mutex);
+		}
+
+		inline EyeNodes(const EyeNodes& other) = delete;
+
+		inline EyeNodes(EyeNodes&& other) noexcept {
+			data = other.data;
+			mutex = other.mutex;
+			other.data = other.data;
+			other.mutex = nullptr;
+		}
+
+		inline ~EyeNodes()
+		{
+			unlock();
+		}
+
+		inline void unlock()
+		{
+			if (mutex) {
+				REL::Relocation<void(uint64_t**)> UnlockWrite(REL::ID(36740));
+				UnlockWrite(&mutex);
+			}
+		}
+
+		uint64_t* mutex = nullptr;
+		std::span<NiPointer<NiNode>> data;
+	};
+
+	inline EyeNodes GetEyeNodes()
+	{
+		REL::Relocation<NiPointer<NiNode>*> eyeTargetNodes(REL::ID(858268));
+		REL::Relocation<uint32_t*> eyeTargetIdx(REL::ID(880003));
+
+		EyeNodes result;
+		result.data = std::span<NiPointer<NiNode>>(eyeTargetNodes.get(), 800);
+
+		return result;
+	}
+}

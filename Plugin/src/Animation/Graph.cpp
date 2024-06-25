@@ -21,6 +21,17 @@ namespace Animation
 		}
 		SetNoBlink(false);
 		SetFaceMorphsControlled(false, 1.0f);
+		if (eyeTrackData && eyeTrackData->eyeTarget) {
+			auto eyeNodes = RE::EyeTracking::GetEyeNodes();
+			auto& expectedLEye = eyeNodes.data[eyeTrackData->originalLIdx];
+			auto& expectedREye = eyeNodes.data[eyeTrackData->originalRIdx];
+			if (expectedLEye.get() == eyeTrackData->eyeTarget) {
+				expectedLEye = RE::NiPointer<RE::NiNode>(eyeTrackData->lEye);
+			}
+			if (expectedREye.get() == eyeTrackData->eyeTarget) {
+				expectedREye = RE::NiPointer<RE::NiNode>(eyeTrackData->rEye);
+			}
+		}
 	}
 
 	void Graph::OnAnimationReady(const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim)
@@ -56,6 +67,11 @@ namespace Animation
 	void Graph::SetSkeleton(std::shared_ptr<const OzzSkeleton> a_descriptor)
 	{
 		skeleton = a_descriptor;
+
+		if (skeleton->lEyeIdx != UINT64_MAX || skeleton->rEyeIdx != UINT64_MAX) {
+			eyeTrackData = std::make_unique<EyeTrackingData>();
+		}
+
 		int soaSize = skeleton->data->num_soa_joints();
 		int jointSize = skeleton->data->num_joints();
 		restPose.resize(soaSize);
@@ -74,6 +90,12 @@ namespace Animation
 		nodes.clear();
 		rootNode = a_rootNode;
 
+		if (eyeTrackData) {
+			eyeTrackData->lEye = nullptr;
+			eyeTrackData->rEye = nullptr;
+			eyeTrackData->eyeTarget = nullptr;
+		}
+
 		if (a_rootNode != nullptr) {
 			RE::BSFaceGenAnimationData* oldFaceAnimData = faceAnimData;
 			UpdateFaceAnimData();
@@ -81,14 +103,27 @@ namespace Animation
 
 			SetNoBlink(true);
 			ResetRootTransform();
+			size_t idx = 0;
 			for (auto& name : skeleton->data->joint_names()) {
-				RE::NiAVObject* n = a_rootNode->GetObjectByName(name);
+				RE::NiNode* n = a_rootNode->GetObjectByName(name);
 				if (!n) {
 					nodes.push_back(std::make_unique<NullNode>());
 				} else {
+					if (idx == skeleton->lEyeIdx) {
+						eyeTrackData->lEye = n;
+					} else if (idx == skeleton->rEyeIdx) {
+						eyeTrackData->rEye = n;
+					}
 					nodes.push_back(std::make_unique<GameNode>(n));
 				}
+				idx++;
 			}
+
+			if (eyeTrackData) {
+				eyeTrackData->eyeTarget = a_rootNode->GetObjectByName("Eye_Target");
+				flags.set(FLAGS::kRequiresEyeTrackUpdate);
+			}
+			
 			flags.reset(FLAGS::kUnloaded3D);
 		} else {
 			flags.set(FLAGS::kUnloaded3D);
@@ -106,12 +141,26 @@ namespace Animation
 	void Graph::Update(float a_deltaTime) {
 		auto dataLock = target->loadedData.lock_write();
 		auto& loadedRefData = *dataLock;
+
 		if (loadedRefData == nullptr || loadedRefData->data3D.get() == nullptr) {
 			if (rootNode != nullptr) {
 				GetSkeletonNodes(nullptr);
 			}
 		} else if (loadedRefData->data3D.get() != rootNode) {
 			GetSkeletonNodes(static_cast<RE::BGSFadeNode*>(loadedRefData->data3D.get()));
+		} else if (flags.all(FLAGS::kRequiresEyeTrackUpdate)) {
+			auto eyeNodes = RE::EyeTracking::GetEyeNodes();
+			for (size_t i = 0; i < eyeNodes.data.size(); i++) {
+				auto& n = eyeNodes.data[i];
+				if (n.get() == eyeTrackData->lEye && n != nullptr) {
+					eyeTrackData->originalLIdx = i;
+					n = RE::NiPointer<RE::NiNode>(eyeTrackData->eyeTarget);
+				} else if (n.get() == eyeTrackData->rEye && n != nullptr) {
+					eyeTrackData->originalRIdx = i;
+					n = RE::NiPointer<RE::NiNode>(eyeTrackData->eyeTarget);
+				}
+			}
+			flags.reset(FLAGS::kRequiresEyeTrackUpdate);
 		}
 		
 		if (rootNode != nullptr && generator != nullptr) {
