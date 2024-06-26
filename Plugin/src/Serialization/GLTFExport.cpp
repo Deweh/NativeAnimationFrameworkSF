@@ -236,7 +236,29 @@ namespace Serialization
 			transChnl.samplerIndex = DedupeSampler(transSmplr);
 		}
 
+		std::vector<std::string> morphTargets = Settings::GetFaceMorphs();
+		std::vector<ozz::animation::offline::RawFloatTrack*> tracksView;
+		bool hasFaceAnim = false;
+
 		if (anim->faceData != nullptr) {
+			auto targetIter = morphTargets.begin();
+			auto trackIter = anim->faceData->tracks.begin();
+			while (targetIter != morphTargets.end() && trackIter != anim->faceData->tracks.end()) {
+				if (trackIter->keyframes.size() == 1 && trackIter->keyframes[0].value == 0.0f) {
+					targetIter = morphTargets.erase(targetIter);
+				} else {
+					targetIter++;
+					tracksView.push_back(&(*trackIter));
+				}
+				trackIter++;
+			}
+
+			if (!tracksView.empty()) {
+				hasFaceAnim = true;
+			}
+		}
+
+		if (hasFaceAnim) {
 			auto& n = asset->nodes.emplace_back();
 			n.name = "_MorphTarget_";
 			n.meshIndex = 0;
@@ -249,11 +271,11 @@ namespace Serialization
 			a.second = 0;
 
 			size_t timeSize = 1;
-			ozz::animation::offline::RawFloatTrack* timeTrack = &anim->faceData->tracks[0];
-			for (auto& t : anim->faceData->tracks) {
-				if (t.keyframes.size() > 1) {
-					timeSize = t.keyframes.size();
-					timeTrack = &t;
+			ozz::animation::offline::RawFloatTrack* timeTrack = tracksView[0];
+			for (auto& t : tracksView) {
+				if (t->keyframes.size() > 1) {
+					timeSize = t->keyframes.size();
+					timeTrack = t;
 					break;
 				}
 			}
@@ -274,11 +296,11 @@ namespace Serialization
 			);
 
 			std::vector<float> combinedWeights;
-			combinedWeights.reserve(RE::BSFaceGenAnimationData::morphSize * timeSize);
+			combinedWeights.reserve(tracksView.size() * timeSize);
 
 			for (size_t i = 0; i < timeSize; i++) {
-				for (size_t j = 0; j < RE::BSFaceGenAnimationData::morphSize; j++) {
-					auto& kfs = anim->faceData->tracks[j].keyframes;
+				for (size_t j = 0; j < tracksView.size(); j++) {
+					auto& kfs = tracksView[j]->keyframes;
 					combinedWeights.push_back(i >= kfs.size() ? kfs.back().value : kfs[i].value);
 				}
 			}
@@ -300,11 +322,12 @@ namespace Serialization
 
 		util.CombineBuffers();
 		fastgltf::Exporter exp;
+		exp.setUserPointer(&morphTargets);
 		exp.setExtrasWriteCallback([](std::size_t objectIndex, fastgltf::Category objectType, void* userPointer) -> std::optional<std::string> {
 			if (objectType != fastgltf::Category::Meshes)
 				return std::nullopt;
 
-			auto& morphNames = Settings::GetFaceMorphs();
+			auto& morphNames = *static_cast<std::vector<std::string>*>(userPointer);
 			std::string result = R"({"targetNames":[)";
 			for (size_t i = 0; i < morphNames.size(); i++) {
 				result += "\"" + morphNames[i] + "\"";

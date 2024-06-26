@@ -46,7 +46,7 @@ namespace Animation
 	{
 		std::unique_lock l{ lock };
 		if (flags.all(FLAGS::kLoadingAnimation)) {
-			FileManager::GetSingleton()->CancelAnimationRequest(activeFile, requesterHandle);
+			FileManager::GetSingleton()->CancelAnimationRequest(activeFile, weak_from_this());
 		} else {
 			flags.set(FLAGS::kLoadingAnimation);
 		}

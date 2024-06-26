@@ -21,11 +21,9 @@ namespace Animation
 		bool operator<(const FileID& a_rhs) const;
 	};
 
-	class FileRequesterBase
+	class FileRequesterBase : public std::enable_shared_from_this<FileRequesterBase>
 	{
 	public:
-		std::weak_ptr<FileRequesterBase> requesterHandle;
-
 		virtual void OnAnimationReady(const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim) = 0;
 		virtual void OnAnimationRequested(const FileID& a_id) = 0;
 		virtual ~FileRequesterBase() noexcept = default;

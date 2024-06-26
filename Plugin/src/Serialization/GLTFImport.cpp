@@ -168,7 +168,8 @@ namespace Serialization
 		ozz::animation::offline::RawTrackKeyframe<float> kf{};
 		kf.interpolation = ozz::animation::offline::RawTrackInterpolation::kLinear;
 		for (size_t i = 0; i < timeAccessor.count; i++) {
-			kf.ratio = (fastgltf::getAccessorElement<float>(*asset, timeAccessor, i) / duration);
+			float time = fastgltf::getAccessorElement<float>(*asset, timeAccessor, i);
+			kf.ratio = (time == 0.0f ? 0.0f : std::clamp(time / duration, 0.0f, 1.0f));
 
 			for (size_t j = 0; j < morphTargets.size(); j++) {
 				auto idx = morphIdxs[j];
