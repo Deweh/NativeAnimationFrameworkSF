@@ -4,6 +4,7 @@
 #include "Node.h"
 #include "Face/Manager.h"
 #include "Util/Timing.h"
+#include "Sequencer.h"
 
 namespace Animation
 {
@@ -27,6 +28,10 @@ namespace Animation
 	void Graph::OnAnimationReady(const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim)
 	{
 		std::unique_lock l{ lock };
+		if (sequencer && sequencer->OnAnimationReady(a_id, a_anim)) {
+			return;
+		}
+
 		if (flags.all(FLAGS::kLoadingAnimation)) {
 			if (a_id != activeFile) {
 				return;
@@ -45,6 +50,10 @@ namespace Animation
 	void Graph::OnAnimationRequested(const FileID& a_id)
 	{
 		std::unique_lock l{ lock };
+		if (sequencer && sequencer->OnAnimationRequested(a_id)) {
+			return;
+		}
+
 		if (flags.all(FLAGS::kLoadingAnimation)) {
 			FileManager::GetSingleton()->CancelAnimationRequest(activeFile, weak_from_this());
 		} else {
@@ -161,6 +170,10 @@ namespace Animation
 				}
 			} else {
 				generator->Generate(a_deltaTime);
+			}
+
+			if (sequencer && sequencer->Update()) {
+				generator->Generate(0.0f);
 			}
 
 			if (flags.all(FLAGS::kTransitioning)) {

@@ -46,9 +46,9 @@ namespace Animation
 		return &instance;
 	}
 
-	void FileManager::RequestAnimation(const FileID& a_id, const std::string_view a_skeleton, std::weak_ptr<FileRequesterBase> a_requester)
+	void FileManager::RequestAnimation(const FileID& a_id, const skeleton_t a_skeleton, std::weak_ptr<FileRequesterBase> a_requester)
 	{
-		AnimID aID{ .file = a_id, .skeleton = std::string(a_skeleton) };
+		AnimID aID{ .file = a_id, .skeleton = a_skeleton };
 		if (auto anim = GetLoadedAnimation(aID); anim != nullptr) {
 			NotifyAnimationRequested(a_requester, a_id);
 			NotifyAnimationReady(a_requester, a_id, anim);
@@ -162,7 +162,15 @@ namespace Animation
 			}
 		}
 
-		auto skele = Settings::GetSkeleton(a_id.skeleton);
+		std::shared_ptr<const OzzSkeleton> skele = nullptr;
+		std::visit([&skele](auto&& arg) {
+			using T = std::decay_t<decltype(arg)>;
+			if constexpr (std::is_same_v<T, std::string>)
+				skele = Settings::GetSkeleton(arg);
+			else if constexpr (std::is_same_v<T, std::shared_ptr<const OzzSkeleton>>)
+				skele = arg;
+		}, a_id.skeleton);
+
 		auto result = Serialization::GLTFImport::CreateRuntimeAnimation(file.get(), storedAnim, skele->data.get());
 		return result;
 	}

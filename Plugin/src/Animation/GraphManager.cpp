@@ -33,8 +33,21 @@ namespace Animation
 		auto g = GetGraph(a_actor, true);
 		std::unique_lock l{ g->lock };
 		g->transition.queuedDuration = a_transitionTime;
+		g->sequencer.reset();
 		FileManager::GetSingleton()->RequestAnimation(FileID(a_filePath, a_animId), a_actor->race->formEditorID.c_str(), g);
 		return true;
+	}
+
+	bool GraphManager::StartSequence(RE::Actor* a_actor, std::vector<Sequencer::PhaseData>&& a_phaseData)
+	{
+		if (!a_actor)
+			return false;
+
+		auto seq = std::make_unique<Sequencer>(std::move(a_phaseData));
+		auto g = GetGraph(a_actor, true);
+		std::unique_lock l{ g->lock };
+		g->sequencer = std::move(seq);
+		g->sequencer->OnAttachedToGraph(g.get());
 	}
 
 	void GraphManager::SyncGraphs(const std::vector<RE::Actor*>& a_actors)
@@ -77,6 +90,7 @@ namespace Animation
 		auto g = GetGraph(a_actor, true);
 		std::unique_lock l{ g->lock };
 
+		g->sequencer.reset();
 		g->StartTransition(std::move(a_gen), a_transitionTime);
 		return true;
 	}
@@ -92,6 +106,7 @@ namespace Animation
 
 		std::unique_lock l{ g->lock };
 		g->flags.reset(Graph::FLAGS::kLoadingAnimation);
+		g->sequencer.reset();
 		g->StartTransition(nullptr, a_transitionTime);
 		return true;
 	}

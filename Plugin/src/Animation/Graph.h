@@ -11,6 +11,8 @@
 
 namespace Animation
 {
+	class Sequencer;
+
 	class Graph : public FileRequesterBase
 	{
 	public:
@@ -79,6 +81,7 @@ namespace Animation
 		RE::BSFaceGenAnimationData* faceAnimData = nullptr;
 		std::unique_ptr<EyeTrackingData> eyeTrackData;
 		FileID activeFile;
+		std::unique_ptr<Sequencer> sequencer = nullptr;
 
 		Graph();
 		virtual ~Graph() noexcept;
