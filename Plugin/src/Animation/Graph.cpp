@@ -10,7 +10,7 @@ namespace Animation
 {
 	Graph::Graph()
 	{
-		flags.set(FLAGS::kTemporary, FLAGS::kNoActiveIKChains, FLAGS::kUnloaded3D);
+		flags.set(FLAGS::kUnloaded3D);
 		blendLayers[0].weight = .0f;
 		blendLayers[1].weight = .0f;
 	}
@@ -276,6 +276,17 @@ namespace Animation
 				n.leftEye.reset(eyeTrackData->lEye);
 				n.rightEye.reset(eyeTrackData->rEye);
 				break;
+			}
+		}
+	}
+
+	void Graph::DetachSequencer(bool a_transitionOut)
+	{
+		if (sequencer) {
+			sequencer.reset();
+			flags.reset(FLAGS::kLoadingSequencerAnimation);
+			if (a_transitionOut) {
+				StartTransition(nullptr, 1.0f);
 			}
 		}
 	}

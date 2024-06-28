@@ -32,8 +32,8 @@ namespace Animation
 		
 		auto g = GetGraph(a_actor, true);
 		std::unique_lock l{ g->lock };
+		g->DetachSequencer(false);
 		g->transition.queuedDuration = a_transitionTime;
-		g->sequencer.reset();
 		FileManager::GetSingleton()->RequestAnimation(FileID(a_filePath, a_animId), a_actor->race->formEditorID.c_str(), g);
 		return true;
 	}
@@ -48,6 +48,27 @@ namespace Animation
 		std::unique_lock l{ g->lock };
 		g->sequencer = std::move(seq);
 		g->sequencer->OnAttachedToGraph(g.get());
+		return true;
+	}
+
+	bool GraphManager::AdvanceSequence(RE::Actor* a_actor, bool a_smooth)
+	{
+		if (!a_actor)
+			return false;
+
+		auto g = GetGraph(a_actor, false);
+		if (!g)
+			return false;
+
+		std::unique_lock l{ g->lock };
+		if (!g->sequencer)
+			return false;
+
+		g->sequencer->flags.set(Sequencer::FLAG::kForceAdvance);
+		if (a_smooth)
+			g->sequencer->flags.set(Sequencer::FLAG::kSmoothAdvance);
+
+		return true;
 	}
 
 	void GraphManager::SyncGraphs(const std::vector<RE::Actor*>& a_actors)
@@ -90,7 +111,7 @@ namespace Animation
 		auto g = GetGraph(a_actor, true);
 		std::unique_lock l{ g->lock };
 
-		g->sequencer.reset();
+		g->DetachSequencer(false);
 		g->StartTransition(std::move(a_gen), a_transitionTime);
 		return true;
 	}
@@ -106,7 +127,7 @@ namespace Animation
 
 		std::unique_lock l{ g->lock };
 		g->flags.reset(Graph::FLAGS::kLoadingAnimation);
-		g->sequencer.reset();
+		g->DetachSequencer(false);
 		g->StartTransition(nullptr, a_transitionTime);
 		return true;
 	}
@@ -196,8 +217,14 @@ namespace Animation
 			std::unique_lock gl{ g->lock };
 			g->Update(a_updateData->timeDelta);
 
-			if (g->flags.none(Graph::FLAGS::kHasGenerator, Graph::FLAGS::kTransitioning, Graph::FLAGS::kLoadingAnimation) &&
-				g->flags.all(Graph::FLAGS::kTemporary, Graph::FLAGS::kNoActiveIKChains)) {
+			if (g->flags.none(
+					Graph::FLAGS::kPersistent,
+					Graph::FLAGS::kActiveIKChains,
+					Graph::FLAGS::kHasGenerator,
+					Graph::FLAGS::kTransitioning,
+					Graph::FLAGS::kLoadingAnimation,
+					Graph::FLAGS::kLoadingSequencerAnimation
+				)) {
 				l.unlock();
 				graphManager.DetachGraph(a_graphHolder);
 			}

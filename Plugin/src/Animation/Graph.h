@@ -37,15 +37,16 @@ namespace Animation
 		enum FLAGS : uint16_t
 		{
 			kNoFlags = 0,
-			kTemporary = 1u << 0,
+			kPersistent = 1u << 0,
 			kUnloaded3D = 1u << 1,
-			kNoActiveIKChains = 1u << 2,
+			kActiveIKChains = 1u << 2,
 
 			kTransitioning = 1u << 3,
 			kHasGenerator = 1u << 4,
 
 			kLoadingAnimation = 1u << 5,
-			kRequiresEyeTrackUpdate = 1u << 6
+			kRequiresEyeTrackUpdate = 1u << 6,
+			kLoadingSequencerAnimation = 1u << 7
 		};
 
 		enum TRANSITION_TYPE : uint8_t
@@ -111,6 +112,7 @@ namespace Animation
 		void SetFaceMorphsControlled(bool a_controlled, float a_transitionTime);
 		void DisableEyeTracking();
 		void EnableEyeTracking();
+		void DetachSequencer(bool a_transitionOut = true);
 		XYZTransform GetRootXYZ();
 	};
 }

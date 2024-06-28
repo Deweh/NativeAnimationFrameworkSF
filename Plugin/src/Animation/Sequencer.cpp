@@ -32,7 +32,11 @@ namespace Animation
 
 	bool Sequencer::OnAnimationRequested(const FileID& a_id)
 	{
-		return flags.any(FLAG::kPausedForLoading, FLAG::kLoadingNextAnim) && a_id == loadingFile;
+		bool belongsToThis = (flags.any(FLAG::kPausedForLoading, FLAG::kLoadingNextAnim) && a_id == loadingFile);
+		if (belongsToThis) {
+			owner->flags.set(Graph::FLAGS::kLoadingSequencerAnimation);
+		}
+		return belongsToThis;
 	}
 
 	bool Sequencer::OnAnimationReady(const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim)
@@ -41,9 +45,11 @@ namespace Animation
 			return false;
 		}
 
+		owner->flags.reset(Graph::FLAGS::kLoadingSequencerAnimation);
+
 		if (!a_anim) {
-			DetachFromGraph();
-			return;
+			owner->DetachSequencer();
+			return true;
 		}
 
 		nextAnim = a_anim;
@@ -85,7 +91,7 @@ namespace Animation
 				if (flags.all(FLAG::kLoop)) {
 					currentPhase = phases.begin();
 				} else {
-					DetachFromGraph();
+					owner->DetachSequencer();
 					return;
 				}
 			} else {
@@ -109,11 +115,5 @@ namespace Animation
 			loadingFile = currentPhase->file;
 			FileManager::GetSingleton()->RequestAnimation(currentPhase->file, owner->skeleton, owner->weak_from_this());
 		}
-	}
-
-	void Sequencer::DetachFromGraph()
-	{
-		owner->sequencer.reset();
-		owner->StartTransition(nullptr, 1.0f);
 	}
 }

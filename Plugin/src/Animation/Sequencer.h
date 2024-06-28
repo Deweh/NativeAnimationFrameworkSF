@@ -45,6 +45,5 @@ namespace Animation
 		bool OnAnimationReady(const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim);
 		void LoadNextAnimation();
 		void AdvancePhase(bool a_init = false);
-		void DetachFromGraph();
 	};
 }

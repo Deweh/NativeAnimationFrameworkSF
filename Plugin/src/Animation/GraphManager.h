@@ -22,6 +22,7 @@ namespace Animation
 		static std::unique_ptr<Generator> CreateAnimationGenerator(std::shared_ptr<OzzAnimation> anim);
 		bool LoadAndStartAnimation(RE::Actor* a_actor, const std::string_view a_filePath, const std::string_view a_animId = "", float a_transitionTime = 1.0f);
 		bool StartSequence(RE::Actor* a_actor, std::vector<Sequencer::PhaseData>&& a_phaseData);
+		bool AdvanceSequence(RE::Actor* a_actor, bool a_smooth = true);
 		void SyncGraphs(const std::vector<RE::Actor*>& a_actors);
 		void StopSyncing(RE::Actor* a_actor);
 		bool AttachGenerator(RE::Actor* a_actor, std::unique_ptr<Generator> a_gen, float a_transitionTime);

@@ -82,4 +82,24 @@ namespace Util
 			return std::nullopt;
 		}
 	}
+
+	std::optional<int32_t> String::StrToInt(const std::string& s)
+	{
+		try {
+			int32_t result = std::stol(s, nullptr);
+			return result;
+		} catch (std::exception) {
+			return std::nullopt;
+		}
+	}
+
+	std::optional<float> String::StrToFloat(const std::string& s)
+	{
+		try {
+			float result = std::stof(s, nullptr);
+			return result;
+		} catch (std::exception) {
+			return std::nullopt;
+		}
+	}
 }

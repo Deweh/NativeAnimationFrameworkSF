@@ -205,6 +205,49 @@ namespace Commands::NAFCommand
 			itfc->PrintLn("Done.");
 	}
 
+	void ProcessStartSeqCommand(uint64_t idxStart = 1, bool verbose = true)
+	{
+		if (args.size() < idxStart + 4) {
+			return;
+		}
+
+		auto actor = StrToActor(args[idxStart], verbose);
+		if (!actor) {
+			return;
+		}
+
+		bool loopSeq = Util::String::ToLower(args[idxStart + 1]) == "true";
+
+		std::vector<Animation::Sequencer::PhaseData> phases;
+		for (size_t i = (idxStart + 2); (i + 2) < args.size(); i += 3) {
+			auto& p = phases.emplace_back();
+			p.file = Animation::FileID(args[i], "");
+
+			auto loopCount = Util::String::StrToInt(std::string(args[i + 1].get()));
+			p.loopCount = loopCount.has_value() ? loopCount.value() : 0;
+
+			auto transitionTime = Util::String::StrToFloat(std::string(args[i + 2].get()));
+			p.transitionTime = transitionTime.has_value() ? transitionTime.value() : 1.0f;
+		}
+
+		Animation::GraphManager::GetSingleton()->StartSequence(actor, std::move(phases));
+	}
+
+	void ProcessAdvanceSeqCommand(uint64_t idxStart = 1, bool verbose = true)
+	{
+		if (args.size() < idxStart + 1) {
+			return;
+		}
+
+		auto actor = ActorStrOrSelection(idxStart + 1, verbose);
+		if (!actor) {
+			return;
+		}
+
+		bool smooth = Util::String::ToLower(args[idxStart]) == "true";
+		Animation::GraphManager::GetSingleton()->AdvanceSequence(actor, smooth);
+	}
+
 	void ProcessSilentCommand()
 	{
 		if (args.size() < 2) {
@@ -220,6 +263,10 @@ namespace Commands::NAFCommand
 			ProcessSyncCommand(2);
 		} else if (type == "stopsync") {
 			ProcessStopSyncCommand(2, false);
+		} else if (type == "startseq") {
+			ProcessStartSeqCommand(2, false);
+		} else if (type == "advseq") {
+			ProcessAdvanceSeqCommand(2, false);
 		}
 	}
 
@@ -252,6 +299,10 @@ namespace Commands::NAFCommand
 			ProcessOptimizeCommand();
 		} else if (type == "playk") {
 			ProcessPlayCommand(1, true, true);
+		} else if (type == "startseq") {
+			ProcessStartSeqCommand();
+		} else if (type == "advseq") {
+			ProcessAdvanceSeqCommand();
 		} else {
 			ShowHelp();
 		}
@@ -289,8 +340,6 @@ namespace Commands::NAFCommand
 				break;
 			}
 		}
-
-		auto gm = Animation::GraphManager::GetSingleton();
 
 		const auto StartFile = [](const std::filesystem::path& a_file) {
 			Animation::GraphManager::GetSingleton()->LoadAndStartAnimation(lastActor, a_file.lexically_relative(Util::String::GetDataPath()).generic_string());
