@@ -9,19 +9,17 @@ namespace Animation
 		currentPhase = phases.begin();
 	}
 
-	bool Sequencer::Update()
+	void Sequencer::Update()
 	{
 		if (owner->generator->rootResetRequired || (flags.all(FLAG::kForceAdvance) && flags.none(FLAG::kSmoothAdvance))) {
 			if (loopsRemaining == 0 || flags.all(FLAG::kForceAdvance)) {
 				owner->generator->rootResetRequired = false;
 				owner->generator->localTime = (owner->generator->duration - 0.0001f);
 				AdvancePhase();
-				return true;
 			} else if (loopsRemaining > 0) {
 				loopsRemaining--;
 			}
 		}
-		return false;
 	}
 
 	void Sequencer::OnAttachedToGraph(Graph* a_graph)
@@ -48,11 +46,11 @@ namespace Animation
 		owner->flags.reset(Graph::FLAGS::kLoadingSequencerAnimation);
 
 		if (!a_anim) {
-			owner->DetachSequencer();
+			Exit();
 			return true;
 		}
 
-		nextAnim = a_anim;
+		loadedAnim = a_anim;
 		bool wasPaused = flags.all(FLAG::kPausedForLoading);
 		flags.reset(FLAG::kPausedForLoading, FLAG::kLoadingNextAnim);
 
@@ -65,20 +63,15 @@ namespace Animation
 
 	void Sequencer::LoadNextAnimation()
 	{
-		nextAnim = nullptr;
+		loadedAnim = nullptr;
 
-		auto next = std::next(currentPhase);
-		if (next == phases.end()) {
-			if (flags.all(FLAG::kLoop)) {
-				next = phases.begin();
-			} else {
-				return;
-			}
-		}
+		auto next = GetNextPhase();
+		if (!next.has_value())
+			return;
 		
 		flags.set(FLAG::kLoadingNextAnim);
-		loadingFile = next->file;
-		FileManager::GetSingleton()->RequestAnimation(next->file, owner->skeleton, owner->weak_from_this());
+		loadingFile = next.value()->file;
+		FileManager::GetSingleton()->RequestAnimation(next.value()->file, owner->skeleton, owner->weak_from_this());
 	}
 
 	void Sequencer::AdvancePhase(bool a_init)
@@ -86,34 +79,82 @@ namespace Animation
 		flags.reset(FLAG::kForceAdvance, FLAG::kSmoothAdvance);
 
 		if (!a_init) {
-			auto next = std::next(currentPhase);
-			if (next == phases.end()) {
-				if (flags.all(FLAG::kLoop)) {
-					currentPhase = phases.begin();
-				} else {
-					owner->DetachSequencer();
-					return;
-				}
+			auto next = GetNextPhase();
+			if (next.has_value()) {
+				currentPhase = next.value();
 			} else {
-				currentPhase = next;
+				Exit();
+				return;
 			}
 		}
 
 		loopsRemaining = currentPhase->loopCount;
 
-		if (nextAnim) {
-			auto gen = std::make_unique<LinearClipGenerator>();
-			gen->anim = nextAnim;
-			gen->duration = nextAnim->data->duration();
-			owner->StartTransition(std::move(gen), currentPhase->transitionTime);
-			LoadNextAnimation();
+		if (loadedAnim) {
+			TransitionToLoadedAnimation();
 		} else {
-			flags.set(FLAG::kPausedForLoading);
-			if (owner->generator) {
-				owner->generator->paused = true;
-			}
-			loadingFile = currentPhase->file;
-			FileManager::GetSingleton()->RequestAnimation(currentPhase->file, owner->skeleton, owner->weak_from_this());
+			SpotLoadCurrentAnimation();
 		}
+	}
+
+	std::optional<Sequencer::phases_iterator> Sequencer::GetNextPhase()
+	{
+		auto next = std::next(currentPhase);
+		if (next == phases.end()) {
+			if (flags.all(FLAG::kLoop)) {
+				return phases.begin();
+			} else {
+				return std::nullopt;
+			}
+		} else {
+			return next;
+		}
+	}
+
+	void Sequencer::SetPhase(size_t idx)
+	{
+		if (idx >= phases.size())
+			return;
+
+		flags.reset(FLAG::kForceAdvance, FLAG::kSmoothAdvance);
+		auto next = GetNextPhase();
+		currentPhase = phases.begin() + idx;
+
+		loopsRemaining = currentPhase->loopCount;
+
+		if (loadedAnim && next.has_value() && next.value() == currentPhase) {
+			TransitionToLoadedAnimation();
+		} else {
+			SpotLoadCurrentAnimation();
+		}
+	}
+
+	void Sequencer::TransitionToLoadedAnimation()
+	{
+		auto gen = std::make_unique<LinearClipGenerator>();
+		gen->anim = loadedAnim;
+		gen->duration = loadedAnim->data->duration();
+		owner->StartTransition(std::move(gen), currentPhase->transitionTime);
+		LoadNextAnimation();
+	}
+
+	void Sequencer::SpotLoadCurrentAnimation()
+	{
+		flags.set(FLAG::kPausedForLoading);
+		if (owner->generator) {
+			owner->generator->paused = true;
+		}
+		loadingFile = currentPhase->file;
+		FileManager::GetSingleton()->RequestAnimation(currentPhase->file, owner->skeleton, owner->weak_from_this());
+	}
+
+	void Sequencer::Exit()
+	{
+		if (owner->generator) {
+			owner->generator->rootResetRequired = false;
+			owner->generator->localTime = (owner->generator->duration - 0.0001f);
+			owner->generator->paused = true;
+		}
+		owner->DetachSequencer();
 	}
 }

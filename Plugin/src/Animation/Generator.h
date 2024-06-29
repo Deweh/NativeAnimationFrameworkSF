@@ -24,6 +24,7 @@ namespace Animation
 		virtual void SetOutput(const ozz::span<ozz::math::SoaTransform>& span);
 		virtual void SetContext(ozz::animation::SamplingJob::Context* ctxt);
 		virtual void OnDetaching();
+		virtual void AdvanceTime(float deltaTime);
 
 		virtual ~Generator() = default;
 	};
@@ -37,6 +38,7 @@ namespace Animation
 		virtual void Generate(float deltaTime) override;
 		virtual bool HasFaceAnimation() override;
 		virtual void SetFaceMorphData(Face::MorphData* morphData) override;
+		virtual void AdvanceTime(float deltaTime) override;
 		virtual ~LinearClipGenerator() = default;
 	};
 

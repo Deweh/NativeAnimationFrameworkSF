@@ -36,14 +36,19 @@ namespace Animation
 		phases_iterator currentPhase;
 		phases_vector phases;
 		Graph* owner;
-		std::shared_ptr<OzzAnimation> nextAnim = nullptr;
+		std::shared_ptr<OzzAnimation> loadedAnim = nullptr;
 		FileID loadingFile;
 
-		bool Update();
+		void Update();
 		void OnAttachedToGraph(Graph* a_graph);
 		bool OnAnimationRequested(const FileID& a_id);
 		bool OnAnimationReady(const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim);
 		void LoadNextAnimation();
 		void AdvancePhase(bool a_init = false);
+		std::optional<phases_iterator> GetNextPhase();
+		void SetPhase(size_t idx);
+		void TransitionToLoadedAnimation();
+		void SpotLoadCurrentAnimation();
+		void Exit();
 	};
 }

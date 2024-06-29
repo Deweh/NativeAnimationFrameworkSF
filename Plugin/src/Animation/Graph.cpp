@@ -148,35 +148,47 @@ namespace Animation
 			}
 		} else if (loadedRefData->data3D.get() != rootNode) {
 			GetSkeletonNodes(static_cast<RE::BGSFadeNode*>(loadedRefData->data3D.get()));
-		} else if (flags.all(FLAGS::kRequiresEyeTrackUpdate)) {
+		} else if (flags.any(FLAGS::kRequiresEyeTrackUpdate)) {
 			DisableEyeTracking();
 			flags.reset(FLAGS::kRequiresEyeTrackUpdate);
 		}
 		
 		if (rootNode != nullptr && generator != nullptr) {
+			generator->AdvanceTime(a_deltaTime);
+
+			if (sequencer != nullptr) {
+				sequencer->Update();
+			}
+
 			if (syncInst != nullptr) {
+				bool syncEnabled = true;
+				size_t sequencePhase = UINT64_MAX;
+
+				if (sequencer != nullptr) {
+					syncEnabled = sequencer->flags.none(Sequencer::FLAG::kPausedForLoading);
+					sequencePhase = std::distance(sequencer->phases.begin(), sequencer->currentPhase);
+				}
+
 				auto sOwner = syncInst->GetOwner();
 				if (sOwner == this) {
-					generator->Generate(a_deltaTime);
-					syncInst->NotifyOwnerUpdate(generator->localTime, rootTransform);
+					syncInst->NotifyOwnerUpdate(generator->localTime, rootTransform, syncEnabled, sequencePhase);
 				} else if (sOwner == nullptr) {
 					syncInst = nullptr;
-					generator->Generate(a_deltaTime);
-				} else {
+				} else if (syncEnabled) {
 					auto data = syncInst->NotifyGraphUpdate(this);
-					generator->localTime = data.time;
-					rootTransform = data.rootTransform;
-					generator->Generate(data.hasOwnerUpdated ? 0.0f : a_deltaTime);
+					if (sequencer != nullptr && sequencePhase != data.sequencePhase) {
+						sequencer->SetPhase(data.sequencePhase);
+					}
+					if (data.syncEnabled) {
+						generator->localTime = data.time + (data.hasOwnerUpdated ? 0.0f : a_deltaTime);
+						rootTransform = data.rootTransform;
+					}
 				}
-			} else {
-				generator->Generate(a_deltaTime);
 			}
 
-			if (sequencer && sequencer->Update()) {
-				generator->Generate(0.0f);
-			}
+			generator->Generate(0.0f);
 
-			if (flags.all(FLAGS::kTransitioning)) {
+			if (flags.any(FLAGS::kTransitioning)) {
 				UpdateTransition(a_deltaTime);
 				PushOutput(blendedPose);
 			} else {
@@ -240,7 +252,7 @@ namespace Animation
 		if (a_controlled && faceAnimData) {
 			if (faceMorphData) {
 				faceMorphData->lock()->BeginTween(a_transitionTime, faceAnimData);
-			} else if (!faceMorphData) {
+			} else {
 				faceMorphData = std::make_shared<Face::MorphData>();
 				Face::Manager::GetSingleton()->AttachMorphData(faceAnimData, faceMorphData, a_transitionTime);
 			}

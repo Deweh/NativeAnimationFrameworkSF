@@ -8,16 +8,11 @@ namespace Animation
 	void Generator::SetOutput(const ozz::span<ozz::math::SoaTransform>& span) { output = span; }
 	void Generator::SetContext(ozz::animation::SamplingJob::Context* ctxt) { context = ctxt; }
 	void Generator::OnDetaching() {}
+	void Generator::AdvanceTime(float deltaTime) { localTime += deltaTime; }
 
 	void LinearClipGenerator::Generate(float deltaTime)
 	{
-		if (!paused) {
-			localTime += deltaTime;
-			if (localTime > duration || localTime < 0.0f) {
-				localTime = std::fmodf(std::abs(localTime), duration);
-				rootResetRequired = true;
-			}
-		}
+		AdvanceTime(deltaTime);
 
 		ozz::animation::SamplingJob sampleJob;
 		sampleJob.animation = anim->data.get();
@@ -46,6 +41,17 @@ namespace Animation
 	void LinearClipGenerator::SetFaceMorphData(Face::MorphData* morphData)
 	{
 		faceMorphData = morphData;
+	}
+
+	void LinearClipGenerator::AdvanceTime(float deltaTime)
+	{
+		if (!paused) {
+			localTime += deltaTime;
+			if (localTime > duration || localTime < 0.0f) {
+				localTime = std::fmodf(std::abs(localTime), duration);
+				rootResetRequired = true;
+			}
+		}
 	}
 
 	void AdditiveGenerator::SetRestPose(const std::vector<ozz::math::SoaTransform>& pose)

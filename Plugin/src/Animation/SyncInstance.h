@@ -25,6 +25,8 @@ namespace Animation
 			Transform rootTransform;
 			float time = 0.0f;
 			std::vector<Graph*> updatedGraphs;
+			size_t sequencePhase = UINT64_MAX;
+			bool syncEnabled = true;
 		};
 
 		struct UpdateData
@@ -32,15 +34,15 @@ namespace Animation
 			Transform rootTransform;
 			float time;
 			bool hasOwnerUpdated;
+			size_t sequencePhase;
+			bool syncEnabled;
 		};
 
 		Util::Guarded<InstData> data;
 		
 		UpdateData NotifyGraphUpdate(Graph* a_grph);
-		void NotifyOwnerUpdate(float a_time, const Transform& a_rootTransform);
+		void NotifyOwnerUpdate(float a_time, const Transform& a_rootTransform, bool a_syncEnabled = true, size_t a_sequencePhase = UINT64_MAX);
 		Graph* GetOwner();
 		void SetOwner(Graph* a_grph);
-		bool ShouldSyncTime();
-		bool ShouldSyncRootTransform();
 	};
 }
