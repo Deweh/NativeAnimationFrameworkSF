@@ -164,8 +164,31 @@ namespace Serialization
 		};
 	}
 
-	std::vector<std::byte> GLTFExport::CreateOptimizedAsset(Animation::RawOzzAnimation* anim, const ozz::animation::Skeleton* skeleton)
+	std::vector<std::byte> GLTFExport::CreateOptimizedAsset(Animation::RawOzzAnimation* anim, const ozz::animation::Skeleton* skeleton, uint8_t level)
 	{
+		if (level > 0) {
+			float toleranceLevel = 1e-5;
+
+			switch (level) {
+			case 1:
+				toleranceLevel = 0.0f;
+				break;
+			case 2:
+				toleranceLevel = 1e-7f;
+				break;
+			case 3:
+				toleranceLevel = 1e-6f;
+				break;
+			}
+
+			ozz::unique_ptr<ozz::animation::offline::RawAnimation> tempAnim = ozz::make_unique<ozz::animation::offline::RawAnimation>();
+			ozz::animation::offline::AnimationOptimizer optimizer;
+			optimizer.setting.distance = 1.0f;
+			optimizer.setting.tolerance = toleranceLevel;
+			optimizer(*anim->data, *skeleton, tempAnim.get());
+			anim->data = std::move(tempAnim);
+		}
+
 		ExportUtil util;
 		auto& asset = util.asset;
 		util.Init(skeleton);

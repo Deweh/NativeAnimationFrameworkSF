@@ -158,11 +158,11 @@ namespace Commands::NAFCommand
 
 	void ProcessOptimizeCommand(uint64_t idxStart = 1, bool verbose = true)
 	{
-		if (args.size() < idxStart + 1) {
+		if (args.size() < idxStart + 2) {
 			return;
 		}
 
-		auto actor = ActorStrOrSelection(idxStart + 1, verbose);
+		auto actor = ActorStrOrSelection(idxStart + 2, verbose);
 		if (!actor)
 			return;
 
@@ -189,7 +189,9 @@ namespace Commands::NAFCommand
 		}
 
 		baseFile.reset();
-		auto optimizedAsset = Serialization::GLTFExport::CreateOptimizedAsset(rawAnim.get(), skele->data.get());
+		auto arg2Int = Util::String::StrToInt(std::string(args[idxStart + 1]));
+		int compressLevel = arg2Int.has_value() ? std::clamp(arg2Int.value(), 0, 255) : 0;
+		auto optimizedAsset = Serialization::GLTFExport::CreateOptimizedAsset(rawAnim.get(), skele->data.get(), static_cast<uint8_t>(compressLevel));
 
 		try {
 			zstr::ofstream file(filePath, std::ios::binary);
