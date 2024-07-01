@@ -46,7 +46,7 @@ namespace Animation
 		return &instance;
 	}
 
-	void FileManager::RequestAnimation(const FileID& a_id, const skeleton_t a_skeleton, std::weak_ptr<FileRequesterBase> a_requester)
+	void FileManager::RequestAnimation(const FileID& a_id, const std::string& a_skeleton, std::weak_ptr<FileRequesterBase> a_requester)
 	{
 		AnimID aID{ .file = a_id, .skeleton = a_skeleton };
 		if (auto anim = GetLoadedAnimation(aID); anim != nullptr) {
@@ -105,6 +105,15 @@ namespace Animation
 		}
 	}
 
+	void FileManager::GetAllLoadedAnimations(std::vector<std::pair<AnimID, std::weak_ptr<OzzAnimation>>>& a_animsOut)
+	{
+		a_animsOut.clear();
+		auto loaded = loadedAnimations.lock();
+		for (auto& iter : *loaded) {
+			a_animsOut.emplace_back(iter.first, iter.second.shared_handle);
+		}
+	}
+
 	void FileManager::ProcessRequests()
 	{
 		workCV.notify_one();
@@ -137,6 +146,7 @@ namespace Animation
 
 	std::shared_ptr<OzzAnimation> FileManager::DoLoadAnimation(const AnimID& a_id)
 	{
+		auto start = Util::Timing::HighResTimeNow();
 		auto file = Serialization::GLTFImport::LoadGLTF(Util::String::GetDataPath() / a_id.file.QPath());
 		if (!file) {
 			return nullptr;
@@ -162,16 +172,10 @@ namespace Animation
 			}
 		}
 
-		std::shared_ptr<const OzzSkeleton> skele = nullptr;
-		std::visit([&skele](auto&& arg) {
-			using T = std::decay_t<decltype(arg)>;
-			if constexpr (std::is_same_v<T, std::string>)
-				skele = Settings::GetSkeleton(arg);
-			else if constexpr (std::is_same_v<T, std::shared_ptr<const OzzSkeleton>>)
-				skele = arg;
-		}, a_id.skeleton);
-
-		auto result = Serialization::GLTFImport::CreateRuntimeAnimation(file.get(), storedAnim, skele->data.get());
+		auto result = Serialization::GLTFImport::CreateRuntimeAnimation(file.get(), storedAnim, Settings::GetSkeleton(a_id.skeleton)->data.get());
+		if (result) {
+			result->loadTime = Util::Timing::HighResTimeDiffMilliSec(start);
+		}
 		return result;
 	}
 

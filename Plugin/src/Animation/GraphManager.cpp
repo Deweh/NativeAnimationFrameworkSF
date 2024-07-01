@@ -203,6 +203,15 @@ namespace Animation
 		}
 	}
 
+	void GraphManager::GetAllGraphs(std::vector<std::pair<RE::TESObjectREFR*, std::weak_ptr<Graph>>>& a_refsOut)
+	{
+		std::shared_lock ls{ stateLock };
+		a_refsOut.clear();
+		for (auto& iter : state->graphMap) {
+			a_refsOut.emplace_back(static_cast<RE::TESObjectREFR*>(iter.first), iter.second);
+		}
+	}
+
 	GraphManager& graphManager = *GraphManager::GetSingleton();
 	GraphUpdateFunc OriginalGraphUpdate;
 

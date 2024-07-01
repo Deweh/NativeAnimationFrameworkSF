@@ -33,12 +33,10 @@ namespace Animation
 	class FileManager
 	{
 	public:
-		using skeleton_t = std::variant<std::string, std::shared_ptr<const OzzSkeleton>>;
-
 		struct AnimID
 		{
 			FileID file;
-			skeleton_t skeleton;
+			std::string skeleton;
 
 			bool operator==(const AnimID& other) const;
 			bool operator<(const AnimID& other) const;
@@ -64,10 +62,11 @@ namespace Animation
 
 		FileManager();
 		static FileManager* GetSingleton();
-		void RequestAnimation(const FileID& a_id, const skeleton_t a_skeleton, std::weak_ptr<FileRequesterBase> a_requester);
+		void RequestAnimation(const FileID& a_id, const std::string& a_skeleton, std::weak_ptr<FileRequesterBase> a_requester);
 		bool CancelAnimationRequest(const FileID& a_id, std::weak_ptr<FileRequesterBase> a_requester);
 		std::shared_ptr<OzzAnimation> DemandAnimation(const FileID& a_id, const std::string_view a_skeleton);
 		void OnAnimationDestroyed(OzzAnimation* a_anim);
+		void GetAllLoadedAnimations(std::vector<std::pair<AnimID, std::weak_ptr<OzzAnimation>>>& a_animsOut);
 
 	protected:
 		void ProcessRequests();

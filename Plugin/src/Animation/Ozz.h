@@ -24,6 +24,9 @@ namespace Animation
 	{
 		ozz::unique_ptr<ozz::animation::Animation> data = nullptr;
 		std::unique_ptr<OzzFaceAnimation> faceData = nullptr;
+		float loadTime = -1.0f;
+
+		size_t GetSize();
 
 		~OzzAnimation() noexcept;
 	};
@@ -33,5 +36,6 @@ namespace Animation
 		ozz::unique_ptr<ozz::animation::Skeleton> data = nullptr;
 		size_t lEyeIdx = UINT64_MAX;
 		size_t rEyeIdx = UINT64_MAX;
+		std::string name;
 	};
 }

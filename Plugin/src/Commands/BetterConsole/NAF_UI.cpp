@@ -1,0 +1,167 @@
+#define BETTERAPI_IMPLEMENTATION
+#include "betterapi.h"
+#include "Util/String.h"
+#include "Animation/GraphManager.h"
+#include "Animation/Graph.h"
+#include "Animation/FileManager.h"
+
+namespace
+{
+	static const struct better_api_t* API = NULL;
+	static const struct simple_draw_t* UI = NULL;
+
+	struct ActorData
+	{
+		std::string displayText;
+	};
+
+	static std::vector<std::pair<RE::TESObjectREFR*, std::weak_ptr<Animation::Graph>>> actorsList;
+	static uint32_t selectedActor = 0;
+
+	inline void DrawActorGraphInfo(std::pair<RE::TESObjectREFR*, std::weak_ptr<Animation::Graph>>& a_actor) {
+		UI->Text("Actor: %s (%08X)", a_actor.first->GetDisplayFullName(), a_actor.first->formID);
+
+		if (UI->Button("Stop Animation")) {
+			Animation::GraphManager::GetSingleton()->DetachGenerator(static_cast<RE::Actor*>(a_actor.first), 1.0f);
+		}
+
+		auto g = a_actor.second.lock();
+		if (!g)
+			return;
+
+		std::unique_lock l{ g->lock };
+
+		UI->Separator();
+		UI->Text("Generator");
+		UI->Separator();
+
+		if (g->generator) {
+			UI->Text("Has Generator: True");
+			UI->DragFloat("Current Time (Seconds)", &g->generator->localTime, 0.0f, g->generator->duration);
+			UI->Checkbox("Paused", &g->generator->paused);
+		} else {
+			UI->Text("Has Generator: False");
+		}
+
+		UI->Separator();
+		UI->Text("Sequence");
+		UI->Separator();
+
+		if (g->sequencer) {
+			UI->Text("Has Sequence: True");
+			UI->DragInt("Loops Remaining in Phase", &g->sequencer->loopsRemaining, -1, 50);
+			int curPhase = static_cast<int32_t>(std::distance(g->sequencer->phases.begin(), g->sequencer->currentPhase));
+			if (UI->DragInt("Current Phase", &curPhase, 0, static_cast<int32_t>(g->sequencer->phases.size() - 1))) {
+				g->sequencer->SetPhase(curPhase);
+			}
+			UI->Text("Preloading Next Animation: %s", g->sequencer->flags.any(Animation::Sequencer::FLAG::kLoadingNextAnim) ? "True" : "False");
+			UI->Separator();
+			UI->Text("Current Phase Data");
+			UI->Separator();
+			auto& phaseIter = g->sequencer->currentPhase;
+
+			UI->Text("File Path: %s", phaseIter->file.QPath().data());
+			UI->Text("Total Loops: %i", phaseIter->loopCount);
+			UI->Text("Transition Time: %.2f", phaseIter->transitionTime);
+		} else {
+			UI->Text("Has Sequence: False");
+		}
+	}
+
+	inline void DrawActorsTab()
+	{
+		Animation::GraphManager::GetSingleton()->GetAllGraphs(actorsList);
+
+		UI->VboxTop(1.0f, 0.0f);
+		UI->HBoxLeft(0.3f, 20.0f);
+		UI->SelectionList(&selectedActor, nullptr, static_cast<uint32_t>(actorsList.size()),
+			[](const void* userdata, uint32_t index, char* out_buffer, uint32_t out_buffer_size) -> const char* {
+				auto& ele = actorsList[index];
+				std::snprintf(out_buffer, out_buffer_size, "%s (%08X)", ele.first->GetDisplayFullName(), ele.first->formID);
+				return out_buffer;
+			});
+		UI->HBoxRight();
+
+		if (selectedActor < actorsList.size()) {
+			DrawActorGraphInfo(actorsList[selectedActor]);
+		}
+		UI->HBoxEnd();
+		UI->VBoxEnd();
+	}
+
+	static std::vector<std::pair<Animation::FileManager::AnimID, std::weak_ptr<Animation::OzzAnimation>>> animationsList;
+	static uint32_t selectedAnim = 0;
+	bool animListNeedsUpdating = true;
+
+	inline void DrawAnimInfo(const std::pair<Animation::FileManager::AnimID, std::weak_ptr<Animation::OzzAnimation>>& a_anim) {
+		UI->Text("Animation: %s (%s)", a_anim.first.file.QPath().data(), a_anim.first.skeleton.c_str());
+
+		auto animPtr = a_anim.second.lock();
+		if (!animPtr)
+			return;
+
+		size_t byteSize = animPtr->GetSize();
+		if (byteSize < 1024) {
+			UI->Text("In-Memory Size: %.2f KB", static_cast<float>(byteSize) / 1024.0f);
+		} else {
+			UI->Text("In-Memory Size: %u KB", byteSize / 1024);
+		}
+
+		UI->Text("Time-to-Load: %.3f ms", animPtr->loadTime);
+		UI->Text("Has Face Animation: %s", animPtr->faceData ? "True" : "False");
+	}
+
+	inline void DrawAnimationsTab()
+	{
+		if (animListNeedsUpdating) {
+			Animation::FileManager::GetSingleton()->GetAllLoadedAnimations(animationsList);
+			animListNeedsUpdating = false;
+		}
+
+		UI->VboxTop(1.0f, 0.0f);
+		UI->HBoxLeft(0.5f, 20.0f);
+		UI->SelectionList(&selectedAnim, nullptr, static_cast<uint32_t>(animationsList.size()),
+			[](const void* userdata, uint32_t index, char* out_buffer, uint32_t out_buffer_size) -> const char* {
+				auto& ele = animationsList[index];
+				std::snprintf(out_buffer, out_buffer_size, "%s (%s)", ele.first.file.QPath().data(), ele.first.skeleton.c_str());
+				return out_buffer;
+			});
+		UI->HBoxRight();
+
+		if (UI->Button("Refresh List")) {
+			animListNeedsUpdating = true;
+		}
+		UI->Separator();
+
+		if (selectedAnim < animationsList.size()) {
+			DrawAnimInfo(animationsList[selectedAnim]);
+		}
+		UI->HBoxEnd();
+		UI->VBoxEnd();
+	}
+
+	static std::array<const char*, 2> tabNames{ "Managed Actors", "Loaded Animations" };
+	static int activeTab = 0;
+
+	void OnUIDraw(void*)
+	{
+		UI->TabBar(tabNames.data(), tabNames.size(), &activeTab);
+		switch (activeTab) {
+		case 0:
+			DrawActorsTab();
+			break;
+		case 1:
+			DrawAnimationsTab();
+			break;
+		}
+	}
+}
+
+static int OnBetterConsoleLoad(const struct better_api_t* better_api)
+{
+	API = better_api;
+	UI = API->SimpleDraw;
+	RegistrationHandle handle = API->Callback->RegisterMod("NativeAnimationFrameworkSF");
+	API->Callback->RegisterDrawCallback(handle, &OnUIDraw);
+	return 0;
+}

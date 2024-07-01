@@ -156,6 +156,36 @@ namespace Commands::NAFCommand
 		Animation::GraphManager::GetSingleton()->StopSyncing(actor);
 	}
 
+	bool DoOptimize(const std::string_view filePath, const std::string& savePath, uint8_t compressLevel, ozz::animation::Skeleton* skele, bool verbose = true) {
+		auto baseFile = Serialization::GLTFImport::LoadGLTF(filePath);
+		if (!baseFile || baseFile->asset.animations.empty()) {
+			if (verbose)
+				itfc->PrintLn("Failed to load file.");
+			return false;
+		}
+
+		auto rawAnim = Serialization::GLTFImport::CreateRawAnimation(baseFile.get(), &baseFile->asset.animations[0], skele);
+		if (!rawAnim) {
+			if (verbose)
+				itfc->PrintLn("Failed to load anim.");
+			return false;
+		}
+
+		baseFile.reset();
+		auto optimizedAsset = Serialization::GLTFExport::CreateOptimizedAsset(rawAnim.get(), skele, compressLevel);
+
+		try {
+			zstr::ofstream file(savePath, std::ios::binary);
+			file.write(reinterpret_cast<char*>(optimizedAsset.data()), optimizedAsset.size());
+		} catch (const std::exception&) {
+			if (verbose)
+				itfc->PrintLn("Failed to save file.");
+			return false;
+		}
+
+		return true;
+	}
+
 	void ProcessOptimizeCommand(uint64_t idxStart = 1, bool verbose = true)
 	{
 		if (args.size() < idxStart + 2) {
@@ -174,34 +204,21 @@ namespace Commands::NAFCommand
 		}
 
 		std::string filePath = (Util::String::GetDataPath() / args[idxStart].get()).generic_string();
-		auto baseFile = Serialization::GLTFImport::LoadGLTF(filePath);
-		if (!baseFile || baseFile->asset.animations.empty()) {
-			if (verbose)
-				itfc->PrintLn("Failed to load file.");
-			return;
-		}
+		
+		if (args[idxStart + 1].get() == "test") {
+			std::string savePath = std::filesystem::path(filePath).replace_extension().generic_string();
 
-		auto rawAnim = Serialization::GLTFImport::CreateRawAnimation(baseFile.get(), &baseFile->asset.animations[0], skele->data.get());
-		if (!rawAnim) {
-			if (verbose)
-				itfc->PrintLn("Failed to load anim.");
-			return;
+			for (uint8_t i = 0; i < 5; i++) {
+				if (!DoOptimize(filePath, std::format("{}_{}.glb", savePath, i), i, skele->data.get(), true)) {
+					break;
+				}
+			}
+		} else {
+			auto arg2Int = Util::String::StrToInt(std::string(args[idxStart + 1]));
+			int compressLevel = arg2Int.has_value() ? std::clamp(arg2Int.value(), 0, 255) : 0;
+			DoOptimize(filePath, filePath, static_cast<uint8_t>(compressLevel), skele->data.get(), true);
 		}
-
-		baseFile.reset();
-		auto arg2Int = Util::String::StrToInt(std::string(args[idxStart + 1]));
-		int compressLevel = arg2Int.has_value() ? std::clamp(arg2Int.value(), 0, 255) : 0;
-		auto optimizedAsset = Serialization::GLTFExport::CreateOptimizedAsset(rawAnim.get(), skele->data.get(), static_cast<uint8_t>(compressLevel));
-
-		try {
-			zstr::ofstream file(filePath, std::ios::binary);
-			file.write(reinterpret_cast<char*>(optimizedAsset.data()), optimizedAsset.size());
-		}
-		catch (const std::exception&) {
-			if (verbose)
-				itfc->PrintLn("Failed to save file.");
-			return;
-		}
+		
 
 		if (verbose)
 			itfc->PrintLn("Done.");

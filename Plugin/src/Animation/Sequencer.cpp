@@ -71,7 +71,7 @@ namespace Animation
 		
 		flags.set(FLAG::kLoadingNextAnim);
 		loadingFile = next.value()->file;
-		FileManager::GetSingleton()->RequestAnimation(next.value()->file, owner->skeleton, owner->weak_from_this());
+		FileManager::GetSingleton()->RequestAnimation(next.value()->file, owner->skeleton->name, owner->weak_from_this());
 	}
 
 	void Sequencer::AdvancePhase(bool a_init)
@@ -113,7 +113,7 @@ namespace Animation
 
 	void Sequencer::SetPhase(size_t idx)
 	{
-		if (idx >= phases.size())
+		if (idx >= phases.size() || std::distance(phases.begin(), currentPhase) == idx)
 			return;
 
 		flags.reset(FLAG::kForceAdvance, FLAG::kSmoothAdvance);
@@ -145,7 +145,7 @@ namespace Animation
 			owner->generator->paused = true;
 		}
 		loadingFile = currentPhase->file;
-		FileManager::GetSingleton()->RequestAnimation(currentPhase->file, owner->skeleton, owner->weak_from_this());
+		FileManager::GetSingleton()->RequestAnimation(currentPhase->file, owner->skeleton->name, owner->weak_from_this());
 	}
 
 	void Sequencer::Exit()

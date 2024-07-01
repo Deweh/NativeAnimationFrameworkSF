@@ -63,6 +63,7 @@ namespace Settings
 						}
 					}
 
+					sharedSkele->name = sName;
 					skeletons[sName] = sharedSkele;
 					INFO("Loaded {} skeleton.", sName);
 				}

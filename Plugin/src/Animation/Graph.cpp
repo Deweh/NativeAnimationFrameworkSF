@@ -142,8 +142,8 @@ namespace Animation
 		auto dataLock = target->loadedData.lock_write();
 		auto& loadedRefData = *dataLock;
 
-		if (loadedRefData == nullptr || loadedRefData->data3D.get() == nullptr) {
-			if (rootNode != nullptr) {
+		if (!loadedRefData || !loadedRefData->data3D.get()) {
+			if (rootNode) {
 				GetSkeletonNodes(nullptr);
 			}
 		} else if (loadedRefData->data3D.get() != rootNode) {
@@ -152,48 +152,49 @@ namespace Animation
 			DisableEyeTracking();
 			flags.reset(FLAGS::kRequiresEyeTrackUpdate);
 		}
-		
-		if (rootNode != nullptr && generator != nullptr) {
-			generator->AdvanceTime(a_deltaTime);
 
-			if (sequencer != nullptr) {
-				sequencer->Update();
+		if (!rootNode || !generator) {
+			return;
+		}
+
+		generator->AdvanceTime(a_deltaTime);
+		if (sequencer) {
+			sequencer->Update();
+		}
+
+		if (syncInst) {
+			bool syncEnabled = true;
+			size_t sequencePhase = UINT64_MAX;
+
+			if (sequencer) {
+				syncEnabled = sequencer->flags.none(Sequencer::FLAG::kPausedForLoading);
+				sequencePhase = std::distance(sequencer->phases.begin(), sequencer->currentPhase);
 			}
 
-			if (syncInst != nullptr) {
-				bool syncEnabled = true;
-				size_t sequencePhase = UINT64_MAX;
-
-				if (sequencer != nullptr) {
-					syncEnabled = sequencer->flags.none(Sequencer::FLAG::kPausedForLoading);
-					sequencePhase = std::distance(sequencer->phases.begin(), sequencer->currentPhase);
+			auto sOwner = syncInst->GetOwner();
+			if (sOwner == this) {
+				syncInst->NotifyOwnerUpdate(generator->localTime, rootTransform, syncEnabled, sequencePhase);
+			} else if (!sOwner) {
+				syncInst = nullptr;
+			} else if (syncEnabled) {
+				auto data = syncInst->NotifyGraphUpdate(this);
+				if (sequencer && sequencePhase != data.sequencePhase) {
+					sequencer->SetPhase(data.sequencePhase);
 				}
-
-				auto sOwner = syncInst->GetOwner();
-				if (sOwner == this) {
-					syncInst->NotifyOwnerUpdate(generator->localTime, rootTransform, syncEnabled, sequencePhase);
-				} else if (sOwner == nullptr) {
-					syncInst = nullptr;
-				} else if (syncEnabled) {
-					auto data = syncInst->NotifyGraphUpdate(this);
-					if (sequencer != nullptr && sequencePhase != data.sequencePhase) {
-						sequencer->SetPhase(data.sequencePhase);
-					}
-					if (data.syncEnabled) {
-						generator->localTime = data.time + (data.hasOwnerUpdated ? 0.0f : a_deltaTime);
-						rootTransform = data.rootTransform;
-					}
+				if (data.syncEnabled) {
+					generator->localTime = data.time + (data.hasOwnerUpdated ? 0.0f : a_deltaTime);
+					rootTransform = data.rootTransform;
 				}
 			}
+		}
 
-			generator->Generate(0.0f);
+		generator->Generate(0.0f);
 
-			if (flags.any(FLAGS::kTransitioning)) {
-				UpdateTransition(a_deltaTime);
-				PushOutput(blendedPose);
-			} else {
-				PushOutput(generatedPose);
-			}
+		if (flags.any(FLAGS::kTransitioning)) {
+			UpdateTransition(a_deltaTime);
+			PushOutput(blendedPose);
+		} else {
+			PushOutput(generatedPose);
 		}
 	}
 

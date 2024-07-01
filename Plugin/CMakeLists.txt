@@ -81,7 +81,7 @@ add_library(
  "src/Util/Timing.cpp"
  "src/Serialization/GLTFExport.cpp"
  "src/Tasks/Input.cpp"
- "src/Animation/Sequencer.cpp")
+ "src/Animation/Sequencer.cpp" "src/Commands/BetterConsole/NAF_UI.cpp")
 
 # copy to Starfield directory
 set(STARFIELD_PATH "C:/Program Files (x86)/Steam/steamapps/common/Starfield/Data/SFSE/Plugins")
