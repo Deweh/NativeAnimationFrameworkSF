@@ -1,5 +1,6 @@
 #pragma once
 #include "Util/General.h"
+#include "Util/Event.h"
 
 namespace Animation
 {
@@ -30,7 +31,14 @@ namespace Animation
 		virtual ~FileRequesterBase() noexcept = default;
 	};
 
-	class FileManager
+	struct FileLoadUnloadEvent
+	{
+		FileID file;
+		std::string skeleton;
+		bool loaded;
+	};
+
+	class FileManager : public Util::Event::Dispatcher<FileLoadUnloadEvent>
 	{
 	public:
 		struct AnimID

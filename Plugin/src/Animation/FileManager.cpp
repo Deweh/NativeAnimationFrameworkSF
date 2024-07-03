@@ -99,6 +99,13 @@ namespace Animation
 		auto loaded = loadedAnimations.lock();
 		for (auto iter = loaded->begin(); iter != loaded->end(); iter++) {
 			if (iter->second.raw == a_anim) {
+				SFSE::GetTaskInterface()->AddTask([id = iter->first, inst = this]() {
+					inst->SendEvent({
+						.file = id.file,
+						.skeleton = id.skeleton,
+						.loaded = false
+					});
+				});
 				loaded->erase(iter);
 				return;
 			}
@@ -202,6 +209,13 @@ namespace Animation
 				iter++;
 			}
 		}
+		SFSE::GetTaskInterface()->AddTask([id = a_id, inst = this]() {
+			inst->SendEvent({
+				.file = id.file,
+				.skeleton = id.skeleton,
+				.loaded = true
+			});
+		});
 		return insertedAnim;
 	}
 

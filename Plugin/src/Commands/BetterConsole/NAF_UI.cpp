@@ -10,13 +10,46 @@ namespace
 	static const struct better_api_t* API = NULL;
 	static const struct simple_draw_t* UI = NULL;
 
-	struct ActorData
+	template <typename T>
+	struct ListTabData
 	{
-		std::string displayText;
+		std::vector<T>::iterator GetSelectedItem()
+		{
+			if (selectedIdx < list.size()) {
+				return list.begin() + selectedIdx;
+			} else {
+				return list.end();
+			}
+		}
+
+		std::vector<T> list;
+		uint32_t selectedIdx = 0;
 	};
 
-	static std::vector<std::pair<RE::TESObjectREFR*, std::weak_ptr<Animation::Graph>>> actorsList;
-	static uint32_t selectedActor = 0;
+	struct ActorsTabData :
+		public ListTabData<std::pair<RE::TESObjectREFR*, std::weak_ptr<Animation::Graph>>>
+	{
+	};
+
+	struct AnimationsTabData : 
+		public ListTabData<std::pair<Animation::FileManager::AnimID, std::weak_ptr<Animation::OzzAnimation>>>,
+		public Util::Event::Listener<Animation::FileLoadUnloadEvent>
+	{
+		AnimationsTabData()
+		{
+			RegisterForEvent(Animation::FileManager::GetSingleton());
+		}
+
+		virtual ListenerStatus OnEvent(Animation::FileLoadUnloadEvent& a_event) {
+			listNeedsUpdate = true;
+			return ListenerStatus::kUnchanged;
+		}
+
+		std::atomic<bool> listNeedsUpdate = true;
+	};
+
+	AnimationsTabData animTab;
+	ActorsTabData actorTab;
 
 	inline void DrawActorGraphInfo(std::pair<RE::TESObjectREFR*, std::weak_ptr<Animation::Graph>>& a_actor) {
 		UI->Text("Actor: %s (%08X)", a_actor.first->GetDisplayFullName(), a_actor.first->formID);
@@ -70,28 +103,24 @@ namespace
 
 	inline void DrawActorsTab()
 	{
-		Animation::GraphManager::GetSingleton()->GetAllGraphs(actorsList);
+		Animation::GraphManager::GetSingleton()->GetAllGraphs(actorTab.list);
 
 		UI->VboxTop(1.0f, 0.0f);
 		UI->HBoxLeft(0.3f, 20.0f);
-		UI->SelectionList(&selectedActor, nullptr, static_cast<uint32_t>(actorsList.size()),
+		UI->SelectionList(&actorTab.selectedIdx, nullptr, static_cast<uint32_t>(actorTab.list.size()),
 			[](const void* userdata, uint32_t index, char* out_buffer, uint32_t out_buffer_size) -> const char* {
-				auto& ele = actorsList[index];
+				auto& ele = actorTab.list[index];
 				std::snprintf(out_buffer, out_buffer_size, "%s (%08X)", ele.first->GetDisplayFullName(), ele.first->formID);
 				return out_buffer;
 			});
 		UI->HBoxRight();
 
-		if (selectedActor < actorsList.size()) {
-			DrawActorGraphInfo(actorsList[selectedActor]);
+		if (auto iter = actorTab.GetSelectedItem(); iter != actorTab.list.end()) {
+			DrawActorGraphInfo(*iter);
 		}
 		UI->HBoxEnd();
 		UI->VBoxEnd();
 	}
-
-	static std::vector<std::pair<Animation::FileManager::AnimID, std::weak_ptr<Animation::OzzAnimation>>> animationsList;
-	static uint32_t selectedAnim = 0;
-	bool animListNeedsUpdating = true;
 
 	inline void DrawAnimInfo(const std::pair<Animation::FileManager::AnimID, std::weak_ptr<Animation::OzzAnimation>>& a_anim) {
 		UI->Text("Animation: %s (%s)", a_anim.first.file.QPath().data(), a_anim.first.skeleton.c_str());
@@ -109,32 +138,40 @@ namespace
 
 		UI->Text("Time-to-Load: %.3f ms", animPtr->loadTime);
 		UI->Text("Has Face Animation: %s", animPtr->faceData ? "True" : "False");
+		UI->Text("Use Count: %i", animPtr.use_count() - 1);
 	}
 
 	inline void DrawAnimationsTab()
 	{
-		if (animListNeedsUpdating) {
-			Animation::FileManager::GetSingleton()->GetAllLoadedAnimations(animationsList);
-			animListNeedsUpdating = false;
+		if (animTab.listNeedsUpdate) {
+			std::optional<Animation::FileManager::AnimID> selectedId = std::nullopt;
+			if (auto iter = animTab.GetSelectedItem(); iter != animTab.list.end()) {
+				selectedId = iter->first;
+			}
+			Animation::FileManager::GetSingleton()->GetAllLoadedAnimations(animTab.list);
+			if (selectedId.has_value()) {
+				for (auto iter = animTab.list.begin(); iter != animTab.list.end(); iter++) {
+					if (iter->first == selectedId.value()) {
+						animTab.selectedIdx = static_cast<uint32_t>(std::distance(animTab.list.begin(), iter));
+						break;
+					}
+				}
+			}
+			animTab.listNeedsUpdate = false;
 		}
 
 		UI->VboxTop(1.0f, 0.0f);
 		UI->HBoxLeft(0.5f, 20.0f);
-		UI->SelectionList(&selectedAnim, nullptr, static_cast<uint32_t>(animationsList.size()),
+		UI->SelectionList(&animTab.selectedIdx, nullptr, static_cast<uint32_t>(animTab.list.size()),
 			[](const void* userdata, uint32_t index, char* out_buffer, uint32_t out_buffer_size) -> const char* {
-				auto& ele = animationsList[index];
+				auto& ele = animTab.list[index];
 				std::snprintf(out_buffer, out_buffer_size, "%s (%s)", ele.first.file.QPath().data(), ele.first.skeleton.c_str());
 				return out_buffer;
 			});
 		UI->HBoxRight();
 
-		if (UI->Button("Refresh List")) {
-			animListNeedsUpdating = true;
-		}
-		UI->Separator();
-
-		if (selectedAnim < animationsList.size()) {
-			DrawAnimInfo(animationsList[selectedAnim]);
+		if (auto iter = animTab.GetSelectedItem(); iter != animTab.list.end()) {
+			DrawAnimInfo(*iter);
 		}
 		UI->HBoxEnd();
 		UI->VBoxEnd();
