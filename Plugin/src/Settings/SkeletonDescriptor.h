@@ -15,8 +15,10 @@ namespace Settings
 	{
 		std::vector<IKChainDescriptor> chains;
 		std::vector<std::string> nodeNames;
-		std::string raceId;
+		std::vector<size_t> parents;
+		std::vector<ozz::math::Transform> restPose;
 
+		bool FillInGameData(const std::string_view raceName);
 		ozz::unique_ptr<ozz::animation::Skeleton> ToOzz();
 		void MakeNodeNamesUnique();
 		std::optional<size_t> GetNodeIndex(const std::string& name) const;

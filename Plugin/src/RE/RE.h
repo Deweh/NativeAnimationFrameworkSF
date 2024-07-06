@@ -14,7 +14,7 @@ namespace RE::ModelDB
 		BGSFadeNode* node;
 	};
 
-	Entry* GetEntry(const char* filename)
+	inline Entry* GetEntry(const char* filename)
 	{
 		uint64_t flag = 0x3;
 		struct UnkOut

@@ -22,7 +22,9 @@ namespace Settings
 	void InitDefaultSkeleton()
 	{
 		SkeletonDescriptor skele;
-		skele.nodeNames.push_back("COM");
+		skele.nodeNames.push_back("Root");
+		skele.parents.push_back(UINT64_MAX);
+		skele.restPose.push_back(ozz::math::Transform::identity());
 		auto d = skele.ToOzz();
 		GetDefaultSkeleton()->data = std::move(d);
 	}
@@ -52,6 +54,7 @@ namespace Settings
 					}
 					skele.MakeNodeNamesUnique();
 					auto sName = p.stem().generic_string();
+					skele.FillInGameData(sName);
 					auto sharedSkele = std::make_shared<Animation::OzzSkeleton>();
 					sharedSkele->data = skele.ToOzz();
 

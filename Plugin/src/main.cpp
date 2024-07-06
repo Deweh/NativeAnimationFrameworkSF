@@ -14,6 +14,10 @@ namespace
 	void MessageCallback(SFSE::MessagingInterface::Message* a_msg) noexcept
 	{
 		switch (a_msg->type) {
+		case SFSE::MessagingInterface::kPostDataLoad:
+			{
+				Settings::Load();
+			}
 		case SFSE::MessagingInterface::kPostLoad:
 			{
 				CCF::RegisterCommand("naf", Commands::NAFCommand::Run);
@@ -43,7 +47,6 @@ DLLEXPORT bool SFSEAPI SFSEPlugin_Load(const SFSE::LoadInterface* a_sfse)
 
 	InstallHooks();
 	Commands::NAFCommand::RegisterKeybinds();
-	Settings::Load();
 	SFSE::GetMessagingInterface()->RegisterListener(MessageCallback);
 	//SFSE::GetTaskInterface()->AddPermanentTask(Tasks::MainLoop::GetSingleton());
 	return true;
