@@ -267,6 +267,96 @@ namespace Commands::NAFCommand
 		Animation::GraphManager::GetSingleton()->AdvanceSequence(actor, smooth);
 	}
 
+	bool DoRetarget(bool verbose, const std::string_view filePath, const std::string_view sourcePose, const std::string_view targetPose, const std::string& savePath, ozz::animation::Skeleton* skele)
+	{
+		auto gltfFile = Serialization::GLTFImport::LoadGLTF(filePath);
+		if (!gltfFile || gltfFile->asset.animations.empty()) {
+			if (verbose)
+				itfc->PrintLn("Failed to load anim file.");
+			return false;
+		}
+
+		auto rawAnim = Serialization::GLTFImport::CreateRawAnimation(gltfFile.get(), &gltfFile->asset.animations[0], skele);
+		if (!rawAnim) {
+			if (verbose)
+				itfc->PrintLn("Failed to load anim.");
+			return false;
+		}
+
+		gltfFile.reset();
+		gltfFile = Serialization::GLTFImport::LoadGLTF(sourcePose);
+		if (!gltfFile) {
+			if (verbose)
+				itfc->PrintLn("Failed to load source pose file.");
+			return false;
+		}
+
+		auto rawSourcePose = Serialization::GLTFImport::CreateRawPose(&gltfFile->asset, skele);
+		if (!rawSourcePose) {
+			if (verbose)
+				itfc->PrintLn("Failed to create source pose.");
+			return false;
+		}
+
+		gltfFile.reset();
+		gltfFile = Serialization::GLTFImport::LoadGLTF(targetPose);
+		if (!gltfFile) {
+			if (verbose)
+				itfc->PrintLn("Failed to load target pose file.");
+			return false;
+		}
+
+		auto rawTargetPose = Serialization::GLTFImport::CreateRawPose(&gltfFile->asset, skele);
+		if (!rawTargetPose) {
+			if (verbose)
+				itfc->PrintLn("Failed to create target pose.");
+			return false;
+		}
+
+		bool success = Serialization::GLTFImport::RetargetAnimation(rawAnim->data.get(), *rawSourcePose, *rawTargetPose);
+		if (!success) {
+			if (verbose)
+				itfc->PrintLn("Failed to retarget.");
+			return false;
+		}
+
+		auto optimizedAsset = Serialization::GLTFExport::CreateOptimizedAsset(rawAnim.get(), skele, 0);
+
+		try {
+			zstr::ofstream file(savePath, std::ios::binary);
+			file.write(reinterpret_cast<char*>(optimizedAsset.data()), optimizedAsset.size());
+		} catch (const std::exception&) {
+			if (verbose)
+				itfc->PrintLn("Failed to save file.");
+			return false;
+		}
+
+		return true;
+	}
+
+	void ProcessRetargetCommand(uint64_t idxStart = 1, bool verbose = true)
+	{
+		auto actor = ActorStrOrSelection(idxStart + 3, verbose);
+		if (!actor) {
+			return;
+		}
+
+		auto skele = Settings::GetSkeleton(actor);
+		if (Settings::IsDefaultSkeleton(skele)) {
+			if (verbose)
+				itfc->PrintLn("No skeleton for provided actor.");
+			return;
+		}
+
+		std::string filePath = (Util::String::GetDataPath() / args[idxStart].get()).generic_string();
+		std::string sourcePath = (Util::String::GetDataPath() / args[idxStart + 1].get()).generic_string();
+		std::string targetPath = (Util::String::GetDataPath() / args[idxStart + 2].get()).generic_string();
+		bool success = DoRetarget(verbose, filePath, sourcePath, targetPath, filePath, skele->data.get());
+
+		if (success && verbose)
+			itfc->PrintLn("Done.");
+	}
+
 	void ProcessSilentCommand()
 	{
 		if (args.size() < 2) {
@@ -322,6 +412,8 @@ namespace Commands::NAFCommand
 			ProcessStartSeqCommand();
 		} else if (type == "advseq") {
 			ProcessAdvanceSeqCommand();
+		} else if (type == "retarget") {
+			ProcessRetargetCommand();
 		} else {
 			ShowHelp();
 		}

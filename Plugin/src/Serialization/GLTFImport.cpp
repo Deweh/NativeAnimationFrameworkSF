@@ -199,6 +199,37 @@ namespace Serialization
 		}
 	}
 
+	bool GLTFImport::RetargetAnimation(ozz::animation::offline::RawAnimation* anim, const std::vector<ozz::math::Transform>& sourceRestPose, const std::vector<ozz::math::Transform>& targetRestPose)
+	{
+		if (sourceRestPose.size() != targetRestPose.size() || sourceRestPose.size() != anim->num_tracks())
+			return false;
+
+		using namespace ozz::math;
+		std::vector<Transform> diffs;
+		diffs.resize(anim->num_tracks());
+
+		for (size_t i = 0; i < anim->num_tracks(); i++) {
+			auto& diffT = diffs[i];
+			auto& targetT = targetRestPose[i];
+			auto& sourceT = sourceRestPose[i];
+			diffT.rotation = targetT.rotation * Quaternion{ -sourceT.rotation.x, -sourceT.rotation.y, -sourceT.rotation.z, sourceT.rotation.w };
+			diffT.translation = targetT.translation - sourceT.translation;
+		}
+
+		auto diffIter = diffs.begin();
+		for (auto& track : anim->tracks) {
+			for (auto& rot : track.rotations) {
+				rot.value = diffIter->rotation * rot.value;
+			}
+			for (auto& trans : track.translations) {
+				trans.value = diffIter->translation + trans.value;
+			}
+			diffIter++;
+		}
+
+		return true;
+	}
+
 	std::unique_ptr<Animation::RawOzzAnimation> GLTFImport::CreateRawAnimation(const AssetData* assetData, const fastgltf::Animation* anim, const ozz::animation::Skeleton* skeleton)
 	{
 		auto asset = &assetData->asset;
