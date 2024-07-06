@@ -22,7 +22,7 @@ namespace Animation
 
 		static void ExtractSoaTransform(const ozz::math::SoaTransform& in, std::array<Transform, 4>& out);
 		static void StoreSoaTransform(const std::span<Transform, 4>& in, ozz::math::SoaTransform& out);
-		static void ExtractSoaTransforms(const std::vector<ozz::math::SoaTransform>& in, const std::function<void(size_t, const Transform&)> func);
+		static void ExtractSoaTransforms(const std::span<const ozz::math::SoaTransform>& in, const std::function<void(size_t, const Transform&)> func);
 		static void StoreSoaTransforms(std::vector<ozz::math::SoaTransform>& out, const std::function<Transform(size_t)> func);
 		static void StoreSoaTransforms(std::span<ozz::math::SoaTransform>& out, const std::function<Transform(size_t)> func);
 

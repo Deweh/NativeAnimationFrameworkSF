@@ -37,5 +37,7 @@ namespace Animation
 		size_t lEyeIdx = UINT64_MAX;
 		size_t rEyeIdx = UINT64_MAX;
 		std::string name;
+
+		std::unique_ptr<std::vector<ozz::math::Transform>> GetRestPose() const;
 	};
 }

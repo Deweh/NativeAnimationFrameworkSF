@@ -76,7 +76,7 @@ namespace Animation
 #undef SOA_SET
 	}
 
-	void Transform::ExtractSoaTransforms(const std::vector<ozz::math::SoaTransform>& in, const std::function<void(size_t, const Transform&)> func)
+	void Transform::ExtractSoaTransforms(const std::span<const ozz::math::SoaTransform>& in, const std::function<void(size_t, const Transform&)> func)
 	{
 		size_t s = in.size();
 		std::array<Transform, 4> arr;
