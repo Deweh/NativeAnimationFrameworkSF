@@ -28,13 +28,16 @@ std::unique_ptr<std::vector<ozz::math::Transform>> Animation::OzzSkeleton::GetRe
 {
 	auto result = std::make_unique<std::vector<ozz::math::Transform>>();
 	auto restPoses = data->joint_rest_poses();
-	result->reserve(restPoses.size());
+	result->resize(data->num_joints());
 
 	ozz::math::Transform ot = ozz::math::Transform::identity();
 	Transform::ExtractSoaTransforms(restPoses, [&result, &ot](size_t i, const Animation::Transform& t) {
+		if (i >= result->size())
+			return;
+
 		ot.rotation = { t.rotate.x, t.rotate.y, t.rotate.z, t.rotate.w };
 		ot.translation = { t.translate.x, t.translate.y, t.rotate.z };
-		result->push_back(ot);
+		result->at(i) = ot;
 	});
 	return result;
 }
