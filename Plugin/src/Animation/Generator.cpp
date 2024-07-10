@@ -95,4 +95,19 @@ namespace Animation
 		Generator::SetContext(ctxt);
 		baseGen->SetContext(ctxt);
 	}
+
+	bool AdditiveGenerator::HasFaceAnimation()
+	{
+		return baseGen->HasFaceAnimation();
+	}
+
+	void AdditiveGenerator::SetFaceMorphData(Face::MorphData* morphData)
+	{
+		baseGen->SetFaceMorphData(morphData);
+	}
+
+	void AdditiveGenerator::AdvanceTime(float deltaTime)
+	{
+		baseGen->AdvanceTime(deltaTime);
+	}
 }
