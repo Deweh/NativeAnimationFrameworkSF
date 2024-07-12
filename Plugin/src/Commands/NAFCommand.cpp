@@ -413,7 +413,7 @@ namespace Commands::NAFCommand
 		} else if (type == "advseq") {
 			ProcessAdvanceSeqCommand();
 		} else if (type == "retarget") {
-			ProcessRetargetCommand();
+			//ProcessRetargetCommand();
 		} else {
 			ShowHelp();
 		}
