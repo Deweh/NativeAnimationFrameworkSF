@@ -250,8 +250,15 @@ namespace Serialization
 		std::vector<ozz::math::Transform> bindPose(skeletonMap.size(), identity);
 
 		//Save skeleton bind pose.
-		for (const auto& n : asset->nodes) {
-			if (auto iter = skeletonMap.find(n.name.c_str()); iter != skeletonMap.end()) {
+		for (auto nIter = asset->nodes.begin(); nIter != asset->nodes.end(); nIter++) {
+			const auto& n = *nIter;
+			std::string_view nodeName = n.name.c_str();
+
+			if (auto iter = assetData->originalNames.find(std::distance(asset->nodes.begin(), nIter)); iter != assetData->originalNames.end()) {
+				nodeName = iter->second;
+			}
+
+			if (auto iter = skeletonMap.find(nodeName.data()); iter != skeletonMap.end()) {
 				skeletonIdxs.push_back(iter->second);
 				if (std::holds_alternative<fastgltf::TRS>(n.transform)) {
 					auto& trs = std::get<fastgltf::TRS>(n.transform);
@@ -437,24 +444,29 @@ namespace Serialization
 			parser.setUserPointer(assetData.get());
 			parser.setExtrasParseCallback([](simdjson::dom::object* extras, std::size_t objectIndex, fastgltf::Category objectType, void* userPointer) {
 				auto assetData = static_cast<AssetData*>(userPointer);
-				if (objectType != fastgltf::Category::Meshes) {
-					return;
-				}
-
-				auto arr = (*extras)["targetNames"].get_array();
-				if (arr.error() != simdjson::error_code::SUCCESS) {
-					return;
-				}
-
-				std::string_view name;
-				auto& target = assetData->morphTargets[objectIndex];
-				for (auto ele : arr) {
-					if (ele.get_string().get(name) == simdjson::error_code::SUCCESS) {
-						target.emplace_back(name);
-					} else {
-						assetData->morphTargets.erase(objectIndex);
+				if (objectType == fastgltf::Category::Meshes) {
+					auto arr = (*extras)["targetNames"].get_array();
+					if (arr.error() != simdjson::error_code::SUCCESS) {
 						return;
 					}
+
+					std::string_view name;
+					auto& target = assetData->morphTargets[objectIndex];
+					for (auto ele : arr) {
+						if (ele.get_string().get(name) == simdjson::error_code::SUCCESS) {
+							target.emplace_back(name);
+						} else {
+							assetData->morphTargets.erase(objectIndex);
+							return;
+						}
+					}
+				} else if (objectType == fastgltf::Category::Nodes) {
+					auto str = (*extras)["original_name"].get_string();
+					if (str.error() != simdjson::error_code::SUCCESS) {
+						return;
+					}
+
+					assetData->originalNames[objectIndex] = str.value();
 				}
 			});
 

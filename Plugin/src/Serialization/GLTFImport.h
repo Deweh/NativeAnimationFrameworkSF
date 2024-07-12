@@ -49,6 +49,7 @@ namespace Serialization
 		{
 			fastgltf::Asset asset;
 			std::map<size_t, std::vector<std::string>> morphTargets;
+			std::map<size_t, std::string> originalNames;
 		};
 
 		static void LoadAnimation(AnimationInfo& info);
