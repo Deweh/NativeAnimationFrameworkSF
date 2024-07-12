@@ -17,12 +17,13 @@ namespace
 		case SFSE::MessagingInterface::kPostDataLoad:
 			{
 				Settings::Load();
+				break;
 			}
 		case SFSE::MessagingInterface::kPostLoad:
 			{
 				CCF::RegisterCommand("naf", Commands::NAFCommand::Run);
+				break;
 			}
-			break;
 		default:
 			break;
 		}

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "animationoptimizer",
+  "version-string": "1.0.0",
+  "description": "-",
+  "builtin-baseline": "9edb1b8e590cc086563301d735cae4b6e732d2d2",
+  "homepage": "https://github.com/Deweh/NativeAnimationFrameworkSF",
+  "dependencies": [
+    "simdjson",
+    "zstr",
+    "libzippp"
+  ]
+}

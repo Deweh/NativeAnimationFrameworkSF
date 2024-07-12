@@ -1,18 +1,24 @@
 import bpy
+import ctypes
 import os
-from bpy_extras.io_utils import ImportHelper
-from bpy.props import StringProperty, PointerProperty
+from bpy_extras.io_utils import ExportHelper
+from bpy.props import StringProperty, PointerProperty, EnumProperty
 from bpy.types import Operator, Panel, PropertyGroup
 
 bl_info = {
     "name": "NAF Export Helper",
     "author": "Snapdragon",
-    "version": (1, 0),
-    "blender": (3, 60, 0),
+    "version": (1, 1, 0),
+    "blender": (3, 6, 0),
     "location": "View3D > Sidebar > Starfield Tools",
     "description": "Export animations for Starfield",
     "category": "Animation",
 }
+
+def get_dll_path():
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    dll_path = os.path.join(current_dir, "AnimationOptimizer.dll")
+    return dll_path
 
 class NAFHelperProperties(PropertyGroup):
     root_object: PointerProperty(
@@ -29,25 +35,39 @@ class NAFHelperProperties(PropertyGroup):
     )
     output_file: StringProperty(
         name="Output GLB",
-        description="Path to output the final result GLB file to",
+        description="Path to output the result GLB file to",
         default="",
         maxlen=1024,
         subtype='FILE_PATH'
     )
+    optimization_level: EnumProperty(
+        name="Compression Level",
+        description="Select the level of animation compression",
+        items=[
+            ('0', "Lossless", "All animation data is kept perfectly as-is"),
+            ('1', "Normal (Curve Compression)", "Animation curves are decimated with a zero tolerance"),
+            ('2', "High (Curve Compression)", "Animation curves are decimated with a 1e-7 tolerance"),
+            ('3', "Maximum (Curve Compression)", "Animation curves are decimated with a 1e-6 tolerance"),
+            ('4', "Ultra (Curve Compression)", "Animation curves are decimated with a 1e-5 tolerance")
+        ],
+        default='0'
+    )
 
-class OBJECT_OT_NAFExportHelper(Operator, ImportHelper):
+class OBJECT_OT_NAFExportHelper(Operator, ExportHelper):
     bl_idname = "object.naf_export_animation"
     bl_label = "Export Animation"
     bl_options = {'REGISTER', 'UNDO'}
     
-    filter_glob: StringProperty(default="*.gltf;*.glb", options={'HIDDEN'})
+    filename_ext = ".glb"
+    filter_glob: StringProperty(default="*.glb", options={'HIDDEN'})
     
     def execute(self, context):
         root_object = context.scene.naf_helper_props.root_object
         gltf_file = bpy.path.abspath(context.scene.naf_helper_props.gltf_file)
+        optimization_level = int(context.scene.naf_helper_props.optimization_level)
         output_file = self.filepath
 
-        print(gltf_file)
+        print(optimization_level)
         
         if not root_object:
             self.report({'ERROR'}, "Please select a root object")
@@ -82,11 +102,20 @@ class OBJECT_OT_NAFExportHelper(Operator, ImportHelper):
         def no_numbers_name(obj_name):
             idx = obj_name.rfind(".")
             if idx >= 0:
-                obj_name = obj_name[:idx]
+                return obj_name[:idx]
             return obj_name
         
         # Function to recursively process objects and bones
         def process_hierarchy(existing_obj, imported_obj):
+            for child in imported_obj.children_recursive:
+                    if child.name == existing_obj.name or no_numbers_name(child.name) == existing_obj.name:
+                        child["original_name"] = existing_obj.name
+                        constraint = child.constraints.new('COPY_TRANSFORMS')
+                        constraint.target = existing_obj
+                        constraint.target_space = 'WORLD'
+                        constraint.owner_space = 'WORLD'
+                        break
+
             if existing_obj.type == 'ARMATURE':
                 found_armature = None
                 for child in imported_obj.children_recursive:
@@ -107,16 +136,6 @@ class OBJECT_OT_NAFExportHelper(Operator, ImportHelper):
                             constraint.target_space = 'LOCAL_OWNER_ORIENT'
                             constraint.owner_space = 'LOCAL'
                             break
-                
-            else:
-                for child in imported_obj.children_recursive:
-                    if child.name == existing_obj.name or no_numbers_name(child.name) == existing_obj.name:
-                        child["original_name"] = existing_obj.name
-                        constraint = child.constraints.new('COPY_TRANSFORMS')
-                        constraint.target = existing_obj
-                        constraint.target_space = 'WORLD'
-                        constraint.owner_space = 'WORLD'
-                        break
             
             for child in existing_obj.children:
                 process_hierarchy(child, imported_obj)
@@ -173,7 +192,6 @@ class OBJECT_OT_NAFExportHelper(Operator, ImportHelper):
             export_import_convert_lighting_mode='SPEC',
             export_format='GLB',
             export_image_format='NONE',
-            export_materials='NONE',
             use_selection=True,
             export_animations=True,
             export_animation_mode='ACTIVE_ACTIONS',
@@ -182,13 +200,39 @@ class OBJECT_OT_NAFExportHelper(Operator, ImportHelper):
             export_morph=True,
             export_morph_normal=False,
             export_morph_tangent=False,
-            export_morph_animation=True
+            export_morph_animation=True,
+            export_skins=False,
+            export_lights=False,
+            export_cameras=False,
+            export_yup=True,
+            export_apply=False,
+            export_texcoords=False,
+            export_normals=False,
+            export_materials='NONE',
+            export_colors=False,
+            export_attributes=False,
+            use_mesh_edges=False,
+            use_mesh_vertices=False
         )
         
         # Delete the imported skeleton
         bpy.ops.object.select_all(action='DESELECT')
         select_hierarchy(imported_armature)
         bpy.ops.object.delete()
+
+        # Get the path to the optimizer DLL
+        dll_path = get_dll_path()
+        
+        # Load the DLL
+        optimizer_lib = ctypes.CDLL(dll_path)
+        optimizer_lib.OptimizeAnimation.argtypes = [ctypes.c_char_p, ctypes.c_int]
+        optimizer_lib.OptimizeAnimation.restype = ctypes.c_bool
+        
+        # Optimize the animation
+        result = optimizer_lib.OptimizeAnimation(output_file.encode('utf-8'), optimization_level)
+        if not result:
+            self.report({'ERROR'}, "Failed to optimize animation.")
+            return {'CANCELLED'}
         
         self.report({'INFO'}, "Export successful.")
         return {'FINISHED'}
@@ -205,6 +249,7 @@ class VIEW3D_PT_NAFExportHelper(Panel):
 
         layout.prop(props, "root_object")
         layout.prop(props, "gltf_file")
+        layout.prop(props, "optimization_level")
         layout.operator("object.naf_export_animation")
 
 def register():
