@@ -4,6 +4,16 @@ from bpy_extras.io_utils import ImportHelper
 from bpy.props import StringProperty, PointerProperty
 from bpy.types import Operator, Panel, PropertyGroup
 
+bl_info = {
+    "name": "NAF Export Helper",
+    "author": "Snapdragon",
+    "version": (1, 0),
+    "blender": (3, 60, 0),
+    "location": "View3D > Sidebar > Starfield Tools",
+    "description": "Export animations for Starfield",
+    "category": "Animation",
+}
+
 class NAFHelperProperties(PropertyGroup):
     root_object: PointerProperty(
         name="Root Object",

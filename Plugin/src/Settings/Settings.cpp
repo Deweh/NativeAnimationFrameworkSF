@@ -60,9 +60,10 @@ namespace Settings
 
 					auto jointNames = sharedSkele->data->joint_names();
 					for (size_t i = 0; i < jointNames.size(); i++) {
-						if (jointNames[i] == "L_Eye") {
+						std::string_view sv(jointNames[i]);
+						if (sv == "L_Eye") {
 							sharedSkele->lEyeIdx = i;
-						} else if (jointNames[i] == "R_Eye") {
+						} else if (sv == "R_Eye") {
 							sharedSkele->rEyeIdx = i;
 						}
 					}
