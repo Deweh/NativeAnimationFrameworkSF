@@ -107,8 +107,10 @@ class OBJECT_OT_NAFExportHelper(Operator, ExportHelper):
         
         # Function to recursively process objects and bones
         def process_hierarchy(existing_obj, imported_obj):
+            existing_name = no_numbers_name(existing_obj.name)
+
             for child in imported_obj.children_recursive:
-                    if child.name == existing_obj.name or no_numbers_name(child.name) == existing_obj.name:
+                    if no_numbers_name(child.name) == existing_name:
                         child["original_name"] = existing_obj.name
                         constraint = child.constraints.new('COPY_TRANSFORMS')
                         constraint.target = existing_obj
