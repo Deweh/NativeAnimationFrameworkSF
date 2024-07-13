@@ -8,7 +8,7 @@ from bpy.types import Operator, Panel, PropertyGroup
 bl_info = {
     "name": "NAF Export Helper",
     "author": "Snapdragon",
-    "version": (1, 1, 0),
+    "version": (1, 1, 1),
     "blender": (3, 6, 0),
     "location": "View3D > Sidebar > Starfield Tools",
     "description": "Export animations for Starfield",
@@ -179,8 +179,11 @@ class OBJECT_OT_NAFExportHelper(Operator, ExportHelper):
         select_non_mesh_objects(imported_armature)
         
         # Select only meshes in the existing skeleton
+        def has_shape_keys(mesh_object):
+            return mesh_object.data.shape_keys is not None and len(mesh_object.data.shape_keys.key_blocks) > 1
+
         def select_mesh_objects(obj):
-            if obj.type == 'MESH':
+            if obj.type == 'MESH' and has_shape_keys(obj):
                 obj.select_set(True)
             for child in obj.children:
                 select_mesh_objects(child)
