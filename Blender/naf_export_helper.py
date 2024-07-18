@@ -1,8 +1,9 @@
 import bpy
 import ctypes
+import ctypes.util
 import os
 from bpy_extras.io_utils import ExportHelper
-from bpy.props import StringProperty, PointerProperty, EnumProperty
+from bpy.props import StringProperty, PointerProperty, EnumProperty, BoolProperty
 from bpy.types import Operator, Panel, PropertyGroup
 
 bl_info = {
@@ -52,6 +53,16 @@ class NAFHelperProperties(PropertyGroup):
         ],
         default='0'
     )
+    export_negative_frame: BoolProperty(
+        name="Slide Negative Frames",
+        description="Slide negative keyframes to start at frame 0",
+        default=False
+    )
+    export_anim_slide_to_zero: BoolProperty(
+        name="Slide to Zero",
+        description="Slide animation to start at frame 0",
+        default=False
+    )
 
 class OBJECT_OT_NAFExportHelper(Operator, ExportHelper):
     bl_idname = "object.naf_export_animation"
@@ -80,6 +91,11 @@ class OBJECT_OT_NAFExportHelper(Operator, ExportHelper):
         if not output_file:
             self.report({'ERROR'}, "Please select a Output GLTF file")
             return {'CANCELLED'}
+
+        # Save the current selection and mode
+        original_selected_objects = context.selected_objects.copy()
+        original_active_object = context.view_layer.objects.active
+        original_mode = context.mode
         
         # Import GLTF file
         bpy.ops.import_scene.gltf(
@@ -111,7 +127,7 @@ class OBJECT_OT_NAFExportHelper(Operator, ExportHelper):
 
             for child in imported_obj.children_recursive:
                     if no_numbers_name(child.name) == existing_name:
-                        child["original_name"] = existing_obj.name
+                        child["original_name"] = existing_name
                         constraint = child.constraints.new('COPY_TRANSFORMS')
                         constraint.target = existing_obj
                         constraint.target_space = 'WORLD'
@@ -217,13 +233,23 @@ class OBJECT_OT_NAFExportHelper(Operator, ExportHelper):
             export_colors=False,
             export_attributes=False,
             use_mesh_edges=False,
-            use_mesh_vertices=False
+            use_mesh_vertices=False,
+            export_negative_frame='SLIDE' if context.scene.naf_helper_props.export_negative_frame else 'CROP',
+            export_anim_slide_to_zero=context.scene.naf_helper_props.export_anim_slide_to_zero,
+            export_frame_range=True
         )
         
         # Delete the imported skeleton
         bpy.ops.object.select_all(action='DESELECT')
         select_hierarchy(imported_armature)
         bpy.ops.object.delete()
+
+        # Restore the original selection and mode
+        for obj in original_selected_objects:
+            obj.select_set(True)
+        context.view_layer.objects.active = original_active_object
+        if original_mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode=original_mode)
 
         # Get the path to the optimizer DLL
         dll_path = get_dll_path()
@@ -238,6 +264,9 @@ class OBJECT_OT_NAFExportHelper(Operator, ExportHelper):
         if not result:
             self.report({'ERROR'}, "Failed to optimize animation.")
             return {'CANCELLED'}
+
+        # Unload the DLL
+        del optimizer_lib
         
         self.report({'INFO'}, "Export successful.")
         return {'FINISHED'}
@@ -255,6 +284,8 @@ class VIEW3D_PT_NAFExportHelper(Panel):
         layout.prop(props, "root_object")
         layout.prop(props, "gltf_file")
         layout.prop(props, "optimization_level")
+        layout.prop(props, "export_negative_frame")
+        layout.prop(props, "export_anim_slide_to_zero")
         layout.operator("object.naf_export_animation")
 
 def register():
