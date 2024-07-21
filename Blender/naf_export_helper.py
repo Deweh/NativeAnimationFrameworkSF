@@ -9,7 +9,7 @@ from bpy.types import Operator, Panel, PropertyGroup
 bl_info = {
     "name": "NAF Export Helper",
     "author": "Snapdragon",
-    "version": (1, 1, 1),
+    "version": (1, 2, 0),
     "blender": (3, 6, 0),
     "location": "View3D > Sidebar > Starfield Tools",
     "description": "Export animations for Starfield",
@@ -61,6 +61,11 @@ class NAFHelperProperties(PropertyGroup):
     export_anim_slide_to_zero: BoolProperty(
         name="Slide to Zero",
         description="Slide animation to start at frame 0",
+        default=False
+    )
+    limit_to_playback_range: BoolProperty(
+        name="Limit to Playback Range",
+        description="Crop animation to the current scene playback range",
         default=False
     )
 
@@ -138,7 +143,7 @@ class OBJECT_OT_NAFExportHelper(Operator, ExportHelper):
                 found_armature = None
                 for child in imported_obj.children_recursive:
                     if child.type == 'ARMATURE':
-                        child["original_name"] = existing_obj.name
+                        child["original_name"] = existing_name
                         found_armature = child
                         break
 
@@ -236,7 +241,7 @@ class OBJECT_OT_NAFExportHelper(Operator, ExportHelper):
             use_mesh_vertices=False,
             export_negative_frame='SLIDE' if context.scene.naf_helper_props.export_negative_frame else 'CROP',
             export_anim_slide_to_zero=context.scene.naf_helper_props.export_anim_slide_to_zero,
-            export_frame_range=True
+            export_frame_range=context.scene.naf_helper_props.limit_to_playback_range
         )
         
         # Delete the imported skeleton
@@ -286,6 +291,7 @@ class VIEW3D_PT_NAFExportHelper(Panel):
         layout.prop(props, "optimization_level")
         layout.prop(props, "export_negative_frame")
         layout.prop(props, "export_anim_slide_to_zero")
+        layout.prop(props, "limit_to_playback_range")
         layout.operator("object.naf_export_animation")
 
 def register():
