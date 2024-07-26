@@ -40,14 +40,9 @@ namespace Papyrus::NAFScript
 		agm->LoadAndStartAnimation(a_actor, a_anim, "", a_transitionTime);
 	}
 
-	void StopAnimation(IVirtualMachine& a_vm, uint32_t a_stackID, std::monostate, RE::Actor* a_actor, float a_transitionTime)
+	bool StopAnimation(IVirtualMachine& a_vm, uint32_t a_stackID, std::monostate, RE::Actor* a_actor, float a_transitionTime)
 	{
-		if (!a_actor) {
-			a_vm.PostError("Cannot stop an animation on a none actor.", a_stackID, ErrorLevel::kInfo);
-			return;
-		}
-
-		agm->DetachGenerator(a_actor, a_transitionTime);
+		return agm->DetachGenerator(a_actor, a_transitionTime);
 	}
 
 	void SyncAnimations(IVirtualMachine& a_vm, uint32_t a_stackID, std::monostate, std::vector<RE::Actor*> a_actors)
@@ -103,6 +98,40 @@ namespace Papyrus::NAFScript
 		return agm->AdvanceSequence(a_actor, a_smooth);
 	}
 
+	bool SetSequencePhase(IVirtualMachine& a_vm, uint32_t a_stackID, std::monostate, RE::Actor* a_actor, int32_t a_idx)
+	{
+		if (!a_actor) {
+			a_vm.PostError("Cannot set sequence phase on a none actor.", a_stackID, ErrorLevel::kInfo);
+			return false;
+		}
+
+		return agm->SetSequencePhase(a_actor, a_idx);
+	}
+
+	int32_t GetSequencePhase(IVirtualMachine& a_vm, uint32_t a_stackID, std::monostate, RE::Actor* a_actor)
+	{
+		if (!a_actor) {
+			a_vm.PostError("Cannot get sequence phase for a none actor.", a_stackID, ErrorLevel::kInfo);
+			return -1;
+		}
+
+		size_t result = agm->GetSequencePhase(a_actor);
+		if (result == UINT64_MAX) {
+			return -1;
+		}
+		return static_cast<int32_t>(result);
+	}
+
+	bool SetAnimationSpeed(IVirtualMachine& a_vm, uint32_t a_stackID, std::monostate, RE::Actor* a_actor, float a_speed)
+	{
+		return agm->SetAnimationSpeed(a_actor, a_speed * 0.01f);
+	}
+
+	float GetAnimationSpeed(IVirtualMachine& a_vm, uint32_t a_stackID, std::monostate, RE::Actor* a_actor)
+	{
+		return agm->GetAnimationSpeed(a_actor) * 100.0f;
+	}
+
 	std::string GetCurrentAnimation(std::monostate, RE::Actor* a_actor)
 	{
 		if (!a_actor) {
@@ -119,7 +148,7 @@ namespace Papyrus::NAFScript
 			return "";
 		}
 
-		return std::string{ g->generator->GetAnimationExtraData().id.file.QPath() };
+		return std::string{ g->generator->GetSourceFile() };
 	}
 
 	void RegisterFunctions(IVirtualMachine* a_vm)
@@ -130,6 +159,10 @@ namespace Papyrus::NAFScript
 		a_vm->BindNativeMethod(SCRIPT_NAME, "StopSyncing", &StopSyncing, true, false);
 		a_vm->BindNativeMethod(SCRIPT_NAME, "StartSequence", &StartSequence, true, false);
 		a_vm->BindNativeMethod(SCRIPT_NAME, "AdvanceSequence", &AdvanceSequence, true, false);
+		a_vm->BindNativeMethod(SCRIPT_NAME, "SetSequencePhase", &SetSequencePhase, true, false);
+		a_vm->BindNativeMethod(SCRIPT_NAME, "GetSequencePhase", &GetSequencePhase, true, false);
+		a_vm->BindNativeMethod(SCRIPT_NAME, "SetAnimationSpeed", &SetAnimationSpeed, true, false);
+		a_vm->BindNativeMethod(SCRIPT_NAME, "GetAnimationSpeed", &GetAnimationSpeed, true, false);
 		a_vm->BindNativeMethod(SCRIPT_NAME, "GetCurrentAnimation", &GetCurrentAnimation, true, false);
 	}
 }

@@ -129,12 +129,14 @@ namespace Animation
 		}
 	}
 
+	size_t Sequencer::GetPhase()
+	{
+		return std::distance(phases.begin(), currentPhase);
+	}
+
 	void Sequencer::TransitionToLoadedAnimation()
 	{
-		auto gen = std::make_unique<LinearClipGenerator>();
-		gen->anim = loadedAnim;
-		gen->duration = loadedAnim->data->duration();
-		owner->StartTransition(std::move(gen), currentPhase->transitionTime);
+		owner->StartTransition(std::make_unique<LinearClipGenerator>(loadedAnim), currentPhase->transitionTime);
 		LoadNextAnimation();
 	}
 

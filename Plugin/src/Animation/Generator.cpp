@@ -8,8 +8,14 @@ namespace Animation
 	void Generator::SetOutput(const ozz::span<ozz::math::SoaTransform>& span) { output = span; }
 	void Generator::SetContext(ozz::animation::SamplingJob::Context* ctxt) { context = ctxt; }
 	void Generator::OnDetaching() {}
-	void Generator::AdvanceTime(float deltaTime) { localTime += deltaTime; }
-	const OzzAnimation::ExtraData& Generator::GetAnimationExtraData() { return emptyExtraData; }
+	void Generator::AdvanceTime(float deltaTime) { localTime += deltaTime * speed; }
+	const std::string_view Generator::GetSourceFile() { return ""; }
+
+	LinearClipGenerator::LinearClipGenerator(const std::shared_ptr<OzzAnimation>& a_anim)
+	{
+		anim = a_anim;
+		duration = anim->data->duration();
+	}
 
 	void LinearClipGenerator::Generate(float deltaTime)
 	{
@@ -47,7 +53,7 @@ namespace Animation
 	void LinearClipGenerator::AdvanceTime(float deltaTime)
 	{
 		if (!paused) {
-			localTime += deltaTime;
+			localTime += deltaTime * speed;
 			if (localTime > duration || localTime < 0.0f) {
 				localTime = std::fmodf(std::abs(localTime), duration);
 				rootResetRequired = true;
@@ -55,9 +61,9 @@ namespace Animation
 		}
 	}
 
-	const OzzAnimation::ExtraData& LinearClipGenerator::GetAnimationExtraData()
+	const std::string_view LinearClipGenerator::GetSourceFile()
 	{
-		return anim->extra;
+		return anim->extra.id.file.QPath();
 	}
 
 	void AdditiveGenerator::SetRestPose(const std::vector<ozz::math::SoaTransform>& pose)

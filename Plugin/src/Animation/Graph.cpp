@@ -39,10 +39,7 @@ namespace Animation
 
 			flags.reset(FLAGS::kLoadingAnimation);
 			if (a_anim != nullptr) {
-				auto gen = std::make_unique<LinearClipGenerator>();
-				gen->anim = a_anim;
-				gen->duration = a_anim->data->duration();
-				StartTransition(std::move(gen), transition.queuedDuration);
+				StartTransition(std::make_unique<LinearClipGenerator>(a_anim), transition.queuedDuration);
 			}
 		}
 	}

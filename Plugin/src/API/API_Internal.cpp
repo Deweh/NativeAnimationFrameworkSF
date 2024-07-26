@@ -152,7 +152,7 @@ uint16_t NAFAPI_PlayAnimationFromGLTF(
 
 	Animation::GraphManager::GetSingleton()->AttachGenerator(
 		a_actor,
-		Animation::GraphManager::CreateAnimationGenerator(sharedAnim),
+		std::make_unique<Animation::LinearClipGenerator>(sharedAnim),
 		a_transitionTime);
 	return 0;
 }
@@ -233,7 +233,7 @@ void NAFAPI_AttachClipGenerator(
 
 	Animation::GraphManager::GetSingleton()->AttachGenerator(
 		a_actor,
-		Animation::GraphManager::CreateAnimationGenerator(sharedAnim),
+		std::make_unique<Animation::LinearClipGenerator>(sharedAnim),
 		a_transitionTime);
 }
 
@@ -276,7 +276,8 @@ void NAFAPI_VisitGraph(
 		data.rootNode = g->rootNode;
 		data.rootTransform = &g->rootTransform;
 		a_visitFunc(a_userData, &data);
-	});
+		return true;
+	}, true);
 }
 
 bool NAFAPI_DetachGenerator(

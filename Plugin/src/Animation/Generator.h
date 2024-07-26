@@ -10,12 +10,11 @@ namespace Animation
 	class Generator
 	{
 	public:
-		inline static OzzAnimation::ExtraData emptyExtraData;
-
 		bool rootResetRequired = false;
 		bool paused = false;
 		float localTime = 0.0f;
 		float duration = 0.0f;
+		float speed = 1.0f;
 		Transform localRootTransform;
 		std::span<ozz::math::SoaTransform> output;
 		ozz::animation::SamplingJob::Context* context = nullptr;
@@ -27,7 +26,7 @@ namespace Animation
 		virtual void SetContext(ozz::animation::SamplingJob::Context* ctxt);
 		virtual void OnDetaching();
 		virtual void AdvanceTime(float deltaTime);
-		virtual const OzzAnimation::ExtraData& GetAnimationExtraData();
+		virtual const std::string_view GetSourceFile();
 
 		virtual ~Generator() = default;
 	};
@@ -38,11 +37,13 @@ namespace Animation
 		std::shared_ptr<OzzAnimation> anim = nullptr;
 		Face::MorphData* faceMorphData = nullptr;
 
+		LinearClipGenerator(const std::shared_ptr<OzzAnimation>& a_anim);
+
 		virtual void Generate(float deltaTime) override;
 		virtual bool HasFaceAnimation() override;
 		virtual void SetFaceMorphData(Face::MorphData* morphData) override;
 		virtual void AdvanceTime(float deltaTime) override;
-		virtual const OzzAnimation::ExtraData& GetAnimationExtraData() override;
+		virtual const std::string_view GetSourceFile() override;
 		virtual ~LinearClipGenerator() = default;
 	};
 

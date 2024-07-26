@@ -17,58 +17,85 @@ namespace Animation
 		return &singleton;
 	}
 
-	std::unique_ptr<Generator> GraphManager::CreateAnimationGenerator(std::shared_ptr<OzzAnimation> anim)
-	{
-		auto gen = std::make_unique<LinearClipGenerator>();
-		gen->anim = anim;
-		gen->duration = anim->data->duration();
-		return gen;
-	}
-
 	bool GraphManager::LoadAndStartAnimation(RE::Actor* a_actor, const std::string_view a_filePath, const std::string_view a_animId, float a_transitionTime)
 	{
-		if (!a_actor)
-			return false;
-		
-		auto g = GetGraph(a_actor, true);
-		std::unique_lock l{ g->lock };
-		g->DetachSequencer(false);
-		g->transition.queuedDuration = a_transitionTime;
-		FileManager::GetSingleton()->RequestAnimation(FileID(a_filePath, a_animId), a_actor->race->formEditorID.c_str(), g);
-		return true;
+		return VisitGraph(a_actor, [&](Graph* g) {
+			g->DetachSequencer(false);
+			g->transition.queuedDuration = a_transitionTime;
+			FileManager::GetSingleton()->RequestAnimation(FileID(a_filePath, a_animId), a_actor->race->formEditorID.c_str(), g->weak_from_this());
+			return true;
+		}, true);
 	}
 
-	bool GraphManager::StartSequence(RE::Actor* a_actor, std::vector<Sequencer::PhaseData>&& a_phaseData)
+	void GraphManager::StartSequence(RE::Actor* a_actor, std::vector<Sequencer::PhaseData>&& a_phaseData)
 	{
-		if (!a_actor)
-			return false;
-
 		auto seq = std::make_unique<Sequencer>(std::move(a_phaseData));
-		auto g = GetGraph(a_actor, true);
-		std::unique_lock l{ g->lock };
-		g->sequencer = std::move(seq);
-		g->sequencer->OnAttachedToGraph(g.get());
-		return true;
+		VisitGraph(a_actor, [&](Graph* g) {
+			g->sequencer = std::move(seq);
+			g->sequencer->OnAttachedToGraph(g);
+			return true;
+		}, true);
 	}
 
 	bool GraphManager::AdvanceSequence(RE::Actor* a_actor, bool a_smooth)
 	{
-		if (!a_actor)
-			return false;
+		return VisitGraph(a_actor, [&](Graph* g) {
+			if (!g->sequencer)
+				return false;
 
-		auto g = GetGraph(a_actor, false);
-		if (!g)
-			return false;
+			g->sequencer->flags.set(Sequencer::FLAG::kForceAdvance);
+			if (a_smooth)
+				g->sequencer->flags.set(Sequencer::FLAG::kSmoothAdvance);
+			return true;
+		});
+	}
 
-		std::unique_lock l{ g->lock };
-		if (!g->sequencer)
-			return false;
+	bool GraphManager::SetSequencePhase(RE::Actor* a_actor, size_t a_idx)
+	{
+		return VisitGraph(a_actor, [&](Graph* g) {
+			if (!g->sequencer)
+				return false;
 
-		g->sequencer->flags.set(Sequencer::FLAG::kForceAdvance);
-		if (a_smooth)
-			g->sequencer->flags.set(Sequencer::FLAG::kSmoothAdvance);
+			g->sequencer->SetPhase(a_idx);
+			return true;
+		});
+	}
 
-		return true;
+	size_t GraphManager::GetSequencePhase(RE::Actor* a_actor)
+	{
+		size_t result = UINT64_MAX;
+		VisitGraph(a_actor, [&](Graph* g) {
+			if (!g->sequencer)
+				return false;
+
+			result = g->sequencer->GetPhase();
+			return true;
+		});
+		return result;
+	}
+
+	bool GraphManager::SetAnimationSpeed(RE::Actor* a_actor, float a_speed)
+	{
+		return VisitGraph(a_actor, [&](Graph* g) {
+			if (!g->generator)
+				return false;
+
+			g->generator->speed = a_speed;
+			return true;
+		});
+	}
+
+	float GraphManager::GetAnimationSpeed(RE::Actor* a_actor)
+	{
+		float result = 0.0f;
+		VisitGraph(a_actor, [&](Graph* g) {
+			if (!g->generator)
+				return false;
+
+			result = g->generator->speed;
+			return true;
+		});
+		return result;
 	}
 
 	void GraphManager::SyncGraphs(const std::vector<RE::Actor*>& a_actors)
@@ -92,44 +119,29 @@ namespace Animation
 
 	void GraphManager::StopSyncing(RE::Actor* a_actor)
 	{
-		if (!a_actor)
-			return;
-		
-		auto g = GetGraph(a_actor, false);
-		if (!g)
-			return;
-
-		std::unique_lock l{ g->lock };
-		g->StopSyncing();
+		VisitGraph(a_actor, [&](Graph* g) {
+			g->StopSyncing();
+			return true;
+		});
 	}
 
 	bool GraphManager::AttachGenerator(RE::Actor* a_actor, std::unique_ptr<Generator> a_gen, float a_transitionTime)
 	{
-		if (!a_actor)
-			return false;
-
-		auto g = GetGraph(a_actor, true);
-		std::unique_lock l{ g->lock };
-
-		g->DetachSequencer(false);
-		g->StartTransition(std::move(a_gen), a_transitionTime);
-		return true;
+		return VisitGraph(a_actor, [&](Graph* g) {
+			g->DetachSequencer(false);
+			g->StartTransition(std::move(a_gen), a_transitionTime);
+			return true;
+		}, true);
 	}
 
 	bool GraphManager::DetachGenerator(RE::Actor* a_actor, float a_transitionTime)
 	{
-		if (!a_actor)
-			return false;
-
-		auto g = GetGraph(a_actor, false);
-		if (!g)
-			return false;
-
-		std::unique_lock l{ g->lock };
-		g->flags.reset(Graph::FLAGS::kLoadingAnimation);
-		g->DetachSequencer(false);
-		g->StartTransition(nullptr, a_transitionTime);
-		return true;
+		return VisitGraph(a_actor, [&](Graph* g) {
+			g->flags.reset(Graph::FLAGS::kLoadingAnimation);
+			g->DetachSequencer(false);
+			g->StartTransition(nullptr, a_transitionTime);
+			return true;
+		});
 	}
 
 	void GraphManager::Reset()
@@ -183,24 +195,18 @@ namespace Animation
 		return false;
 	}
 
-	void GraphManager::VisitGraph(RE::Actor* a_actor, const std::function<void(Graph*)> visitFunc)
+	bool GraphManager::VisitGraph(RE::Actor* a_actor, const std::function<bool(Graph*)> visitFunc, bool create)
 	{
-		std::shared_lock ls{ stateLock };
-		
-		if (auto iter = state->graphMap.find(a_actor); iter != state->graphMap.end())
-		{
-			std::unique_lock gl{ iter->second->lock };
-			visitFunc(iter->second.get());
-		} else {
-			ls.unlock();
-			std::unique_lock lu{ stateLock };
-			std::shared_ptr<Graph> g = CreateGraph(a_actor);
-			state->graphMap[a_actor] = g;
+		if (!a_actor)
+			return false;
 
-			std::unique_lock gl{ g->lock };
-			g->Update(0.0f);
-			visitFunc(g.get());
+		auto g = GetGraph(a_actor, create);
+		if (!g) {
+			return false;
 		}
+
+		std::unique_lock l{ g->lock };
+		return visitFunc(g.get());
 	}
 
 	void GraphManager::GetAllGraphs(std::vector<std::pair<RE::TESObjectREFR*, std::weak_ptr<Graph>>>& a_refsOut)

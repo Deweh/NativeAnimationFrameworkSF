@@ -111,14 +111,6 @@ namespace Commands::NAFCommand
 			itfc->PrintLn("Stopping animation...");
 	}
 
-	void ProcessTest()
-	{
-		auto selectedRef = itfc->GetSelectedReference();
-		float alphaValue = Util::String::StrToFloat(std::string{ args[1].get() }).value();
-
-		Util::VM::CallFunction(starfield_cast<RE::Actor*>(selectedRef.get()), "Actor", "SetAlpha", nullptr, alphaValue, false);
-	}
-
 	void ProcessStudioCommand()
 	{
 		const auto hndl = GetModuleHandleA("NAFStudio.dll");
@@ -421,8 +413,6 @@ namespace Commands::NAFCommand
 			ProcessStartSeqCommand();
 		} else if (type == "advseq") {
 			ProcessAdvanceSeqCommand();
-		} else if (type == "test") {
-			ProcessTest();
 		} else {
 			ShowHelp();
 		}

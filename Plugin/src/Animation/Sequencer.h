@@ -47,6 +47,7 @@ namespace Animation
 		void AdvancePhase(bool a_init = false);
 		std::optional<phases_iterator> GetNextPhase();
 		void SetPhase(size_t idx);
+		size_t GetPhase();
 		void TransitionToLoadedAnimation();
 		void SpotLoadCurrentAnimation();
 		void Exit();
