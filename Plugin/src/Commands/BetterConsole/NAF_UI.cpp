@@ -32,7 +32,7 @@ namespace
 	};
 
 	struct AnimationsTabData : 
-		public ListTabData<std::pair<Animation::FileManager::AnimID, std::weak_ptr<Animation::OzzAnimation>>>,
+		public ListTabData<std::pair<Animation::AnimID, std::weak_ptr<Animation::OzzAnimation>>>,
 		public Util::Event::Listener<Animation::FileLoadUnloadEvent>
 	{
 		AnimationsTabData()
@@ -122,7 +122,7 @@ namespace
 		UI->VBoxEnd();
 	}
 
-	inline void DrawAnimInfo(const std::pair<Animation::FileManager::AnimID, std::weak_ptr<Animation::OzzAnimation>>& a_anim) {
+	inline void DrawAnimInfo(const std::pair<Animation::AnimID, std::weak_ptr<Animation::OzzAnimation>>& a_anim) {
 		UI->Text("Animation: %s (%s)", a_anim.first.file.QPath().data(), a_anim.first.skeleton.c_str());
 
 		auto animPtr = a_anim.second.lock();
@@ -136,7 +136,7 @@ namespace
 			UI->Text("In-Memory Size: %u KB", byteSize / 1024);
 		}
 
-		UI->Text("Time-to-Load: %.3f ms", animPtr->loadTime);
+		UI->Text("Time-to-Load: %.3f ms", animPtr->extra.loadTime);
 		UI->Text("Has Face Animation: %s", animPtr->faceData ? "True" : "False");
 		UI->Text("Use Count: %i", animPtr.use_count() - 1);
 	}
@@ -144,7 +144,7 @@ namespace
 	inline void DrawAnimationsTab()
 	{
 		if (animTab.listNeedsUpdate) {
-			std::optional<Animation::FileManager::AnimID> selectedId = std::nullopt;
+			std::optional<Animation::AnimID> selectedId = std::nullopt;
 			if (auto iter = animTab.GetSelectedItem(); iter != animTab.list.end()) {
 				selectedId = iter->first;
 			}

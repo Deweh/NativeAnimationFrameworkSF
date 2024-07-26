@@ -7,34 +7,6 @@
 
 namespace Animation
 {
-	const std::string_view FileID::QPath() const
-	{
-		return filePath;
-	}
-
-	const std::string_view FileID::QID() const
-	{
-		return id;
-	}
-
-	FileID::FileID(const std::string_view a_filePath, const std::string_view a_id)
-	{
-		filePath = Util::String::ToLower(a_filePath);
-		id = Util::String::ToLower(a_id);
-	}
-
-	bool FileID::operator==(const FileID& a_rhs) const
-	{
-		return filePath == a_rhs.filePath &&
-		       id == a_rhs.id;
-	}
-
-	bool FileID::operator<(const FileID& a_rhs) const
-	{
-		return filePath < a_rhs.filePath ||
-		       id < a_rhs.id;
-	}
-
 	FileManager::FileManager()
 	{
 		workerThread = std::jthread(&FileManager::DoProcessRequests, this);
@@ -181,7 +153,8 @@ namespace Animation
 
 		auto result = Serialization::GLTFImport::CreateRuntimeAnimation(file.get(), storedAnim, Settings::GetSkeleton(a_id.skeleton)->data.get());
 		if (result) {
-			result->loadTime = Util::Timing::HighResTimeDiffMilliSec(start);
+			result->extra.loadTime = Util::Timing::HighResTimeDiffMilliSec(start);
+			result->extra.id = a_id;
 		}
 		return result;
 	}
@@ -246,15 +219,5 @@ namespace Animation
 				r->OnAnimationRequested(id);
 			}
 		});
-	}
-
-	bool FileManager::AnimID::operator==(const AnimID& other) const
-	{
-		return file == other.file && skeleton == other.skeleton;
-	}
-
-	bool FileManager::AnimID::operator<(const AnimID& other) const
-	{
-		return file < other.file || skeleton < other.skeleton;
 	}
 }

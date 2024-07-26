@@ -7,6 +7,7 @@
 #include "Util/Trampoline.h"
 #include "Animation/Face/Manager.h"
 #include "Tasks/Input.h"
+#include "Papyrus/NAFScript.h"
 #define NDEBUG
 
 namespace
@@ -37,6 +38,11 @@ namespace
 		Tasks::Input::GetSingleton()->InstallHooks();
 		Util::Trampoline::ProcessHooks();
 	}
+
+	void BindPapyrusScripts(RE::BSScript::IVirtualMachine** a_vm)
+	{
+		Papyrus::NAFScript::RegisterFunctions(*a_vm);
+	}
 }
 
 DLLEXPORT bool SFSEAPI SFSEPlugin_Load(const SFSE::LoadInterface* a_sfse)
@@ -47,8 +53,9 @@ DLLEXPORT bool SFSEAPI SFSEPlugin_Load(const SFSE::LoadInterface* a_sfse)
 	INFO("Starfield Offset: {:X}", REL::Module::get().base());
 
 	InstallHooks();
-	Commands::NAFCommand::RegisterKeybinds();
+	SFSE::SetPapyrusCallback(&BindPapyrusScripts);
 	SFSE::GetMessagingInterface()->RegisterListener(MessageCallback);
+	Commands::NAFCommand::RegisterKeybinds();
 	//SFSE::GetTaskInterface()->AddPermanentTask(Tasks::MainLoop::GetSingleton());
 	return true;
 }

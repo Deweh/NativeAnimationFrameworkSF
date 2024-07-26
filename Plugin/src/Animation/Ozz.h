@@ -1,4 +1,5 @@
 #pragma once
+#include "FileID.h"
 
 namespace Animation
 {
@@ -22,9 +23,15 @@ namespace Animation
 
 	struct OzzAnimation
 	{
+		struct ExtraData
+		{
+			float loadTime = -1.0f;
+			AnimID id;
+		};
+
 		ozz::unique_ptr<ozz::animation::Animation> data = nullptr;
 		std::unique_ptr<OzzFaceAnimation> faceData = nullptr;
-		float loadTime = -1.0f;
+		ExtraData extra;
 
 		size_t GetSize();
 

@@ -1,27 +1,12 @@
 #pragma once
 #include "Util/General.h"
 #include "Util/Event.h"
+#include "FileID.h"
 
 namespace Animation
 {
 	struct OzzAnimation;
 	struct OzzSkeleton;
-
-	class FileID
-	{
-	private:
-		std::string filePath;
-		std::string id;
-
-	public:
-		const std::string_view QPath() const;
-		const std::string_view QID() const;
-
-		FileID() = default;
-		FileID(const std::string_view a_filePath, const std::string_view a_id);
-		bool operator==(const FileID& a_rhs) const;
-		bool operator<(const FileID& a_rhs) const;
-	};
 
 	class FileRequesterBase : public std::enable_shared_from_this<FileRequesterBase>
 	{
@@ -41,15 +26,6 @@ namespace Animation
 	class FileManager : public Util::Event::Dispatcher<FileLoadUnloadEvent>
 	{
 	public:
-		struct AnimID
-		{
-			FileID file;
-			std::string skeleton;
-
-			bool operator==(const AnimID& other) const;
-			bool operator<(const AnimID& other) const;
-		};
-
 		struct RequestData
 		{
 			std::weak_ptr<FileRequesterBase> requester;

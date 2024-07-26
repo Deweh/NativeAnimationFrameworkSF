@@ -10,6 +10,8 @@ namespace Animation
 	class Generator
 	{
 	public:
+		inline static OzzAnimation::ExtraData emptyExtraData;
+
 		bool rootResetRequired = false;
 		bool paused = false;
 		float localTime = 0.0f;
@@ -25,6 +27,7 @@ namespace Animation
 		virtual void SetContext(ozz::animation::SamplingJob::Context* ctxt);
 		virtual void OnDetaching();
 		virtual void AdvanceTime(float deltaTime);
+		virtual const OzzAnimation::ExtraData& GetAnimationExtraData();
 
 		virtual ~Generator() = default;
 	};
@@ -39,6 +42,7 @@ namespace Animation
 		virtual bool HasFaceAnimation() override;
 		virtual void SetFaceMorphData(Face::MorphData* morphData) override;
 		virtual void AdvanceTime(float deltaTime) override;
+		virtual const OzzAnimation::ExtraData& GetAnimationExtraData() override;
 		virtual ~LinearClipGenerator() = default;
 	};
 

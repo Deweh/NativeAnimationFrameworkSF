@@ -7,6 +7,7 @@
 #include "Util/String.h"
 #include "zstr.hpp"
 #include "Tasks/Input.h"
+#include "Util/VM.h"
 
 namespace Commands::NAFCommand
 {
@@ -108,6 +109,14 @@ namespace Commands::NAFCommand
 		Animation::GraphManager::GetSingleton()->DetachGenerator(actor, 1.0f);
 		if (verbose)
 			itfc->PrintLn("Stopping animation...");
+	}
+
+	void ProcessTest()
+	{
+		auto selectedRef = itfc->GetSelectedReference();
+		float alphaValue = Util::String::StrToFloat(std::string{ args[1].get() }).value();
+
+		Util::VM::CallFunction(starfield_cast<RE::Actor*>(selectedRef.get()), "Actor", "SetAlpha", nullptr, alphaValue, false);
 	}
 
 	void ProcessStudioCommand()
@@ -412,8 +421,8 @@ namespace Commands::NAFCommand
 			ProcessStartSeqCommand();
 		} else if (type == "advseq") {
 			ProcessAdvanceSeqCommand();
-		} else if (type == "retarget") {
-			//ProcessRetargetCommand();
+		} else if (type == "test") {
+			ProcessTest();
 		} else {
 			ShowHelp();
 		}

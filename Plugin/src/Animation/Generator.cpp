@@ -9,6 +9,7 @@ namespace Animation
 	void Generator::SetContext(ozz::animation::SamplingJob::Context* ctxt) { context = ctxt; }
 	void Generator::OnDetaching() {}
 	void Generator::AdvanceTime(float deltaTime) { localTime += deltaTime; }
+	const OzzAnimation::ExtraData& Generator::GetAnimationExtraData() { return emptyExtraData; }
 
 	void LinearClipGenerator::Generate(float deltaTime)
 	{
@@ -52,6 +53,11 @@ namespace Animation
 				rootResetRequired = true;
 			}
 		}
+	}
+
+	const OzzAnimation::ExtraData& LinearClipGenerator::GetAnimationExtraData()
+	{
+		return anim->extra;
 	}
 
 	void AdditiveGenerator::SetRestPose(const std::vector<ozz::math::SoaTransform>& pose)

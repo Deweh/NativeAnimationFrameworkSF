@@ -43,7 +43,7 @@ find_package(simdjson CONFIG REQUIRED)
 #find_package(fastgltf CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_dependency_path(DKUtil include/DKUtil/Logger.hpp)
-find_dependency_path(CommonLibSF CommonLibSF/include/SFSE/SFSE.h)
+find_dependency_path(CommonLibSF include/SFSE/SFSE.h)
 find_dependency_path(ozz-animation include/ozz/animation/runtime/animation.h)
 find_dependency_path(fastgltf include/fastgltf/core.hpp)
 
@@ -81,7 +81,11 @@ add_library(
  "src/Util/Timing.cpp"
  "src/Serialization/GLTFExport.cpp"
  "src/Tasks/Input.cpp"
- "src/Animation/Sequencer.cpp" "src/Commands/BetterConsole/NAF_UI.cpp")
+ "src/Animation/Sequencer.cpp"
+ "src/Commands/BetterConsole/NAF_UI.cpp"
+ "src/Util/VM.cpp" 
+ "src/Papyrus/NAFScript.cpp"
+ "src/Animation/FileID.cpp")
 
 # copy to Starfield directory
 set(STARFIELD_PATH "C:/Program Files (x86)/Steam/steamapps/common/Starfield/Data/SFSE/Plugins")
