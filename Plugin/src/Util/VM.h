@@ -34,20 +34,8 @@ namespace Util::VM
 	}
 
 	template <class... Args>
-	void CallFunction(void* a_obj, const std::string_view a_scriptName, const std::string a_funcName, const std::function<void(RE::BSScript::Variable&)>& a_resultCallback, Args&&... a_args)
+	void CallFunction(RE::BSScript::Internal::VirtualMachine* a_vm, size_t a_hndl, const std::string_view a_scriptName, const std::string_view a_funcName, const std::function<void(RE::BSScript::Variable&)>& a_resultCallback, Args&&... a_args)
 	{
-		auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-		uint32_t typeId;
-
-		if (!vm->GetTypeIDForScriptObject(a_scriptName, typeId)) {
-			return;
-		}
-
-		size_t hndl = vm->GetObjectHandlePolicy().GetHandleForObject(typeId, a_obj);
-		if (!hndl) {
-			return;
-		}
-
 		RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> callback(nullptr);
 		if (a_resultCallback) {
 			callback.reset(new detail::FunctionCallback(a_resultCallback));
@@ -63,6 +51,24 @@ namespace Util::VM
 			return true;
 		});
 
-		vm->DispatchMethodCall(hndl, a_scriptName, a_funcName, argFunctor, callback, 0);
+		a_vm->DispatchMethodCall(a_hndl, a_scriptName, a_funcName, argFunctor, callback, 0);
+	}
+
+	template <class... Args>
+	void CallFunction(void* a_obj, const std::string_view a_scriptName, const std::string_view a_funcName, const std::function<void(RE::BSScript::Variable&)>& a_resultCallback, Args&&... a_args)
+	{
+		auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+		uint32_t typeId;
+
+		if (!vm->GetTypeIDForScriptObject(a_scriptName, typeId)) {
+			return;
+		}
+
+		size_t hndl = vm->GetObjectHandlePolicy().GetHandleForObject(typeId, a_obj);
+		if (!hndl) {
+			return;
+		}
+
+		CallFunction(vm, hndl, a_scriptName, a_funcName, a_resultCallback, std::forward<Args>(a_args)...);
 	}
 }

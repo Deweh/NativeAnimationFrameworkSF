@@ -40,3 +40,20 @@ Float Function GetAnimationSpeed(Actor akTarget, Float fSpeed) Native Global
 
 ; Returns an empty string if the actor is not playing a NAF animation.
 String Function GetCurrentAnimation(Actor akTarget) Native Global
+
+;; EVENTS
+; Important: Registrations only last for the current game session, so you will need to re-register whenever the PlayerLoadGame event occurs.
+; These events work like the RegisterForExternalEvent() function from F4SE. You have to make a function in your script with the correct params,
+; and give the function name when registering. The params for each event are commented above the respective registration function.
+
+; Event Params: (ObjectReference akTarget, Int iPhase, String sName)
+; Event for when the animation for a sequence phase has fully loaded and begun playing.
+Function RegisterForPhaseBegin(ScriptObject sScript, String sFunctionName) Native Global
+
+; Event Params: (ObjectReference akTarget, String sName)
+; Event for when an actor ends their current sequence. This will also occur if a sequence animation fails to load, as that causes the sequence to end itself.
+Function RegisterForSequenceEnd(ScriptObject sScript, String sFunctionName) Native Global
+
+Function UnregisterForPhaseBegin(ScriptObject sScript) Native Global
+
+Function UnregisterForSequenceEnd(ScriptObject sScript) Native Global

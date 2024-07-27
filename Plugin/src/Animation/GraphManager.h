@@ -1,13 +1,15 @@
 #pragma once
 #include "Ozz.h"
 #include "Sequencer.h"
+#include "Util/Event.h"
 
 namespace Animation
 {
 	class Graph;
 	class Generator;
 
-	class GraphManager
+	class GraphManager :
+		public Util::Event::MultiDispatcher<SequencePhaseChangeEvent>
 	{
 	public:
 		struct PersistentState

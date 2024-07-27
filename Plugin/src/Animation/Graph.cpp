@@ -5,6 +5,7 @@
 #include "Face/Manager.h"
 #include "Util/Timing.h"
 #include "Sequencer.h"
+#include "GraphManager.h"
 
 namespace Animation
 {
@@ -298,6 +299,12 @@ namespace Animation
 			if (a_transitionOut) {
 				StartTransition(nullptr, 1.0f);
 			}
+			SFSE::GetTaskInterface()->AddTask([target = target]() {
+				GraphManager::GetSingleton()->SendEvent(SequencePhaseChangeEvent{
+					.exiting = true,
+					.target = target
+				});
+			});
 		}
 	}
 

@@ -58,6 +58,15 @@ namespace Util::Event
 		Guarded<InternalData> data;
 	};
 
+	template<typename... Ts>
+	class MultiDispatcher : public Dispatcher<Ts>...
+	{
+	public:
+		using Dispatcher<Ts>::AddListener...;
+		using Dispatcher<Ts>::RemoveListener...;
+		using Dispatcher<Ts>::SendEvent...;
+	};
+
 	template <typename E>
 	class Listener : public ListenerBase<E>
 	{
@@ -87,5 +96,18 @@ namespace Util::Event
 
 	protected:
 		std::atomic<Dispatcher<E>*> eventDispatcher = nullptr;
+	};
+
+	template <typename... Ts>
+	class MultiListener : public Listener<Ts>...
+	{
+	public:
+		using Listener<Ts>::RegisterForEvent...;
+
+		template <typename T>
+		void UnregisterForEvent()
+		{
+			Listener<T>::UnregisterForEvent();
+		}
 	};
 }

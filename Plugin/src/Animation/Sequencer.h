@@ -6,6 +6,14 @@ namespace Animation
 {
 	class Graph;
 
+	struct SequencePhaseChangeEvent
+	{
+		bool exiting{ false };
+		RE::NiPointer<RE::TESObjectREFR> target;
+		size_t index{ 0 };
+		std::string name{ "" };
+	};
+
 	class Sequencer
 	{
 	public:

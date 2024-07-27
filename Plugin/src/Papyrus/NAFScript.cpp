@@ -1,6 +1,7 @@
 #include "NAFScript.h"
 #include "Animation/GraphManager.h"
 #include "Animation/Graph.h"
+#include "EventManager.h"
 
 namespace Papyrus::NAFScript
 {
@@ -9,10 +10,11 @@ namespace Papyrus::NAFScript
 	using SequencePhase = structure_wrapper<"NAF", "SequencePhase">;
 
 	auto agm = Animation::GraphManager::GetSingleton();
+	auto em = EventManager::GetSingleton();
 
 	namespace detail
 	{
-		bool UnpackSequencePhases(const std::span<SequencePhase>& a_phases, std::vector<Animation::Sequencer::PhaseData>& a_out)
+		bool UnpackSequencePhases(const std::span<const SequencePhase>& a_phases, std::vector<Animation::Sequencer::PhaseData>& a_out)
 		{
 			a_out.reserve(a_phases.size());
 			for (const auto& p : a_phases) {
@@ -28,9 +30,29 @@ namespace Papyrus::NAFScript
 			}
 			return true;
 		}
+
+		void RegisterScriptForEvent(IVirtualMachine& a_vm, uint32_t a_stackID, EventType a_type, RE::BSScript::Object* a_script, const RE::BSFixedString& a_funcName)
+		{
+			if (a_script == nullptr) {
+				a_vm.PostError("Cannot register a none script for an event.", a_stackID, ErrorLevel::kInfo);
+				return;
+			}
+
+			em->RegisterScript(a_type, a_script, a_funcName);
+		}
+
+		void UnregisterScriptForEvent(IVirtualMachine& a_vm, uint32_t a_stackID, EventType a_type, RE::BSScript::Object* a_script)
+		{
+			if (a_script == nullptr) {
+				a_vm.PostError("Cannot unregister a none script.", a_stackID, ErrorLevel::kInfo);
+				return;
+			}
+
+			em->UnregisterScript(a_type, a_script);
+		}
 	}
 
-	void PlayAnimation(IVirtualMachine& a_vm, uint32_t a_stackID, std::monostate, RE::Actor* a_actor, std::string a_anim, float a_transitionTime)
+	void PlayAnimation(IVirtualMachine& a_vm, uint32_t a_stackID, std::monostate, RE::Actor* a_actor, RE::BSFixedString a_anim, float a_transitionTime)
 	{
 		if (!a_actor) {
 			a_vm.PostError("Cannot play an animation on a none actor.", a_stackID, ErrorLevel::kInfo);
@@ -132,23 +154,38 @@ namespace Papyrus::NAFScript
 		return agm->GetAnimationSpeed(a_actor) * 100.0f;
 	}
 
-	std::string GetCurrentAnimation(std::monostate, RE::Actor* a_actor)
+	RE::BSFixedString GetCurrentAnimation(std::monostate, RE::Actor* a_actor)
 	{
-		if (!a_actor) {
-			return "";
-		}
-		
-		auto g = agm->GetGraph(a_actor, false);
-		if (!g) {
-			return "";
-		}
+		RE::BSFixedString result{ "" };
 
-		std::unique_lock l{ g->lock };
-		if (!g->generator) {
-			return "";
-		}
+		agm->VisitGraph(a_actor, [&result](Animation::Graph* g) {
+			if (g->generator) {
+				result = g->generator->GetSourceFile();
+			}
+			return true;
+		});
 
-		return std::string{ g->generator->GetSourceFile() };
+		return result;
+	}
+
+	void RegisterForPhaseBegin(IVirtualMachine& a_vm, uint32_t a_stackID, std::monostate, RE::BSTSmartPointer<RE::BSScript::Object> a_script, RE::BSFixedString a_funcName)
+	{
+		detail::RegisterScriptForEvent(a_vm, a_stackID, EventType::kPhaseBegin, a_script.get(), a_funcName);
+	}
+
+	void RegisterForSequenceEnd(IVirtualMachine& a_vm, uint32_t a_stackID, std::monostate, RE::BSTSmartPointer<RE::BSScript::Object> a_script, RE::BSFixedString a_funcName)
+	{
+		detail::RegisterScriptForEvent(a_vm, a_stackID, EventType::kSequenceEnd, a_script.get(), a_funcName);
+	}
+
+	void UnregisterForPhaseBegin(IVirtualMachine& a_vm, uint32_t a_stackID, std::monostate, RE::BSTSmartPointer<RE::BSScript::Object> a_script)
+	{
+		detail::UnregisterScriptForEvent(a_vm, a_stackID, EventType::kPhaseBegin, a_script.get());
+	}
+
+	void UnregisterForSequenceEnd(IVirtualMachine& a_vm, uint32_t a_stackID, std::monostate, RE::BSTSmartPointer<RE::BSScript::Object> a_script)
+	{
+		detail::UnregisterScriptForEvent(a_vm, a_stackID, EventType::kSequenceEnd, a_script.get());
 	}
 
 	void RegisterFunctions(IVirtualMachine* a_vm)
@@ -164,5 +201,10 @@ namespace Papyrus::NAFScript
 		a_vm->BindNativeMethod(SCRIPT_NAME, "SetAnimationSpeed", &SetAnimationSpeed, true, false);
 		a_vm->BindNativeMethod(SCRIPT_NAME, "GetAnimationSpeed", &GetAnimationSpeed, true, false);
 		a_vm->BindNativeMethod(SCRIPT_NAME, "GetCurrentAnimation", &GetCurrentAnimation, true, false);
+
+		a_vm->BindNativeMethod(SCRIPT_NAME, "RegisterForPhaseBegin", &RegisterForPhaseBegin, true, false);
+		a_vm->BindNativeMethod(SCRIPT_NAME, "RegisterForSequenceEnd", &RegisterForSequenceEnd, true, false);
+		a_vm->BindNativeMethod(SCRIPT_NAME, "UnregisterForPhaseBegin", &UnregisterForPhaseBegin, true, false);
+		a_vm->BindNativeMethod(SCRIPT_NAME, "UnregisterForSequenceEnd", &UnregisterForSequenceEnd, true, false);
 	}
 }

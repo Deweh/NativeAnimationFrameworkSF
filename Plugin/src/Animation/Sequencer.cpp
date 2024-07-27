@@ -1,5 +1,6 @@
 #include "Sequencer.h"
 #include "Graph.h"
+#include "GraphManager.h"
 
 namespace Animation
 {
@@ -138,6 +139,13 @@ namespace Animation
 	{
 		owner->StartTransition(std::make_unique<LinearClipGenerator>(loadedAnim), currentPhase->transitionTime);
 		LoadNextAnimation();
+		SFSE::GetTaskInterface()->AddTask([idx = GetPhase(), target = owner->target]() {
+			GraphManager::GetSingleton()->SendEvent(SequencePhaseChangeEvent{
+				.exiting = false,
+				.target = target,
+				.index = idx
+			});
+		});
 	}
 
 	void Sequencer::SpotLoadCurrentAnimation()
