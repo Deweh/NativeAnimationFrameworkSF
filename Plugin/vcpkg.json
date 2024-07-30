@@ -12,7 +12,6 @@
     "tomlplusplus",
     "xbyak",
     "simdjson",
-    "polyhook2",
     "zstr",
     "libzippp"
   ]

@@ -38,7 +38,6 @@ source_group(
 
 # dependencies
 find_package(libzippp CONFIG REQUIRED)
-find_package(PolyHook_2 CONFIG REQUIRED)
 find_package(simdjson CONFIG REQUIRED)
 #find_package(fastgltf CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
@@ -114,7 +113,6 @@ target_link_libraries(
 		spdlog::spdlog
 		simdjson::simdjson
 		fastgltf::fastgltf
-		PolyHook_2::PolyHook_2
 		libzippp::libzippp
 		ozz_animation
 		ozz_animation_offline
