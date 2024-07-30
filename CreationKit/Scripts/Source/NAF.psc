@@ -36,7 +36,7 @@ Bool Function SetAnimationSpeed(Actor akTarget, Float fSpeed) Native Global
 ; Returns 0 if the actor is not playing a NAF animation.
 ; Note: The value returned from this might be slightly different than SetAnimationSpeed due to float imprecision.
 ; 100.0 is normal speed.
-Float Function GetAnimationSpeed(Actor akTarget, Float fSpeed) Native Global
+Float Function GetAnimationSpeed(Actor akTarget) Native Global
 
 ; Returns an empty string if the actor is not playing a NAF animation.
 String Function GetCurrentAnimation(Actor akTarget) Native Global
