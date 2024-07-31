@@ -2,5 +2,4 @@
 
 namespace Tasks::SaveLoadListener
 {
-	void InstallHooks();
 }

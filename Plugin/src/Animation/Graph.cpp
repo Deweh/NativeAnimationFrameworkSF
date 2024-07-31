@@ -6,6 +6,7 @@
 #include "Util/Timing.h"
 #include "Sequencer.h"
 #include "GraphManager.h"
+#include "BlendTree.h"
 
 namespace Animation
 {

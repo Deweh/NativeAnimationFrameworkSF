@@ -3,12 +3,6 @@
 
 namespace Animation::Face
 {
-	typedef void (*BlinkUpdateFunc)(RE::BSFaceGenAnimationData*, float);
-	typedef bool (*FaceUpdateFunc)(RE::BSFaceGenAnimationData*, float, bool);
-
-	BlinkUpdateFunc OriginalBlinkUpdate;
-	FaceUpdateFunc OriginalFaceUpdate;
-
 	void GraphStub::BeginTween(float a_duration, RE::BSFaceGenAnimationData* a_data)
 	{
 		for (size_t i = 0; i < RE::BSFaceGenAnimationData::morphSize; i++) {
@@ -128,9 +122,6 @@ namespace Animation::Face
 		data.lock()->controlledDatas.erase(a_data);
 	}
 
-	void BlinkUpdate(RE::BSFaceGenAnimationData* a1, float a2);
-	bool FaceUpdate(RE::BSFaceGenAnimationData* a1, float a2, bool a3);
-
 	std::shared_ptr<MorphData> Manager::GetMorphData(RE::BSFaceGenAnimationData* a_data)
 	{
 		auto d = data.lock_read_only();
@@ -140,21 +131,6 @@ namespace Animation::Face
 		return nullptr;
 	}
 
-	void Manager::InstallHooks()
-	{
-		Util::Trampoline::AddHook(28, [](SFSE::Trampoline& t) {
-			//BSFaceGenAnimationData::UpdateBlinking(BSFaceGenAnimationData*, float)
-			REL::Relocation<uintptr_t> blinkUpdate{ REL::ID(113796), 0x147 };
-			OriginalBlinkUpdate = reinterpret_cast<BlinkUpdateFunc>(SFSE::GetTrampoline().write_call<5>(blinkUpdate.address(), &BlinkUpdate));
-
-			//BSFaceGenAnimationData::Update(BSFaceGenAnimationData*, float, bool)
-			REL::Relocation<uintptr_t> faceUpdate{ REL::ID(113883), 0xE0 };
-			OriginalFaceUpdate = reinterpret_cast<FaceUpdateFunc>(SFSE::GetTrampoline().write_call<5>(faceUpdate.address(), &FaceUpdate));
-
-			INFO("Installed face update hook.");
-		});
-	}
-
 	void Manager::Reset()
 	{
 		auto d = data.lock();
@@ -162,30 +138,30 @@ namespace Animation::Face
 		d->controlledDatas.clear();
 	}
 
-	void BlinkUpdate(RE::BSFaceGenAnimationData* a1, float a2)
-	{
-		static Manager* m = Manager::GetSingleton();
-		if (!m->data.lock_read_only()->noBlink.contains(a1)) {
-			OriginalBlinkUpdate(a1, a2);
-		} else {
-			//eyeClosed L/R
-			a1->morphs[25] = 0.0f;
-			a1->morphs[26] = 0.0f;
-			a1->morphs2[25] = 0.0f;
-			a1->morphs2[26] = 0.0f;
-		}
-	}
-
-	bool FaceUpdate(RE::BSFaceGenAnimationData* a1, float a2, bool a3)
-	{
-		static Manager* m = Manager::GetSingleton();
-		bool res = OriginalFaceUpdate(a1, a2, a3);
-		if (auto d = m->GetMorphData(a1); d != nullptr) {
-			bool requiresDetach = d->lock()->Update(a2, a1);
-			if (requiresDetach) {
-				m->DoDetach(a1);
+	static Util::Call5Hook<void(RE::BSFaceGenAnimationData*, float)> BlinkUpdateHook(113796, 0x147, "BSFaceGenAnimationData::UpdateBlinking",
+		[](RE::BSFaceGenAnimationData* a1, float a2) {
+			static Manager* m = Manager::GetSingleton();
+			if (!m->data.lock_read_only()->noBlink.contains(a1)) {
+				BlinkUpdateHook(a1, a2);
+			} else {
+				//eyeClosed L/R
+				a1->morphs[25] = 0.0f;
+				a1->morphs[26] = 0.0f;
+				a1->morphs2[25] = 0.0f;
+				a1->morphs2[26] = 0.0f;
 			}
-		}
-		return res;
-	}
+		});
+
+	static Util::Call5Hook<bool(RE::BSFaceGenAnimationData*, float, bool)> FaceUpdateHook(113883, 0xE0, "BSFaceGenAnimationData::Update",
+		[](RE::BSFaceGenAnimationData* a1, float a2, bool a3) {
+			static Manager* m = Manager::GetSingleton();
+			bool res = FaceUpdateHook(a1, a2, a3);
+			if (auto d = m->GetMorphData(a1); d != nullptr) {
+				bool requiresDetach = d->lock()->Update(a2, a1);
+				if (requiresDetach) {
+					m->DoDetach(a1);
+				}
+			}
+			return res;
+		});
 }

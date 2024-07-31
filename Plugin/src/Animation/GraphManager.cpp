@@ -8,9 +8,6 @@
 
 namespace Animation
 {
-	typedef void (*GraphUpdateFunc)(RE::IAnimationGraphManagerHolder*, RE::BSAnimationUpdateData*, void*);
-	typedef void* (*PlayerPerspectiveSwitchFunc)(void*, void*);
-
 	GraphManager* GraphManager::GetSingleton()
 	{
 		static GraphManager singleton;
@@ -218,60 +215,41 @@ namespace Animation
 		}
 	}
 
-	GraphManager& graphManager = *GraphManager::GetSingleton();
-	GraphUpdateFunc OriginalGraphUpdate;
+	GraphManager& gm = *GraphManager::GetSingleton();
 
-	void UpdateGraph(RE::IAnimationGraphManagerHolder* a_graphHolder, RE::BSAnimationUpdateData* a_updateData, void* a_graph)
-	{
-		OriginalGraphUpdate(a_graphHolder, a_updateData, a_graph);
+	static Util::Call5Hook<void(RE::IAnimationGraphManagerHolder*, RE::BSAnimationUpdateData*, void*)> GraphUpdateHook(118488, 0x61, "IAnimationGraphManagerHolder::UpdateAnimationGraphManager",
+		[](RE::IAnimationGraphManagerHolder* a_graphHolder, RE::BSAnimationUpdateData* a_updateData, void* a_graph) {
+			GraphUpdateHook(a_graphHolder, a_updateData, a_graph);
 
-		std::shared_lock l{ graphManager.stateLock };
-		auto& m = graphManager.state->graphMap;
-		if (auto iter = m.find(a_graphHolder); iter != m.end()) {
-			auto& g = iter->second;
-			std::unique_lock gl{ g->lock };
-			g->Update(a_updateData->timeDelta);
+			std::shared_lock l{ gm.stateLock };
+			auto& m = gm.state->graphMap;
+			if (auto iter = m.find(a_graphHolder); iter != m.end()) {
+				auto& g = iter->second;
+				std::unique_lock gl{ g->lock };
+				g->Update(a_updateData->timeDelta);
 
-			if (g->flags.none(
-					Graph::FLAGS::kPersistent,
-					Graph::FLAGS::kActiveIKChains,
-					Graph::FLAGS::kHasGenerator,
-					Graph::FLAGS::kTransitioning,
-					Graph::FLAGS::kLoadingAnimation,
-					Graph::FLAGS::kLoadingSequencerAnimation
-				)) {
-				l.unlock();
-				graphManager.DetachGraph(a_graphHolder);
+				if (g->flags.none(
+						Graph::FLAGS::kPersistent,
+						Graph::FLAGS::kActiveIKChains,
+						Graph::FLAGS::kHasGenerator,
+						Graph::FLAGS::kTransitioning,
+						Graph::FLAGS::kLoadingAnimation,
+						Graph::FLAGS::kLoadingSequencerAnimation)) {
+					l.unlock();
+					gm.DetachGraph(a_graphHolder);
+				}
 			}
-		}
-	}
-
-	PlayerPerspectiveSwitchFunc OriginalPerspectiveSwitch;
-
-	void* PlayerPerspectiveSwitch(void* a1, void* a2)
-	{
-		void* res = OriginalPerspectiveSwitch(a1, a2);
-		
-		if (auto g = graphManager.GetGraph(RE::PlayerCharacter::GetSingleton(), false); g) {
-			std::unique_lock l{ g->lock };
-			g->flags.set(Graph::FLAGS::kRequiresEyeTrackUpdate);
-		}
-
-		return res;
-	}
-
-	void GraphManager::InstallHooks()
-	{
-		Util::Trampoline::AddHook(14, [](SFSE::Trampoline& t) {
-			//IAnimationGraphManagerHolder::UpdateAnimationGraphManager(IAnimationGraphManagerHolder*, BSAnimationUpdateData*, Graph*)
-			REL::Relocation<uintptr_t> hookLoc{ REL::ID(118488), 0x61 };
-			OriginalGraphUpdate = reinterpret_cast<GraphUpdateFunc>(SFSE::GetTrampoline().write_call<5>(hookLoc.address(), &UpdateGraph));
-
-			//`anonymous namespace'::HandlePlayerPerspectiveSwitchForEyeTracking(void*, void*)
-			REL::Relocation<uintptr_t> vtbl{ REL::ID(422984) };
-			OriginalPerspectiveSwitch = reinterpret_cast<PlayerPerspectiveSwitchFunc>(vtbl.write_vfunc(1, &PlayerPerspectiveSwitch));
-
-			INFO("Installed graph update hook.");
 		});
-	}
+
+	static Util::VFuncHook<void*(void*,void*)> PerspectiveSwitchHook(422984, 0x1, "::HandlePlayerPerspectiveSwitchForEyeTracking",
+		[](void* a1, void* a2) -> void* {
+			void* res = PerspectiveSwitchHook(a1, a2);
+
+			if (auto g = gm.GetGraph(RE::PlayerCharacter::GetSingleton(), false); g) {
+				std::unique_lock l{ g->lock };
+				g->flags.set(Graph::FLAGS::kRequiresEyeTrackUpdate);
+			}
+
+			return res;
+		});
 }

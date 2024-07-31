@@ -6,20 +6,11 @@
 
 namespace Tasks::SaveLoadListener
 {
-	using revert_t = REL::Relocation<decltype(&RE::BSScript::Internal::VirtualMachine::DropAllRunningData)>;
-	revert_t OriginalRevert;
-
-	void* OnRevert(RE::BSScript::Internal::VirtualMachine* a_this)
-	{
-		Animation::GraphManager::GetSingleton()->Reset();
-		Animation::Face::Manager::GetSingleton()->Reset();
-		Papyrus::EventManager::GetSingleton()->Reset();
-		return OriginalRevert(a_this);
-	}
-
-	void InstallHooks()
-	{
-		REL::Relocation vmSaveIntfcVtbl{ REL::ID(447253) };
-		OriginalRevert = vmSaveIntfcVtbl.write_vfunc(0x7, &OnRevert);
-	}
+	static Util::VFuncHook<void*(RE::BSScript::Internal::VirtualMachine*)> RevertHook(447253, 0x7, "BSScript::Internal::VirtualMachine::DropAllRunningData",
+		[](RE::BSScript::Internal::VirtualMachine* a_this) -> void* {
+			Animation::GraphManager::GetSingleton()->Reset();
+			Animation::Face::Manager::GetSingleton()->Reset();
+			Papyrus::EventManager::GetSingleton()->Reset();
+			return RevertHook(a_this);
+		});
 }

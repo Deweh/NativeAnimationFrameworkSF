@@ -30,15 +30,6 @@ namespace
 		}
 	}
 
-	void InstallHooks()
-	{
-		Animation::GraphManager::GetSingleton()->InstallHooks();
-		Animation::Face::Manager::GetSingleton()->InstallHooks();
-		Tasks::SaveLoadListener::InstallHooks();
-		Tasks::Input::GetSingleton()->InstallHooks();
-		Util::Trampoline::ProcessHooks();
-	}
-
 	void BindPapyrusScripts(RE::BSScript::IVirtualMachine** a_vm)
 	{
 		Papyrus::NAFScript::RegisterFunctions(*a_vm);
@@ -52,7 +43,7 @@ DLLEXPORT bool SFSEAPI SFSEPlugin_Load(const SFSE::LoadInterface* a_sfse)
 	INFO("{} v{} loaded", Plugin::NAME, Plugin::Version);
 	INFO("Starfield Offset: {:X}", REL::Module::get().base());
 
-	InstallHooks();
+	Util::Trampoline::ProcessHooks();
 	SFSE::SetPapyrusCallback(&BindPapyrusScripts);
 	SFSE::GetMessagingInterface()->RegisterListener(MessageCallback);
 	Commands::NAFCommand::RegisterKeybinds();

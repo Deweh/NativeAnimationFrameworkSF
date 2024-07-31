@@ -50,7 +50,6 @@ namespace Animation::Face
 		void DetachMorphData(RE::BSFaceGenAnimationData* a_data, float a_transitionTime);
 		void DoDetach(RE::BSFaceGenAnimationData* a_data);
 		std::shared_ptr<MorphData> GetMorphData(RE::BSFaceGenAnimationData* a_data);
-		void InstallHooks();
 		void Reset();
 
 		Util::Guarded<InternalData, std::shared_mutex> data;

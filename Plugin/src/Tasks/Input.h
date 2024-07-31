@@ -126,7 +126,6 @@ namespace Tasks
 
 		static Input* GetSingleton();
 		void RegisterForKey(BS_BUTTON_CODE a_key, ButtonCallback a_callback);
-		void InstallHooks();
 
 		std::map<uint32_t, ButtonCallback> callbacks;
 	};

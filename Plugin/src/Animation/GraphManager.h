@@ -35,7 +35,6 @@ namespace Animation
 		bool DetachGraph(RE::IAnimationGraphManagerHolder* a_graphHolder);
 		bool VisitGraph(RE::Actor* a_actor, const std::function<bool(Graph*)> visitFunc, bool create = false);
 		void GetAllGraphs(std::vector<std::pair<RE::TESObjectREFR*, std::weak_ptr<Graph>>>& a_refsOut);
-		void InstallHooks();
 		void Reset();
 		std::shared_ptr<Graph> GetGraph(RE::Actor* a_actor, bool create);
 
