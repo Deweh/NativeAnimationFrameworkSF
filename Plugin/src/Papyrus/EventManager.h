@@ -13,13 +13,13 @@ namespace Papyrus
 	};
 
 	class EventManager :
-		public Util::Event::Listener<Animation::SequencePhaseChangeEvent>
+		public Util::Event::MultiListener<Animation::SequencePhaseChangeEvent>
 	{
 	public:
 		struct Registration
 		{
-			RE::BSFixedString scriptName;
-			RE::BSFixedString functionName;
+			std::string scriptName;
+			std::string functionName;
 		};
 
 		struct InternalData

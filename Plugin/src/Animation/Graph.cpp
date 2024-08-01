@@ -6,15 +6,12 @@
 #include "Util/Timing.h"
 #include "Sequencer.h"
 #include "GraphManager.h"
-#include "BlendTree.h"
 
 namespace Animation
 {
 	Graph::Graph()
 	{
 		flags.set(FLAGS::kUnloaded3D);
-		blendLayers[0].weight = .0f;
-		blendLayers[1].weight = .0f;
 	}
 
 	Graph::~Graph() noexcept
@@ -22,110 +19,93 @@ namespace Animation
 		if (syncInst != nullptr && syncInst->GetOwner() == this) {
 			syncInst->SetOwner(nullptr);
 		}
-		SetNoBlink(false);
-		SetFaceMorphsControlled(false, 1.0f);
+		if (loadedData) {
+			Face::Manager::GetSingleton()->OnAnimDataChange(loadedData->faceAnimData, nullptr);
+		}
 		EnableEyeTracking();
 	}
 
 	void Graph::OnAnimationReady(const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim)
 	{
 		std::unique_lock l{ lock };
+		if (!loadedData) {
+			return;
+		}
+
 		if (sequencer && sequencer->OnAnimationReady(a_id, a_anim)) {
 			return;
 		}
 
 		if (flags.all(FLAGS::kLoadingAnimation)) {
-			if (a_id != activeFile) {
+			if (a_id != loadedData->loadingFile) {
 				return;
 			}
 
 			flags.reset(FLAGS::kLoadingAnimation);
 			if (a_anim != nullptr) {
-				StartTransition(std::make_unique<LinearClipGenerator>(a_anim), transition.queuedDuration);
+				StartTransition(std::make_unique<LinearClipGenerator>(a_anim), loadedData->transition.queuedDuration);
 			}
 		}
 	}
 
 	void Graph::OnAnimationRequested(const FileID& a_id)
 	{
-		std::unique_lock l{ lock };
+		if (!loadedData) {
+			return;
+		}
+
 		if (sequencer && sequencer->OnAnimationRequested(a_id)) {
 			return;
 		}
 
 		if (flags.all(FLAGS::kLoadingAnimation)) {
-			FileManager::GetSingleton()->CancelAnimationRequest(activeFile, weak_from_this());
+			FileManager::GetSingleton()->CancelAnimationRequest(loadedData->loadingFile, weak_from_this());
 		} else {
 			flags.set(FLAGS::kLoadingAnimation);
 		}
 		
-		activeFile = a_id;
+		loadedData->loadingFile = a_id;
 	}
 
 	void Graph::SetSkeleton(std::shared_ptr<const OzzSkeleton> a_descriptor)
 	{
 		skeleton = a_descriptor;
-
-		if (skeleton->lEyeIdx != UINT64_MAX || skeleton->rEyeIdx != UINT64_MAX) {
-			eyeTrackData = std::make_unique<EyeTrackingData>();
-		}
-
-		int soaSize = skeleton->data->num_soa_joints();
-		int jointSize = skeleton->data->num_joints();
-		restPose.resize(soaSize);
-		snapshotPose.resize(soaSize);
-		generatedPose.resize(soaSize);
-		blendedPose.resize(soaSize);
-		context.Resize(jointSize);
-		blendLayers[0].transform = ozz::make_span(generatedPose);
-		blendLayers[1].transform = ozz::make_span(snapshotPose);
-		if (generator != nullptr) {
-			generator->SetOutput(ozz::make_span(generatedPose));
-		}
 	}
 
 	void Graph::GetSkeletonNodes(RE::BGSFadeNode* a_rootNode) {
+		bool isLoaded = a_rootNode != nullptr;
+
 		nodes.clear();
-		rootNode = a_rootNode;
 		EnableEyeTracking();
+		SetLoaded(isLoaded);
 
-		if (eyeTrackData) {
-			eyeTrackData->lEye = nullptr;
-			eyeTrackData->rEye = nullptr;
-			eyeTrackData->eyeTarget = nullptr;
-		}
+		if (isLoaded) {
+			auto& l = loadedData;
+			l->rootNode = a_rootNode;
 
-		if (a_rootNode != nullptr) {
-			RE::BSFaceGenAnimationData* oldFaceAnimData = faceAnimData;
-			UpdateFaceAnimData();
-			Face::Manager::GetSingleton()->OnAnimDataChange(oldFaceAnimData, faceAnimData);
+			if (l->eyeTrackData) {
+				l->eyeTrackData->lEye = nullptr;
+				l->eyeTrackData->rEye = nullptr;
+				l->eyeTrackData->eyeTarget = nullptr;
+			}
 
-			SetNoBlink(true);
 			ResetRootTransform();
-			size_t idx = 0;
 			for (auto& name : skeleton->data->joint_names()) {
 				RE::NiNode* n = a_rootNode->GetObjectByName(name);
 				if (!n) {
 					nodes.push_back(std::make_unique<NullNode>());
 				} else {
-					if (idx == skeleton->lEyeIdx) {
-						eyeTrackData->lEye = n;
-					} else if (idx == skeleton->rEyeIdx) {
-						eyeTrackData->rEye = n;
-					}
 					nodes.push_back(std::make_unique<GameNode>(n));
 				}
-				idx++;
 			}
 
-			if (eyeTrackData) {
-				eyeTrackData->eyeTarget = a_rootNode->GetObjectByName("Eye_Target");
+			if (l->eyeTrackData) {
+				l->eyeTrackData->eyeTarget = a_rootNode->GetObjectByName("Eye_Target");
+				l->eyeTrackData->lEye = a_rootNode->GetObjectByName("L_Eye");
+				l->eyeTrackData->rEye = a_rootNode->GetObjectByName("R_Eye");
 				flags.set(FLAGS::kRequiresEyeTrackUpdate);
 			}
-			
-			flags.reset(FLAGS::kUnloaded3D);
-		} else {
-			flags.set(FLAGS::kUnloaded3D);
+			flags.set(FLAGS::kRequiresFaceDataUpdate);
 		}
 	}
 
@@ -138,22 +118,31 @@ namespace Animation
 	}
 
 	void Graph::Update(float a_deltaTime) {
-		auto dataLock = target->loadedData.lock_write();
-		auto& loadedRefData = *dataLock;
+#ifdef ENABLE_PERFORMANCE_MONITORING
+		auto start = Util::Timing::HighResTimeNow();
+#endif
+		auto refLock = target->loadedData.lock_write();
 
-		if (!loadedRefData || !loadedRefData->data3D.get()) {
-			if (rootNode) {
-				GetSkeletonNodes(nullptr);
-			}
-		} else if (loadedRefData->data3D.get() != rootNode) {
-			GetSkeletonNodes(static_cast<RE::BGSFadeNode*>(loadedRefData->data3D.get()));
-		} else if (flags.any(FLAGS::kRequiresEyeTrackUpdate)) {
+		if (!loadedData || !generator) {
+			return;
+		}
+
+		if (flags.any(FLAGS::kRequiresEyeTrackUpdate)) {
 			DisableEyeTracking();
 			flags.reset(FLAGS::kRequiresEyeTrackUpdate);
 		}
 
-		if (!rootNode || !generator) {
-			return;
+		if (flags.any(FLAGS::kRequiresFaceDataUpdate)) {
+			RE::BSFaceGenAnimationData* oldFaceAnimData = loadedData->faceAnimData;
+			UpdateFaceAnimData();
+			Face::Manager::GetSingleton()->OnAnimDataChange(oldFaceAnimData, loadedData->faceAnimData);
+			SetNoBlink(true);
+
+			if (generator->HasFaceAnimation()) {
+				SetFaceMorphsControlled(true, loadedData->transition.queuedDuration);
+				generator->SetFaceMorphData(loadedData->faceMorphData.get());
+			}
+			flags.reset(FLAGS::kRequiresFaceDataUpdate);
 		}
 
 		generator->AdvanceTime(a_deltaTime);
@@ -190,11 +179,16 @@ namespace Animation
 		generator->Generate(0.0f);
 
 		if (flags.any(FLAGS::kTransitioning)) {
-			UpdateTransition(a_deltaTime);
-			PushOutput(blendedPose);
+			auto blendPose = loadedData->blendedPose.get();
+			UpdateTransition(a_deltaTime, ozz::make_span(blendPose));
+			PushOutput(blendPose);
 		} else {
-			PushOutput(generatedPose);
+			PushOutput(loadedData->generatedPose.get());
 		}
+
+#ifdef ENABLE_PERFORMANCE_MONITORING
+		lastUpdateMs = Util::Timing::HighResTimeDiffMilliSec(start);
+#endif
 	}
 
 	IKTwoBoneData* Graph::AddIKJob(const std::span<std::string_view, 3> a_nodeNames, const RE::NiTransform& a_initialTargetWorld, const RE::NiPoint3& a_initialPolePtModel, float a_transitionTime)
@@ -244,34 +238,45 @@ namespace Animation
 
 	void Graph::SetNoBlink(bool a_noBlink)
 	{
-		Face::Manager::GetSingleton()->SetNoBlink(faceAnimData, a_noBlink);
+		if (!loadedData)
+			return;
+
+		Face::Manager::GetSingleton()->SetNoBlink(loadedData->faceAnimData, a_noBlink);
 	}
 
 	void Graph::SetFaceMorphsControlled(bool a_controlled, float a_transitionTime)
 	{
-		if (a_controlled && faceAnimData) {
-			if (faceMorphData) {
-				faceMorphData->lock()->BeginTween(a_transitionTime, faceAnimData);
+		auto& l = loadedData;
+		if (!l)
+			return;
+
+		if (a_controlled && l->faceAnimData) {
+			if (l->faceMorphData) {
+				l->faceMorphData->lock()->BeginTween(a_transitionTime, l->faceAnimData);
 			} else {
-				faceMorphData = std::make_shared<Face::MorphData>();
-				Face::Manager::GetSingleton()->AttachMorphData(faceAnimData, faceMorphData, a_transitionTime);
+				l->faceMorphData = std::make_shared<Face::MorphData>();
+				Face::Manager::GetSingleton()->AttachMorphData(l->faceAnimData, l->faceMorphData, a_transitionTime);
 			}
-		} else if (!a_controlled && faceMorphData) {
-			Face::Manager::GetSingleton()->DetachMorphData(faceAnimData, a_transitionTime);
-			faceMorphData = nullptr;
+		} else if (!a_controlled && l->faceMorphData) {
+			Face::Manager::GetSingleton()->DetachMorphData(l->faceAnimData, a_transitionTime);
+			l->faceMorphData = nullptr;
 		}
 	}
 
 	void Graph::DisableEyeTracking()
 	{
-		if (!eyeTrackData || !eyeTrackData->lEye || !eyeTrackData->rEye)
+		auto& l = loadedData;
+		if (!l)
+			return;
+
+		if (!l->eyeTrackData || !l->eyeTrackData->lEye || !l->eyeTrackData->rEye)
 			return;
 
 		auto eyeNodes = RE::EyeTracking::GetEyeNodes();
 		for (auto& n : eyeNodes.data) {
-			if (n.leftEye.get() == eyeTrackData->lEye && n.rightEye.get() == eyeTrackData->rEye) {
-				n.leftEye.reset(eyeTrackData->eyeTarget);
-				n.rightEye.reset(eyeTrackData->eyeTarget);
+			if (n.leftEye.get() == l->eyeTrackData->lEye && n.rightEye.get() == l->eyeTrackData->rEye) {
+				n.leftEye.reset(l->eyeTrackData->eyeTarget);
+				n.rightEye.reset(l->eyeTrackData->eyeTarget);
 				break;
 			}
 		}
@@ -279,14 +284,18 @@ namespace Animation
 
 	void Graph::EnableEyeTracking()
 	{
-		if (!eyeTrackData || !eyeTrackData->eyeTarget)
+		auto& l = loadedData;
+		if (!l)
+			return;
+
+		if (!l->eyeTrackData || !l->eyeTrackData->eyeTarget)
 			return;
 
 		auto eyeNodes = RE::EyeTracking::GetEyeNodes();
 		for (auto& n : eyeNodes.data) {
-			if (n.leftEye.get() == eyeTrackData->eyeTarget && n.rightEye.get() == eyeTrackData->eyeTarget) {
-				n.leftEye.reset(eyeTrackData->lEye);
-				n.rightEye.reset(eyeTrackData->rEye);
+			if (n.leftEye.get() == l->eyeTrackData->eyeTarget && n.rightEye.get() == l->eyeTrackData->eyeTarget) {
+				n.leftEye.reset(l->eyeTrackData->lEye);
+				n.rightEye.reset(l->eyeTrackData->rEye);
 				break;
 			}
 		}
@@ -309,42 +318,93 @@ namespace Animation
 		}
 	}
 
+	void Graph::SetLoaded(bool a_loaded)
+	{
+		if (a_loaded && !loadedData)
+		{
+			flags.reset(FLAGS::kUnloaded3D);
+			loadedData = std::make_unique<LOADED_DATA>();
+			auto& l = loadedData;
+			l->blendLayers[0].weight = .0f;
+			l->blendLayers[1].weight = .0f;
+
+			if (skeleton->lEyeIdx != UINT64_MAX || skeleton->rEyeIdx != UINT64_MAX) {
+				l->eyeTrackData = std::make_unique<EyeTrackingData>();
+			}
+
+			l->context.Resize(skeleton->data->num_joints());
+			l->poseCache.set_pose_size(skeleton->data->num_soa_joints());
+			l->poseCache.reserve(5);
+			l->lastPose = l->poseCache.acquire_handle();
+			l->restPose = l->poseCache.acquire_handle();
+			l->snapshotPose = l->poseCache.acquire_handle();
+			l->generatedPose = l->poseCache.acquire_handle();
+			l->blendedPose = l->poseCache.acquire_handle();
+
+			l->blendLayers[0].transform = l->generatedPose.get_ozz();
+			l->blendLayers[1].transform = l->snapshotPose.get_ozz();
+
+			if (unloadedData && !unloadedData->restoreFile.QPath().empty()) {
+				loadedData->transition.queuedDuration = 0.2f;
+				FileManager::GetSingleton()->RequestAnimation(unloadedData->restoreFile, skeleton->name, weak_from_this());
+			}
+			unloadedData.reset();
+		}
+		else if (!a_loaded && loadedData)
+		{
+			Face::Manager::GetSingleton()->OnAnimDataChange(loadedData->faceAnimData, nullptr);
+			flags.set(FLAGS::kUnloaded3D);
+			loadedData.reset();
+			unloadedData = std::make_unique<UNLOADED_DATA>();
+			auto& u = unloadedData;
+
+			if (generator) {
+				u->restoreFile = FileID(generator->GetSourceFile(), "");
+				generator.reset();
+				flags.reset(FLAGS::kHasGenerator);
+			}
+		}
+	}
+
 	void Graph::UpdateFaceAnimData()
 	{
-		if (!rootNode) {
-			faceAnimData = nullptr;
+		auto l = loadedData.get();
+		if (!l) {
 			return;
 		}
 
-		auto m = rootNode->bgsModelNode;
+		auto m = l->rootNode->bgsModelNode;
 		if (!m) {
-			faceAnimData = nullptr;
+			l->faceAnimData = nullptr;
 			return;
 		}
 
 		if (m->facegenNodes.size < 1) {
-			faceAnimData = nullptr;
+			l->faceAnimData = nullptr;
 			return;
 		}
 
 		auto fn = m->facegenNodes.data[0];
 		if (!fn) {
-			faceAnimData = nullptr;
+			l->faceAnimData = nullptr;
 			return;
 		}
 
-		faceAnimData = fn->faceGenAnimData;
+		l->faceAnimData = fn->faceGenAnimData;
 	}
 
-	void Graph::UpdateTransition(float a_deltaTime)
+	void Graph::UpdateTransition(float a_deltaTime, const ozz::span<ozz::math::SoaTransform>& a_output)
 	{
+		auto& transition = loadedData->transition;
+		auto& blendLayers = loadedData->blendLayers;
+
 		ozz::animation::BlendingJob blendJob;
 		UpdateRestPose();
-		blendJob.rest_pose = ozz::make_span(restPose);
+		blendJob.rest_pose = loadedData->restPose.get_ozz();
 		blendJob.layers = ozz::make_span(blendLayers);
-		blendJob.output = ozz::make_span(blendedPose);
+		blendJob.output = a_output;
 		blendJob.threshold = 1.0f;
-
+		
 		transition.localTime += a_deltaTime;
 		if (transition.localTime >= transition.duration) {
 			if (transition.onEnd != nullptr) {
@@ -373,6 +433,12 @@ namespace Animation
 
 	void Graph::StartTransition(std::unique_ptr<Generator> a_dest, float a_transitionTime)
 	{
+		if (!loadedData)
+			return;
+
+		auto& transition = loadedData->transition;
+		auto& blendLayers = loadedData->blendLayers;
+
 		const auto SetData = [&](TRANSITION_TYPE t) {
 			switch (t) {
 			case kGameToGraph:
@@ -412,7 +478,7 @@ namespace Animation
 		transition.duration = a_transitionTime;
 
 		if (flags.all(FLAGS::kTransitioning)) {
-			SnapshotBlend();
+			SnapshotPose();
 			if (a_dest != nullptr) {
 				SetData(TRANSITION_TYPE::kGeneratorToGenerator);
 			} else {
@@ -420,7 +486,7 @@ namespace Animation
 			}
 		} else if (flags.all(FLAGS::kHasGenerator)) {
 			if (a_dest != nullptr) {
-				SnapshotGenerator();
+				SnapshotPose();
 				SetData(TRANSITION_TYPE::kGeneratorToGenerator);
 			} else {
 				SetData(TRANSITION_TYPE::kGraphToGame);
@@ -441,12 +507,13 @@ namespace Animation
 		flags.set(FLAGS::kTransitioning);
 		if (a_dest != nullptr) {
 			generator = std::move(a_dest);
-			generator->SetContext(&context);
-			generator->SetOutput(ozz::make_span(generatedPose));
+			generator->SetContext(&loadedData->context);
+			generator->SetOutput(loadedData->generatedPose.get_ozz());
 
 			if (generator->HasFaceAnimation()) {
+				loadedData->transition.queuedDuration = a_transitionTime;
 				SetFaceMorphsControlled(true, a_transitionTime);
-				generator->SetFaceMorphData(faceMorphData.get());
+				generator->SetFaceMorphData(loadedData->faceMorphData.get());
 			} else {
 				SetFaceMorphsControlled(false, a_transitionTime);
 			}
@@ -457,8 +524,9 @@ namespace Animation
 		}
 	}
 
-	void Graph::PushOutput(const std::vector<ozz::math::SoaTransform>& a_output)
+	void Graph::PushOutput(const std::span<ozz::math::SoaTransform>& a_output)
 	{
+		std::copy(a_output.begin(), a_output.end(), loadedData->lastPose.get().begin());
 		static RE::TransformsManager* transformManager = RE::TransformsManager::GetSingleton();
 
 		if (generator && generator->rootResetRequired) {
@@ -484,7 +552,7 @@ namespace Animation
 		auto rootXYZ = GetRootXYZ();
 		transformManager->RequestPosRotUpdate(target.get(), rootXYZ.translate, rootXYZ.rotate);
 
-		auto r = rootNode;
+		auto r = loadedData->rootNode;
 		if (!r)
 			return;
 		auto m = r->bgsModelNode;
@@ -498,21 +566,17 @@ namespace Animation
 
 	void Graph::UpdateRestPose()
 	{
-		Transform::StoreSoaTransforms(restPose, std::bind(&Graph::GetCurrentTransform, this, std::placeholders::_1));
+		Transform::StoreSoaTransforms(loadedData->restPose.get(), std::bind(&Graph::GetCurrentTransform, this, std::placeholders::_1));
 	}
 
-	void Graph::SnapshotBlend()
+	void Graph::SnapshotPose()
 	{
-		for (size_t i = 0; i < snapshotPose.size(); i++) {
-			snapshotPose[i] = blendedPose[i];
-		}
-	}
+		if (!loadedData)
+			return;
 
-	void Graph::SnapshotGenerator()
-	{
-		for (size_t i = 0; i < snapshotPose.size(); i++) {
-			snapshotPose[i] = generatedPose[i];
-		}
+		auto snapshotPose = loadedData->snapshotPose.get();
+		auto lastPose = loadedData->lastPose.get();
+		std::copy(lastPose.begin(), lastPose.end(), snapshotPose.begin());
 	}
 
 	void Graph::ResetRootTransform()

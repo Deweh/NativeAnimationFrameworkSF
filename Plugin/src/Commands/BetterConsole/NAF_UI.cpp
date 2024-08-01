@@ -63,18 +63,41 @@ namespace
 			return;
 
 		std::unique_lock l{ g->lock };
+		bool isLoaded = g->flags.none(Animation::Graph::FLAGS::kUnloaded3D);
 
 		UI->Separator();
-		UI->Text("Generator");
+		UI->Text("Loaded: %s", isLoaded ? "True" : "False");
+#ifdef ENABLE_PERFORMANCE_MONITORING
+		UI->Text("Update Time: %.2f ms", g->lastUpdateMs);
+#endif
 		UI->Separator();
 
-		if (g->generator) {
-			UI->Text("Has Generator: True");
-			UI->DragFloat("Current Time (Seconds)", &g->generator->localTime, 0.0f, g->generator->duration);
-			UI->Checkbox("Paused", &g->generator->paused);
+		if (isLoaded) {
+			UI->Separator();
+			UI->Text("Generator");
+			UI->Separator();
+
+			if (g->generator) {
+				UI->Text("Has Generator: True");
+				UI->DragFloat("Current Time (Seconds)", &g->generator->localTime, 0.0f, g->generator->duration);
+				UI->Checkbox("Paused", &g->generator->paused);
+			} else {
+				UI->Text("Has Generator: False");
+			}
 		} else {
-			UI->Text("Has Generator: False");
+			static const char* cachedId{ nullptr };
+			static std::array<char, 240> buffer;
+			const char* curId = g->unloadedData->restoreFile.QPath().data();
+			if (cachedId != curId) {
+				std::strncpy(buffer.data(), curId, sizeof(buffer));
+				buffer.back() = '/0';
+				cachedId = curId;
+			}
+			if (UI->InputText("Animation File", buffer.data(), sizeof(buffer), true)) {
+				g->unloadedData->restoreFile = Animation::FileID(buffer.data(), "");
+			}
 		}
+		
 
 		UI->Separator();
 		UI->Text("Sequence");

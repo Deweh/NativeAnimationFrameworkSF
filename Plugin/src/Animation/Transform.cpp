@@ -106,7 +106,7 @@ namespace Animation
 		}
 	}
 
-	void Transform::StoreSoaTransforms(std::span<ozz::math::SoaTransform>& out, const std::function<Transform(size_t)> func)
+	void Transform::StoreSoaTransforms(const std::span<ozz::math::SoaTransform>& out, const std::function<Transform(size_t)> func)
 	{
 		size_t s = out.size();
 		std::array<Transform, 4> arr;
@@ -149,7 +149,7 @@ namespace Animation
 		}
 	}
 
-	void Transform::ExtractSoaTransformsReal(const std::vector<ozz::math::SoaTransform>& in, const std::function<void(size_t, const RE::NiMatrix3&, const RE::NiPoint3&)> func)
+	void Transform::ExtractSoaTransformsReal(const std::span<ozz::math::SoaTransform>& in, const std::function<void(size_t, const RE::NiMatrix3&, const RE::NiPoint3&)> func)
 	{
 		size_t s = in.size();
 		ozz::math::SoaFloat4x4 mat;

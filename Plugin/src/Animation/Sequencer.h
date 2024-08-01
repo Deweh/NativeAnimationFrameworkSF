@@ -19,12 +19,13 @@ namespace Animation
 	public:
 		enum FLAG : uint8_t
 		{
-			kNone,
-			kForceAdvance,
-			kSmoothAdvance,
-			kLoadingNextAnim,
-			kPausedForLoading,
-			kLoop
+			kNone = 0,
+			kForceAdvance = 1u << 0,
+			kSmoothAdvance = 1u << 1,
+			kLoadingNextAnim = 1u << 2,
+			kPausedForLoading = 1u << 3,
+			kLoop = 1u << 4,
+			kSuspended = 1u << 5
 		};
 
 		struct PhaseData

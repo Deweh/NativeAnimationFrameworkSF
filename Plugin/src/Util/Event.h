@@ -102,7 +102,11 @@ namespace Util::Event
 	class MultiListener : public Listener<Ts>...
 	{
 	public:
-		using Listener<Ts>::RegisterForEvent...;
+		template <typename T>
+		void RegisterForEvent(Dispatcher<T>* a_dispatcher)
+		{
+			Listener<T>::RegisterForEvent(a_dispatcher);
+		}
 
 		template <typename T>
 		void UnregisterForEvent()

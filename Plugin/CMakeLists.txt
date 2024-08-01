@@ -84,7 +84,7 @@ add_library(
  "src/Commands/BetterConsole/NAF_UI.cpp"
  "src/Util/VM.cpp" 
  "src/Papyrus/NAFScript.cpp"
- "src/Animation/FileID.cpp" "src/Papyrus/EventManager.cpp")
+ "src/Animation/FileID.cpp" "src/Papyrus/EventManager.cpp" "src/Animation/PoseCache.cpp")
 
 # copy to Starfield directory
 set(STARFIELD_PATH "C:/Program Files (x86)/Steam/steamapps/common/Starfield/Data/SFSE/Plugins")

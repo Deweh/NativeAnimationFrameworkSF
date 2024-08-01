@@ -8,6 +8,7 @@
 #include "FileManager.h"
 #include "SyncInstance.h"
 #include "Face/Manager.h"
+#include "PoseCache.h"
 
 namespace Animation
 {
@@ -46,7 +47,8 @@ namespace Animation
 
 			kLoadingAnimation = 1u << 5,
 			kRequiresEyeTrackUpdate = 1u << 6,
-			kLoadingSequencerAnimation = 1u << 7
+			kLoadingSequencerAnimation = 1u << 7,
+			kRequiresFaceDataUpdate = 1u << 8
 		};
 
 		enum TRANSITION_TYPE : uint8_t
@@ -58,31 +60,45 @@ namespace Animation
 			kGeneratorToGenerator = 4
 		};
 
+		struct LOADED_DATA
+		{
+			RE::BGSFadeNode* rootNode = nullptr;
+			ozz::animation::SamplingJob::Context context;
+			PoseCache poseCache;
+			PoseCache::Handle lastPose;
+			PoseCache::Handle restPose;
+			PoseCache::Handle snapshotPose;
+			PoseCache::Handle generatedPose;
+			PoseCache::Handle blendedPose;
+			std::array<ozz::animation::BlendingJob::Layer, 2> blendLayers;
+			TransitionData transition;
+			std::unique_ptr<EyeTrackingData> eyeTrackData;
+			std::shared_ptr<Face::MorphData> faceMorphData = nullptr;
+			RE::BSFaceGenAnimationData* faceAnimData = nullptr;
+			FileID loadingFile;
+		};
+
+		struct UNLOADED_DATA
+		{
+			FileID restoreFile;
+		};
+
 		std::mutex lock;
 		SFSE::stl::enumeration<FLAGS, uint16_t> flags = kNoFlags;
 		RE::NiPointer<RE::TESObjectREFR> target;
-
 		std::shared_ptr<const OzzSkeleton> skeleton;
-		std::vector<std::unique_ptr<Node>> nodes;
-		RE::BGSFadeNode* rootNode = nullptr;
 		Transform rootTransform;
 		RE::NiQuaternion rootOrientation;
-
-		ozz::animation::SamplingJob::Context context;
-		std::vector<ozz::math::SoaTransform> restPose;
-		std::vector<ozz::math::SoaTransform> snapshotPose;
-		std::vector<ozz::math::SoaTransform> generatedPose;
-		std::vector<ozz::math::SoaTransform> blendedPose;
-		std::array<ozz::animation::BlendingJob::Layer, 2> blendLayers;
+		std::vector<std::unique_ptr<Node>> nodes;
 		std::vector<std::unique_ptr<IKTwoBoneData>> ikJobs;
-		std::unique_ptr<Generator> generator = nullptr;
-		TransitionData transition;
 		std::shared_ptr<SyncInstance> syncInst = nullptr;
-		std::shared_ptr<Face::MorphData> faceMorphData = nullptr;
-		RE::BSFaceGenAnimationData* faceAnimData = nullptr;
-		std::unique_ptr<EyeTrackingData> eyeTrackData;
-		FileID activeFile;
 		std::unique_ptr<Sequencer> sequencer = nullptr;
+		std::unique_ptr<Generator> generator = nullptr;
+		std::unique_ptr<LOADED_DATA> loadedData = nullptr;
+		std::unique_ptr<UNLOADED_DATA> unloadedData = nullptr;
+#ifdef ENABLE_PERFORMANCE_MONITORING
+		float lastUpdateMs = 0.0f;
+#endif
 
 		Graph();
 		virtual ~Graph() noexcept;
@@ -97,11 +113,10 @@ namespace Animation
 		IKTwoBoneData* AddIKJob(const std::span<std::string_view, 3> a_nodeNames, const RE::NiTransform& a_initialTargetWorld, const RE::NiPoint3& a_initialPolePtModel, float a_transitionTime);
 		bool RemoveIKJob(IKTwoBoneData* a_jobData, float a_transitionTime);
 		void StartTransition(std::unique_ptr<Generator> a_dest, float a_transitionTime);
-		void UpdateTransition(float a_deltaTime);
-		void PushOutput(const std::vector<ozz::math::SoaTransform>& a_output);
+		void UpdateTransition(float a_deltaTime, const ozz::span<ozz::math::SoaTransform>& a_output);
+		void PushOutput(const std::span<ozz::math::SoaTransform>& a_output);
 		void UpdateRestPose();
-		void SnapshotBlend();
-		void SnapshotGenerator();
+		void SnapshotPose();
 		void ResetRootTransform();
 		void ResetRootOrientation();
 		void MakeSyncOwner();
@@ -113,6 +128,7 @@ namespace Animation
 		void DisableEyeTracking();
 		void EnableEyeTracking();
 		void DetachSequencer(bool a_transitionOut = true);
+		void SetLoaded(bool a_loaded);
 		XYZTransform GetRootXYZ();
 	};
 }

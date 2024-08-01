@@ -28,7 +28,7 @@ namespace Animation
 		sampleJob.ratio = localTime / duration;
 		sampleJob.Run();
 
-		if (anim->faceData != nullptr) {
+		if (anim->faceData != nullptr && faceMorphData != nullptr) {
 			ozz::animation::FloatTrackSamplingJob trackSampleJob;
 			trackSampleJob.ratio = sampleJob.ratio;
 			auto d = faceMorphData->lock();

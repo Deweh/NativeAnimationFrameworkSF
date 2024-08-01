@@ -22,7 +22,7 @@ namespace Animation
 	{
 		AnimID aID{ .file = a_id, .skeleton = a_skeleton };
 		if (auto anim = GetLoadedAnimation(aID); anim != nullptr) {
-			NotifyAnimationRequested(a_requester, a_id);
+			NotifyAnimationRequested(a_requester, a_id, false);
 			NotifyAnimationReady(a_requester, a_id, anim);
 			return;
 		}
@@ -33,7 +33,7 @@ namespace Animation
 				return;
 			}
 		}
-		NotifyAnimationRequested(a_requester, a_id);
+		NotifyAnimationRequested(a_requester, a_id, false);
 		reqData->push_back(RequestData{ .requester = a_requester, .anim = aID });
 		ProcessRequests();
 	}
@@ -203,21 +203,35 @@ namespace Animation
 		NotifyAnimationReady(a_req.requester, a_req.anim.file, nullptr);
 	}
 
-	void FileManager::NotifyAnimationReady(std::weak_ptr<FileRequesterBase> a_requester, const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim)
+	void DoNotifyAnimationReady(std::weak_ptr<FileRequesterBase> a_requester, const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim)
 	{
-		SFSE::GetTaskInterface()->AddTask([req = a_requester, id = a_id, anim = a_anim]() {
-			if (auto r = req.lock(); r != nullptr) {
-				r->OnAnimationReady(id, anim);
-			}
-		});
+		if (auto r = a_requester.lock(); r != nullptr) {
+			r->OnAnimationReady(a_id, a_anim);
+		}
 	}
 
-	void FileManager::NotifyAnimationRequested(std::weak_ptr<FileRequesterBase> a_requester, const FileID& a_id)
+	void DoNotifyAnimationRequested(std::weak_ptr<FileRequesterBase> a_requester, const FileID& a_id)
 	{
-		SFSE::GetTaskInterface()->AddTask([req = a_requester, id = a_id]() {
-			if (auto r = req.lock(); r != nullptr) {
-				r->OnAnimationRequested(id);
-			}
-		});
+		if (auto r = a_requester.lock(); r != nullptr) {
+			r->OnAnimationRequested(a_id);
+		}
+	}
+
+	void FileManager::NotifyAnimationReady(std::weak_ptr<FileRequesterBase> a_requester, const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim, bool a_queue)
+	{
+		if (a_queue) {
+			SFSE::GetTaskInterface()->AddTask(std::bind(DoNotifyAnimationReady, a_requester, a_id, a_anim));
+		} else {
+			DoNotifyAnimationReady(a_requester, a_id, a_anim);
+		}
+	}
+
+	void FileManager::NotifyAnimationRequested(std::weak_ptr<FileRequesterBase> a_requester, const FileID& a_id, bool a_queue)
+	{
+		if (a_queue) {
+			SFSE::GetTaskInterface()->AddTask(std::bind(DoNotifyAnimationRequested, a_requester, a_id));
+		} else {
+			DoNotifyAnimationRequested(a_requester, a_id);
+		}
 	}
 }

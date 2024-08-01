@@ -14,7 +14,8 @@ namespace Animation
 	public:
 		struct PersistentState
 		{
-			std::map<RE::IAnimationGraphManagerHolder*, std::shared_ptr<Graph>> graphMap;
+			std::unordered_map<RE::IAnimationGraphManagerHolder*, std::shared_ptr<Graph>> loadedGraphs;
+			std::unordered_map<RE::IAnimationGraphManagerHolder*, std::shared_ptr<Graph>> unloadedGraphs;
 		};
 
 		std::shared_mutex stateLock;
@@ -37,6 +38,7 @@ namespace Animation
 		void GetAllGraphs(std::vector<std::pair<RE::TESObjectREFR*, std::weak_ptr<Graph>>>& a_refsOut);
 		void Reset();
 		std::shared_ptr<Graph> GetGraph(RE::Actor* a_actor, bool create);
+		void SetGraphLoaded(RE::IAnimationGraphManagerHolder* a_graph, bool a_loaded);
 
 	private:
 		std::shared_ptr<Graph> GetGraphLockless(RE::Actor* a_actor, bool create);

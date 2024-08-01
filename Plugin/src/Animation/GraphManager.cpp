@@ -5,6 +5,7 @@
 #include "Graph.h"
 #include "FileManager.h"
 #include "Util/Trampoline.h"
+#include "Util/Timing.h"
 
 namespace Animation
 {
@@ -18,8 +19,13 @@ namespace Animation
 	{
 		return VisitGraph(a_actor, [&](Graph* g) {
 			g->DetachSequencer(false);
-			g->transition.queuedDuration = a_transitionTime;
-			FileManager::GetSingleton()->RequestAnimation(FileID(a_filePath, a_animId), a_actor->race->formEditorID.c_str(), g->weak_from_this());
+			if (g->flags.none(Graph::FLAGS::kUnloaded3D)) {
+				g->loadedData->transition.queuedDuration = a_transitionTime;
+				FileManager::GetSingleton()->RequestAnimation(FileID(a_filePath, a_animId), a_actor->race->formEditorID.c_str(), g->weak_from_this());
+			} else {
+				g->unloadedData->restoreFile = FileID(a_filePath, a_animId);
+			}
+			
 			return true;
 		}, true);
 	}
@@ -133,12 +139,24 @@ namespace Animation
 
 	bool GraphManager::DetachGenerator(RE::Actor* a_actor, float a_transitionTime)
 	{
-		return VisitGraph(a_actor, [&](Graph* g) {
+		bool detachRequired = false;
+		bool result = VisitGraph(a_actor, [&](Graph* g) {
 			g->flags.reset(Graph::FLAGS::kLoadingAnimation);
 			g->DetachSequencer(false);
-			g->StartTransition(nullptr, a_transitionTime);
+
+			if (g->flags.none(Graph::FLAGS::kUnloaded3D)) {
+				g->StartTransition(nullptr, a_transitionTime);
+			} else {
+				detachRequired = true;
+			}
 			return true;
 		});
+
+		if (detachRequired) {
+			DetachGraph(a_actor);
+		}
+
+		return result;
 	}
 
 	void GraphManager::Reset()
@@ -160,33 +178,65 @@ namespace Animation
 		return GetGraphLockless(a_actor, create);
 	}
 
+	void GraphManager::SetGraphLoaded(RE::IAnimationGraphManagerHolder* a_graph, bool a_loaded)
+	{
+		std::unique_lock l{ stateLock };
+		if (a_loaded) {
+			auto iter = state->unloadedGraphs.find(a_graph);
+			if (iter == state->unloadedGraphs.end())
+				return;
+
+			auto ele = state->unloadedGraphs.extract(iter);
+			state->loadedGraphs.insert(std::move(ele));
+		} else {
+			auto iter = state->loadedGraphs.find(a_graph);
+			if (iter == state->loadedGraphs.end())
+				return;
+
+			auto ele = state->loadedGraphs.extract(iter);
+			state->unloadedGraphs.insert(std::move(ele));
+		}
+	}
+
 	std::shared_ptr<Graph> CreateGraph(RE::Actor* a_actor)
 	{
 		std::shared_ptr<Graph> g = std::make_shared<Graph>();
 		g->target.reset(a_actor);
 		g->SetSkeleton(Settings::GetSkeleton(a_actor));
-		g->Update(0.0f);
+		auto loadedData = a_actor->loadedData.lock_read();
+		g->GetSkeletonNodes(static_cast<RE::BGSFadeNode*>(loadedData->data3D.get()));
 		return g;
 	}
 
 	std::shared_ptr<Graph> GraphManager::GetGraphLockless(RE::Actor* a_actor, bool create)
 	{
-		if (auto iter = state->graphMap.find(a_actor); iter != state->graphMap.end())
+		if (auto iter = state->loadedGraphs.find(a_actor); iter != state->loadedGraphs.end())
+			return iter->second;
+
+		if (auto iter = state->unloadedGraphs.find(a_actor); iter != state->unloadedGraphs.end())
 			return iter->second;
 
 		if (!create)
 			return nullptr;
 
 		std::shared_ptr<Graph> g = CreateGraph(a_actor);
-		state->graphMap[a_actor] = g;
+		if (g->flags.none(Graph::FLAGS::kUnloaded3D)) {
+			state->loadedGraphs[a_actor] = g;
+		} else {
+			state->unloadedGraphs[a_actor] = g;
+		}
 		return g;
 	}
 
 	bool GraphManager::DetachGraph(RE::IAnimationGraphManagerHolder* a_graphHolder)
 	{
 		std::unique_lock l{ stateLock };
-		if (auto iter = state->graphMap.find(a_graphHolder); iter != state->graphMap.end()) {
-			state->graphMap.erase(iter);
+		if (auto iter = state->loadedGraphs.find(a_graphHolder); iter != state->loadedGraphs.end()) {
+			state->loadedGraphs.erase(iter);
+			return true;
+		}
+		if (auto iter = state->unloadedGraphs.find(a_graphHolder); iter != state->unloadedGraphs.end()) {
+			state->unloadedGraphs.erase(iter);
 			return true;
 		}
 		return false;
@@ -210,7 +260,10 @@ namespace Animation
 	{
 		std::shared_lock ls{ stateLock };
 		a_refsOut.clear();
-		for (auto& iter : state->graphMap) {
+		for (auto& iter : state->loadedGraphs) {
+			a_refsOut.emplace_back(static_cast<RE::TESObjectREFR*>(iter.first), iter.second);
+		}
+		for (auto& iter : state->unloadedGraphs) {
 			a_refsOut.emplace_back(static_cast<RE::TESObjectREFR*>(iter.first), iter.second);
 		}
 	}
@@ -222,7 +275,7 @@ namespace Animation
 			GraphUpdateHook(a_graphHolder, a_updateData, a_graph);
 
 			std::shared_lock l{ gm.stateLock };
-			auto& m = gm.state->graphMap;
+			auto& m = gm.state->loadedGraphs;
 			if (auto iter = m.find(a_graphHolder); iter != m.end()) {
 				auto& g = iter->second;
 				std::unique_lock gl{ g->lock };
@@ -251,5 +304,20 @@ namespace Animation
 			}
 
 			return res;
+		});
+
+	static Util::VFuncHook<void*(RE::Actor*, RE::NiAVObject*, bool, bool)> ActorSet3DHook(422688, 0xA8, "Actor::Set3D",
+		[](RE::Actor* a_this, RE::NiAVObject* a_3d, bool a_flag1, bool a_flag2) -> void* {
+			void* result = ActorSet3DHook(a_this, a_3d, a_flag1, a_flag2);
+
+			if (auto g = gm.GetGraph(a_this, false); g) {
+				std::unique_lock l{ g->lock };
+				g->GetSkeletonNodes(static_cast<RE::BGSFadeNode*>(a_3d));
+				bool isLoaded = g->flags.none(Graph::FLAGS::kUnloaded3D);
+				l.unlock();
+				gm.SetGraphLoaded(a_this, isLoaded);
+			}
+
+			return result;
 		});
 }

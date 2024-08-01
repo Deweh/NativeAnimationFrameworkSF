@@ -7,7 +7,7 @@ namespace Papyrus
 
 	EventManager::EventManager()
 	{
-		RegisterForEvent(Animation::GraphManager::GetSingleton());
+		RegisterForEvent<Animation::SequencePhaseChangeEvent>(Animation::GraphManager::GetSingleton());
 	}
 
 	EventManager* EventManager::GetSingleton()

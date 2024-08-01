@@ -273,7 +273,9 @@ void NAFAPI_VisitGraph(
 		data.flags = &g->flags;
 		data.nodes.data = nodePtrs.data();
 		data.nodes.size = nodePtrs.size();
-		data.rootNode = g->rootNode;
+		if (g->loadedData) {
+			data.rootNode = g->loadedData->rootNode;
+		}
 		data.rootTransform = &g->rootTransform;
 		a_visitFunc(a_userData, &data);
 		return true;

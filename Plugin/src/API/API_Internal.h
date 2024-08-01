@@ -48,7 +48,7 @@ struct NAFAPI_GraphData
 {
 	SFSE::stl::enumeration<Animation::Graph::FLAGS, uint16_t>* flags;
 	NAFAPI_Array<Animation::Node*> nodes;
-	RE::NiAVObject* rootNode;
+	RE::NiAVObject* rootNode{};
 	Animation::Transform* rootTransform;
 };
 

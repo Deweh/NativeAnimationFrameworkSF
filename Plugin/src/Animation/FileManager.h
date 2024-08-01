@@ -61,8 +61,8 @@ namespace Animation
 		void ReportAnimationLoaded(RequestData& a_req, std::shared_ptr<OzzAnimation> a_anim);
 		void ReportFailedToLoadAnimation(const RequestData& a_req);
 
-		static void NotifyAnimationReady(std::weak_ptr<FileRequesterBase> a_requester, const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim);
-		static void NotifyAnimationRequested(std::weak_ptr<FileRequesterBase> a_requester, const FileID& a_id);
+		static void NotifyAnimationReady(std::weak_ptr<FileRequesterBase> a_requester, const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim, bool a_queue = true);
+		static void NotifyAnimationRequested(std::weak_ptr<FileRequesterBase> a_requester, const FileID& a_id, bool a_queue = true);
 
 	private:
 		std::jthread workerThread;

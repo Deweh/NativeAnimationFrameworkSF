@@ -1,5 +1,7 @@
 ﻿#pragma once
 #define NDEBUG
+//Uncomment this to see real-time performance data in the BetterConsole UI
+//#define ENABLE_PERFORMANCE_MONITORING
 
 // c
 #include <cassert>
