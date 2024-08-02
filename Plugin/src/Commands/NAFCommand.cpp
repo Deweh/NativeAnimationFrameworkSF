@@ -380,6 +380,11 @@ namespace Commands::NAFCommand
 		}
 	}
 
+	void ProcessTest()
+	{
+		// put test routines here.
+	}
+
 	void Run(const CCF::simple_array<CCF::simple_string_view>& a_args, const char* a_fullString, CCF::ConsoleInterface* a_intfc)
 	{
 		args = a_args;
@@ -413,6 +418,8 @@ namespace Commands::NAFCommand
 			ProcessStartSeqCommand();
 		} else if (type == "advseq") {
 			ProcessAdvanceSeqCommand();
+		} else if (type == "test") {
+			ProcessTest();
 		} else {
 			ShowHelp();
 		}

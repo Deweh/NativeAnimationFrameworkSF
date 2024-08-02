@@ -51,6 +51,13 @@ namespace Animation
 			kRequiresFaceDataUpdate = 1u << 8
 		};
 
+		enum LastPose : uint8_t
+		{
+			kNoPose,
+			kGeneratedPose,
+			kBlendedPose
+		};
+
 		enum TRANSITION_TYPE : uint8_t
 		{
 			kNoTransition = 0,
@@ -65,13 +72,13 @@ namespace Animation
 			RE::BGSFadeNode* rootNode = nullptr;
 			ozz::animation::SamplingJob::Context context;
 			PoseCache poseCache;
-			PoseCache::Handle lastPose;
 			PoseCache::Handle restPose;
 			PoseCache::Handle snapshotPose;
 			PoseCache::Handle generatedPose;
 			PoseCache::Handle blendedPose;
 			std::array<ozz::animation::BlendingJob::Layer, 2> blendLayers;
 			TransitionData transition;
+			LastPose lastPose = kNoPose;
 			std::unique_ptr<EyeTrackingData> eyeTrackData;
 			std::shared_ptr<Face::MorphData> faceMorphData = nullptr;
 			RE::BSFaceGenAnimationData* faceAnimData = nullptr;
@@ -109,12 +116,14 @@ namespace Animation
 		void SetSkeleton(std::shared_ptr<const OzzSkeleton> a_descriptor);
 		void GetSkeletonNodes(RE::BGSFadeNode* a_rootNode);
 		Transform GetCurrentTransform(size_t nodeIdx);
-		void Update(float a_deltaTime);
+		void Update(float a_deltaTime, bool a_visible);
 		IKTwoBoneData* AddIKJob(const std::span<std::string_view, 3> a_nodeNames, const RE::NiTransform& a_initialTargetWorld, const RE::NiPoint3& a_initialPolePtModel, float a_transitionTime);
 		bool RemoveIKJob(IKTwoBoneData* a_jobData, float a_transitionTime);
 		void StartTransition(std::unique_ptr<Generator> a_dest, float a_transitionTime);
-		void UpdateTransition(float a_deltaTime, const ozz::span<ozz::math::SoaTransform>& a_output);
-		void PushOutput(const std::span<ozz::math::SoaTransform>& a_output);
+		void AdvanceTransitionTime(float a_deltaTime);
+		void UpdateTransition(const ozz::span<ozz::math::SoaTransform>& a_output);
+		void PushAnimationOutput(const std::span<ozz::math::SoaTransform>& a_output);
+		void PushRootOutput(bool a_visible);
 		void UpdateRestPose();
 		void SnapshotPose();
 		void ResetRootTransform();

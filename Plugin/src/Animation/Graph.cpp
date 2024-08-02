@@ -117,11 +117,10 @@ namespace Animation
 		return Transform();
 	}
 
-	void Graph::Update(float a_deltaTime) {
+	void Graph::Update(float a_deltaTime, bool a_visible) {
 #ifdef ENABLE_PERFORMANCE_MONITORING
 		auto start = Util::Timing::HighResTimeNow();
 #endif
-		auto refLock = target->loadedData.lock_write();
 
 		if (!loadedData || !generator) {
 			return;
@@ -176,15 +175,24 @@ namespace Animation
 			}
 		}
 
-		generator->Generate(0.0f);
+		if (a_visible) {
+			generator->Generate(0.0f);
 
-		if (flags.any(FLAGS::kTransitioning)) {
-			auto blendPose = loadedData->blendedPose.get();
-			UpdateTransition(a_deltaTime, ozz::make_span(blendPose));
-			PushOutput(blendPose);
-		} else {
-			PushOutput(loadedData->generatedPose.get());
+			if (flags.any(FLAGS::kTransitioning)) {
+				auto blendPose = loadedData->blendedPose.get();
+				AdvanceTransitionTime(a_deltaTime);
+				UpdateTransition(ozz::make_span(blendPose));
+				loadedData->lastPose = kBlendedPose;
+				PushAnimationOutput(blendPose);
+			} else {
+				loadedData->lastPose = kGeneratedPose;
+				PushAnimationOutput(loadedData->generatedPose.get());
+			}
+		} else if (flags.any(FLAGS::kTransitioning)) {
+			AdvanceTransitionTime(a_deltaTime);
 		}
+
+		PushRootOutput(a_visible);
 
 #ifdef ENABLE_PERFORMANCE_MONITORING
 		lastUpdateMs = Util::Timing::HighResTimeDiffMilliSec(start);
@@ -334,8 +342,7 @@ namespace Animation
 
 			l->context.Resize(skeleton->data->num_joints());
 			l->poseCache.set_pose_size(skeleton->data->num_soa_joints());
-			l->poseCache.reserve(5);
-			l->lastPose = l->poseCache.acquire_handle();
+			l->poseCache.reserve(4);
 			l->restPose = l->poseCache.acquire_handle();
 			l->snapshotPose = l->poseCache.acquire_handle();
 			l->generatedPose = l->poseCache.acquire_handle();
@@ -363,6 +370,10 @@ namespace Animation
 				generator.reset();
 				flags.reset(FLAGS::kHasGenerator);
 			}
+
+#ifdef ENABLE_PERFORMANCE_MONITORING
+			lastUpdateMs = 0.0f;
+#endif
 		}
 	}
 
@@ -393,18 +404,10 @@ namespace Animation
 		l->faceAnimData = fn->faceGenAnimData;
 	}
 
-	void Graph::UpdateTransition(float a_deltaTime, const ozz::span<ozz::math::SoaTransform>& a_output)
+	void Graph::AdvanceTransitionTime(float a_deltaTime)
 	{
 		auto& transition = loadedData->transition;
-		auto& blendLayers = loadedData->blendLayers;
 
-		ozz::animation::BlendingJob blendJob;
-		UpdateRestPose();
-		blendJob.rest_pose = loadedData->restPose.get_ozz();
-		blendJob.layers = ozz::make_span(blendLayers);
-		blendJob.output = a_output;
-		blendJob.threshold = 1.0f;
-		
 		transition.localTime += a_deltaTime;
 		if (transition.localTime >= transition.duration) {
 			if (transition.onEnd != nullptr) {
@@ -419,6 +422,19 @@ namespace Animation
 
 			transition.localTime = transition.duration;
 		}
+	}
+
+	void Graph::UpdateTransition(const ozz::span<ozz::math::SoaTransform>& a_output)
+	{
+		auto& transition = loadedData->transition;
+		auto& blendLayers = loadedData->blendLayers;
+
+		ozz::animation::BlendingJob blendJob;
+		UpdateRestPose();
+		blendJob.rest_pose = loadedData->restPose.get_ozz();
+		blendJob.layers = ozz::make_span(blendLayers);
+		blendJob.output = a_output;
+		blendJob.threshold = 1.0f;
 
 		float normalizedTime = transition.ease(transition.localTime / transition.duration);
 		if (transition.startLayer >= 0) {
@@ -524,11 +540,8 @@ namespace Animation
 		}
 	}
 
-	void Graph::PushOutput(const std::span<ozz::math::SoaTransform>& a_output)
+	void Graph::PushAnimationOutput(const std::span<ozz::math::SoaTransform>& a_output)
 	{
-		std::copy(a_output.begin(), a_output.end(), loadedData->lastPose.get().begin());
-		static RE::TransformsManager* transformManager = RE::TransformsManager::GetSingleton();
-
 		if (generator && generator->rootResetRequired) {
 			ResetRootOrientation();
 			generator->localRootTransform.MakeIdentity();
@@ -549,9 +562,6 @@ namespace Animation
 			}
 		});
 
-		auto rootXYZ = GetRootXYZ();
-		transformManager->RequestPosRotUpdate(target.get(), rootXYZ.translate, rootXYZ.rotate);
-
 		auto r = loadedData->rootNode;
 		if (!r)
 			return;
@@ -564,6 +574,37 @@ namespace Animation
 		u->needsUpdate = true;
 	}
 
+	void Graph::PushRootOutput(bool a_visible)
+	{
+		static RE::TransformsManager* transformManager = RE::TransformsManager::GetSingleton();
+		auto rootXYZ = GetRootXYZ();
+		target->data.angle = rootXYZ.rotate;
+		if (a_visible) {
+			transformManager->RequestPositionUpdate(target.get(), rootXYZ.translate);
+		} else {
+			//This doesn't keep the actor perfectly in place, but it's good enough for when the camera is looking away.
+			SFSE::GetTaskInterface()->AddTask([rootXYZ = rootXYZ, target = target] {
+				auto actor = target->As<RE::Actor>();
+				if (!actor)
+					return;
+
+				auto process = actor->currentProcess;
+				if (!process)
+					return;
+
+				auto middleHigh = process->middleHigh;
+				if (!middleHigh)
+					return;
+
+				auto charProxy = middleHigh->charProxy;
+				if (!charProxy)
+					return;
+
+				charProxy->SetPosition(RE::NiPoint3A(rootXYZ.translate));
+			});
+		}
+	}
+
 	void Graph::UpdateRestPose()
 	{
 		Transform::StoreSoaTransforms(loadedData->restPose.get(), std::bind(&Graph::GetCurrentTransform, this, std::placeholders::_1));
@@ -574,9 +615,22 @@ namespace Animation
 		if (!loadedData)
 			return;
 
-		auto snapshotPose = loadedData->snapshotPose.get();
-		auto lastPose = loadedData->lastPose.get();
-		std::copy(lastPose.begin(), lastPose.end(), snapshotPose.begin());
+		std::span<ozz::math::SoaTransform> sourcePose;
+		switch (loadedData->lastPose) {
+		case kNoPose:
+			UpdateRestPose();
+			sourcePose = loadedData->restPose.get();
+			break;
+		case kGeneratedPose:
+			sourcePose = loadedData->generatedPose.get();
+			break;
+		case kBlendedPose:
+			sourcePose = loadedData->blendedPose.get();
+			break;
+		}
+
+		std::span<ozz::math::SoaTransform> snapshotPose = loadedData->snapshotPose.get();
+		std::copy(sourcePose.begin(), sourcePose.end(), snapshotPose.begin());
 	}
 
 	void Graph::ResetRootTransform()

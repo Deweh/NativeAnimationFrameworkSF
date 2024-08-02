@@ -204,7 +204,11 @@ namespace Animation
 		g->target.reset(a_actor);
 		g->SetSkeleton(Settings::GetSkeleton(a_actor));
 		auto loadedData = a_actor->loadedData.lock_read();
-		g->GetSkeletonNodes(static_cast<RE::BGSFadeNode*>(loadedData->data3D.get()));
+		if (*loadedData != nullptr) {
+			g->GetSkeletonNodes(static_cast<RE::BGSFadeNode*>(loadedData->data3D.get()));
+		} else {
+			g->GetSkeletonNodes(nullptr);
+		}
 		return g;
 	}
 
@@ -279,7 +283,7 @@ namespace Animation
 			if (auto iter = m.find(a_graphHolder); iter != m.end()) {
 				auto& g = iter->second;
 				std::unique_lock gl{ g->lock };
-				g->Update(a_updateData->timeDelta);
+				g->Update(a_updateData->timeDelta, !a_updateData->modelCulled);
 
 				if (g->flags.none(
 						Graph::FLAGS::kPersistent,

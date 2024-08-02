@@ -5,7 +5,7 @@ namespace Util::Trampoline
 	struct HookData
 	{
 		size_t totalAlloc = 0;
-		std::vector<std::function<void(SFSE::Trampoline&)>> hookFuncs;
+		std::vector<std::function<void(SFSE::Trampoline&, uintptr_t)>> hookFuncs;
 	};
 
 	 std::unique_ptr<HookData>& GetTempData()
@@ -14,7 +14,7 @@ namespace Util::Trampoline
 		return tempData;
 	}
 
-	void AddHook(size_t bytesAlloc, const std::function<void(SFSE::Trampoline&)>& func)
+	void AddHook(size_t bytesAlloc, const std::function<void(SFSE::Trampoline&, uintptr_t)>& func)
 	{
 		auto& tempData = GetTempData();
 		tempData->totalAlloc += bytesAlloc;
@@ -26,8 +26,9 @@ namespace Util::Trampoline
 		auto& tempData = GetTempData();
 		SFSE::AllocTrampoline(tempData->totalAlloc);
 		auto& t = SFSE::GetTrampoline();
+		uintptr_t baseAddr = REL::Module::get().base();
 		for (auto& f : tempData->hookFuncs) {
-			f(t);
+			f(t, baseAddr);
 		}
 		tempData.reset();
 	}

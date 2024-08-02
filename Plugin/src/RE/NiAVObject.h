@@ -12,25 +12,26 @@ namespace RE
 		NiPoint3A rootAngle1;
 		NiPoint3A rootLocation2;
 		NiPoint3A rootAngle2;
-		float     unk01;
-		float     unk02;
-		float     unk03;
-		float     unk04;
-		float     unk05;
-		float     unk06;
-		float     unk07;
-		float     unk08;
-		float     timeDelta;
-		float     unk09;
-		float     unk10;
-		float     unk11;
-		bool      unk12;
-		bool      unk13;
-		bool      unkFlag;
-		bool      unk15;
-		float     unk16;
+		float unk01;
+		float unk02;
+		float unk03;
+		float unk04;
+		float unk05;
+		float unk06;
+		float unk07;
+		float unk08;
+		float timeDelta;
+		float unk09;
+		uint16_t unk11;
+		bool forceUpdate;
+		bool modelCulled;
+		bool unk13;
+		bool unkFlag;
+		bool unk15;
+		float unk16;
 	};
 	static_assert(offsetof(BSAnimationUpdateData, timeDelta) == 0x60);
+	static_assert(offsetof(BSAnimationUpdateData, modelCulled) == 0x6B);
 
 	template <class T>
 	struct BSArray
