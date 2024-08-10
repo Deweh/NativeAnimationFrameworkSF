@@ -20,6 +20,7 @@ namespace Animation
 
 			std::span<ozz::math::SoaTransform> get();
 			ozz::span<ozz::math::SoaTransform> get_ozz();
+			void reset();
 
 		protected:
 			friend class PoseCache;
@@ -33,6 +34,7 @@ namespace Animation
 		void set_pose_size(size_t a_size);
 		void reserve(size_t a_numPoses);
 		Handle acquire_handle();
+		size_t transforms_capacity() const;
 		
 	protected:
 		friend class Handle;

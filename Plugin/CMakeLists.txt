@@ -56,7 +56,7 @@ add_library(
 		${CMAKE_CURRENT_BINARY_DIR}/version.rc
 		.clang-format
 		vcpkg.json
- "src/Animation/Interpolation.cpp"
+ 
  "src/Tasks/MainLoop.cpp"
  "src/Animation/Graph.cpp"
  "src/Animation/Transform.cpp"
@@ -84,7 +84,10 @@ add_library(
  "src/Commands/BetterConsole/NAF_UI.cpp"
  "src/Util/VM.cpp" 
  "src/Papyrus/NAFScript.cpp"
- "src/Animation/FileID.cpp" "src/Papyrus/EventManager.cpp" "src/Animation/PoseCache.cpp")
+ "src/Animation/FileID.cpp"
+ "src/Papyrus/EventManager.cpp"
+ "src/Animation/PoseCache.cpp"
+ "src/Animation/MorphAnimation.cpp"
 
 # copy to Starfield directory
 set(STARFIELD_PATH "C:/Program Files (x86)/Steam/steamapps/common/Starfield/Data/SFSE/Plugins")

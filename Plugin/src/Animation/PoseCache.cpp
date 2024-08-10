@@ -15,13 +15,12 @@ namespace Animation
 
 	PoseCache::Handle::~Handle()
 	{
-		if (_owner != nullptr && _impl != UINT64_MAX) {
-			_owner->release_handle(_impl);
-		}
+		reset();
 	}
 
 	inline void PoseCache::Handle::operator=(Handle&& a_rhs) noexcept
 	{
+		reset();
 		_impl = a_rhs._impl;
 		_owner = a_rhs._owner;
 		a_rhs._impl = UINT64_MAX;
@@ -43,6 +42,13 @@ namespace Animation
 			return _owner->get_span_ozz(_impl);
 		} else {
 			return {};
+		}
+	}
+
+	void PoseCache::Handle::reset()
+	{
+		if (_owner != nullptr && _impl != UINT64_MAX) {
+			_owner->release_handle(_impl);
 		}
 	}
 
@@ -69,6 +75,11 @@ namespace Animation
 			
 			return Handle{ this, start };
 		}
+	}
+
+	size_t PoseCache::transforms_capacity() const
+	{
+		return _cache.capacity();
 	}
 
 	void PoseCache::release_handle(size_t a_idx)

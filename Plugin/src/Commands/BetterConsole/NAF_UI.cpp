@@ -69,6 +69,13 @@ namespace
 		UI->Text("Loaded: %s", isLoaded ? "True" : "False");
 #ifdef ENABLE_PERFORMANCE_MONITORING
 		UI->Text("Update Time: %.2f ms", g->lastUpdateMs);
+
+		size_t memorySize = sizeof(Animation::Graph) + (isLoaded ? sizeof(Animation::Graph::LOADED_DATA) : sizeof(Animation::Graph::UNLOADED_DATA));
+		if (isLoaded) {
+			memorySize += g->loadedData->poseCache.transforms_capacity() * sizeof(ozz::math::SoaTransform);
+		}
+
+		UI->Text("Memory Usage: %.2f KB", static_cast<float>(memorySize) / 1024.0f);
 #endif
 		UI->Separator();
 

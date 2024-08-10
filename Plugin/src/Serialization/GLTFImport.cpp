@@ -120,7 +120,7 @@ namespace Serialization
 		auto gameIdxs = Settings::GetFaceMorphIndexMap();
 		bool hasMorphs = false;
 
-		for (auto mt : morphTargets) {
+		for (auto& mt : morphTargets) {
 			if (auto iter = gameIdxs.find(mt); iter != gameIdxs.end()) {
 				//If this track has been populated by a different weights channel already, skip over it.
 				if (rawAnim->faceData != nullptr && !rawAnim->faceData->tracks[iter->second].keyframes.empty()) [[unlikely]] {
