@@ -88,6 +88,9 @@ add_library(
  "src/Papyrus/EventManager.cpp"
  "src/Animation/PoseCache.cpp"
  "src/Animation/MorphAnimation.cpp"
+ "src/Animation/Procedural/PGraph.cpp"
+ "src/Animation/Procedural/PFullAnimationNode.cpp"
+ "src/Animation/Procedural/PSmoothedRandNode.cpp" "src/Util/General.cpp")
 
 # copy to Starfield directory
 set(STARFIELD_PATH "C:/Program Files (x86)/Steam/steamapps/common/Starfield/Data/SFSE/Plugins")

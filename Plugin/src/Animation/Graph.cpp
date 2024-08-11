@@ -176,7 +176,7 @@ namespace Animation
 		}
 
 		if (a_visible) {
-			generator->Generate(0.0f);
+			generator->Generate(loadedData->poseCache);
 
 			if (flags.any(FLAGS::kTransitioning)) {
 				auto blendPose = loadedData->blendedPose.get();

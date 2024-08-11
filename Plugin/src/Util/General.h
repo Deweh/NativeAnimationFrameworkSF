@@ -3,6 +3,8 @@
 
 namespace Util
 {
+	int GetRandomInt(int a_min, int a_max);
+
 	template <typename T, typename M = std::mutex, typename WL = std::unique_lock<M>, typename RL = std::shared_lock<M>>
 	class Guarded
 	{

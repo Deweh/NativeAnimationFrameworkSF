@@ -2,7 +2,7 @@
 
 namespace Animation
 {
-	void Generator::Generate(float) {}
+	void Generator::Generate(PoseCache&) {}
 	bool Generator::HasFaceAnimation() { return false; }
 	void Generator::SetFaceMorphData(Face::MorphData* morphData){}
 	void Generator::SetOutput(const ozz::span<ozz::math::SoaTransform>& span) { output = span; }
@@ -17,10 +17,8 @@ namespace Animation
 		duration = anim->data->duration();
 	}
 
-	void LinearClipGenerator::Generate(float deltaTime)
+	void LinearClipGenerator::Generate(PoseCache& cache)
 	{
-		AdvanceTime(deltaTime);
-
 		ozz::animation::SamplingJob sampleJob;
 		sampleJob.animation = anim->data.get();
 		sampleJob.context = context;
@@ -74,10 +72,10 @@ namespace Animation
 		}
 	}
 
-	void AdditiveGenerator::Generate(float deltaTime)
+	void AdditiveGenerator::Generate(PoseCache& cache)
 	{
 		if (!paused) {
-			baseGen->Generate(deltaTime);
+			baseGen->Generate(cache);
 			std::array<ozz::animation::BlendingJob::Layer, 1> additiveLayers;
 			additiveLayers[0].weight = additiveWeight;
 			additiveLayers[0].transform = ozz::make_span(baseGenOutput);
@@ -121,5 +119,16 @@ namespace Animation
 	void AdditiveGenerator::AdvanceTime(float deltaTime)
 	{
 		baseGen->AdvanceTime(deltaTime);
+	}
+
+	void ProceduralGenerator::Generate(PoseCache& cache)
+	{
+		auto result = pGraph->Evaluate(pGraphInstance, cache);
+		std::copy(result.begin(), result.end(), output.begin());
+	}
+
+	void ProceduralGenerator::AdvanceTime(float deltaTime)
+	{
+		pGraph->AdvanceTime(pGraphInstance, deltaTime);
 	}
 }

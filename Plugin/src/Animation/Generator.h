@@ -1,9 +1,8 @@
 #pragma once
 #include "Transform.h"
-#include "Timeline.h"
-#include "Interpolation.h"
 #include "Ozz.h"
 #include "Face/Manager.h"
+#include "Procedural/PGraph.h"
 
 namespace Animation
 {
@@ -19,7 +18,7 @@ namespace Animation
 		std::span<ozz::math::SoaTransform> output;
 		ozz::animation::SamplingJob::Context* context = nullptr;
 
-		virtual void Generate(float deltaTime);
+		virtual void Generate(PoseCache& cache);
 		virtual bool HasFaceAnimation();
 		virtual void SetFaceMorphData(Face::MorphData* morphData);
 		virtual void SetOutput(const ozz::span<ozz::math::SoaTransform>& span);
@@ -31,6 +30,18 @@ namespace Animation
 		virtual ~Generator() = default;
 	};
 
+	class ProceduralGenerator : public Generator
+	{
+	public:
+		std::shared_ptr<Procedural::PGraph> pGraph;
+		Procedural::PGraph::InstanceData pGraphInstance;
+
+		virtual void Generate(PoseCache& cache);
+		virtual void AdvanceTime(float deltaTime);
+
+		virtual ~ProceduralGenerator() = default;
+	};
+
 	class LinearClipGenerator : public Generator
 	{
 	public:
@@ -39,7 +50,7 @@ namespace Animation
 
 		LinearClipGenerator(const std::shared_ptr<OzzAnimation>& a_anim);
 
-		virtual void Generate(float deltaTime) override;
+		virtual void Generate(PoseCache& cache) override;
 		virtual bool HasFaceAnimation() override;
 		virtual void SetFaceMorphData(Face::MorphData* morphData) override;
 		virtual void AdvanceTime(float deltaTime) override;
@@ -56,7 +67,7 @@ namespace Animation
 		std::unique_ptr<Generator> baseGen = nullptr;
 
 		void SetRestPose(const std::vector<ozz::math::SoaTransform>& pose);
-		virtual void Generate(float deltaTime) override;
+		virtual void Generate(PoseCache& cache) override;
 		virtual void SetOutput(const ozz::span<ozz::math::SoaTransform>& span) override;
 		virtual void SetContext(ozz::animation::SamplingJob::Context* ctxt) override;
 		virtual bool HasFaceAnimation() override;
