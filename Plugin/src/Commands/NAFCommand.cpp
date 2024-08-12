@@ -1,6 +1,7 @@
 #include "NAFCommand.h"
 #include "Serialization/GLTFImport.h"
 #include "Serialization/GLTFExport.h"
+#include "Serialization/BlendGraphImport.h"
 #include "Settings/Settings.h"
 #include "Animation/GraphManager.h"
 #include "Animation/Ozz.h"
@@ -382,6 +383,13 @@ namespace Commands::NAFCommand
 
 	void ProcessTest()
 	{
+		auto graph = Serialization::BlendGraphImport::LoadGraph(Util::String::GetDataPath() / "TestGraph.bt");
+		std::shared_ptr<Animation::Procedural::PGraph> sharedGraph = std::move(graph);
+		Animation::GraphManager::GetSingleton()->AttachGenerator(
+			RE::PlayerCharacter::GetSingleton(),
+			std::make_unique<Animation::ProceduralGenerator>(sharedGraph, Settings::GetSkeleton("HumanRace").get()),
+			1.0f
+		);
 		// put test routines here.
 	}
 
