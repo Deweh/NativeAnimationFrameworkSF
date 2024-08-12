@@ -12,7 +12,7 @@ namespace Animation::Procedural
 	{
 		auto inst = static_cast<InstanceData*>(a_instanceData);
 		if (inst->state == RandState::kTransitioning) {
-			return std::lerp(inst->startValue, inst->targetValue, inst->localTime / inst->duration);
+			return inst->localTime == 0.0f ? 0.0f : std::lerp(inst->startValue, inst->targetValue, inst->localTime / inst->duration);
 		} else {
 			return inst->targetValue;
 		}

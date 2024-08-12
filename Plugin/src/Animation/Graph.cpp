@@ -348,9 +348,6 @@ namespace Animation
 			l->generatedPose = l->poseCache.acquire_handle();
 			l->blendedPose = l->poseCache.acquire_handle();
 
-			l->blendLayers[0].transform = l->generatedPose.get_ozz();
-			l->blendLayers[1].transform = l->snapshotPose.get_ozz();
-
 			if (unloadedData && !unloadedData->restoreFile.QPath().empty()) {
 				loadedData->transition.queuedDuration = 0.2f;
 				FileManager::GetSingleton()->RequestAnimation(unloadedData->restoreFile, skeleton->name, weak_from_this());
@@ -428,6 +425,8 @@ namespace Animation
 	{
 		auto& transition = loadedData->transition;
 		auto& blendLayers = loadedData->blendLayers;
+		blendLayers[0].transform = loadedData->generatedPose.get_ozz();
+		blendLayers[1].transform = loadedData->snapshotPose.get_ozz();
 
 		ozz::animation::BlendingJob blendJob;
 		UpdateRestPose();
@@ -524,7 +523,7 @@ namespace Animation
 		if (a_dest != nullptr) {
 			generator = std::move(a_dest);
 			generator->SetContext(&loadedData->context);
-			generator->SetOutput(loadedData->generatedPose.get_ozz());
+			generator->SetOutput(&loadedData->generatedPose);
 
 			if (generator->HasFaceAnimation()) {
 				loadedData->transition.queuedDuration = a_transitionTime;

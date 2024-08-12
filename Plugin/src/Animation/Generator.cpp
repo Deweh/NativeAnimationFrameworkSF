@@ -5,7 +5,7 @@ namespace Animation
 	void Generator::Generate(PoseCache&) {}
 	bool Generator::HasFaceAnimation() { return false; }
 	void Generator::SetFaceMorphData(Face::MorphData* morphData){}
-	void Generator::SetOutput(const ozz::span<ozz::math::SoaTransform>& span) { output = span; }
+	void Generator::SetOutput(PoseCache::Handle* hndl) { output = hndl; }
 	void Generator::SetContext(ozz::animation::SamplingJob::Context* ctxt) { context = ctxt; }
 	void Generator::OnDetaching() {}
 	void Generator::AdvanceTime(float deltaTime) { localTime += deltaTime * speed; }
@@ -22,7 +22,7 @@ namespace Animation
 		ozz::animation::SamplingJob sampleJob;
 		sampleJob.animation = anim->data.get();
 		sampleJob.context = context;
-		sampleJob.output = ozz::make_span(output);
+		sampleJob.output = output->get_ozz();
 		sampleJob.ratio = localTime / duration;
 		sampleJob.Run();
 
@@ -64,63 +64,6 @@ namespace Animation
 		return anim->extra.id.file.QPath();
 	}
 
-	void AdditiveGenerator::SetRestPose(const std::vector<ozz::math::SoaTransform>& pose)
-	{
-		restPose = pose;
-		if (!baseGenOutput.empty() && restPose.size() > baseGenOutput.size()) {
-			restPose.resize(baseGenOutput.size());
-		}
-	}
-
-	void AdditiveGenerator::Generate(PoseCache& cache)
-	{
-		if (!paused) {
-			baseGen->Generate(cache);
-			std::array<ozz::animation::BlendingJob::Layer, 1> additiveLayers;
-			additiveLayers[0].weight = additiveWeight;
-			additiveLayers[0].transform = ozz::make_span(baseGenOutput);
-
-			ozz::animation::BlendingJob blendJob;
-			blendJob.additive_layers = ozz::make_span(additiveLayers);
-			blendJob.output = ozz::make_span(output);
-			blendJob.rest_pose = ozz::make_span(restPose);
-			blendJob.threshold = 1.0f;
-
-			blendJob.Run();
-		}
-	}
-
-	void AdditiveGenerator::SetOutput(const ozz::span<ozz::math::SoaTransform>& span)
-	{
-		Generator::SetOutput(span);
-		baseGenOutput.resize(span.size());
-		baseGen->SetOutput(ozz::make_span(baseGenOutput));
-		if (restPose.size() > baseGenOutput.size()) {
-			restPose.resize(baseGenOutput.size());
-		}
-	}
-
-	void AdditiveGenerator::SetContext(ozz::animation::SamplingJob::Context* ctxt)
-	{
-		Generator::SetContext(ctxt);
-		baseGen->SetContext(ctxt);
-	}
-
-	bool AdditiveGenerator::HasFaceAnimation()
-	{
-		return baseGen->HasFaceAnimation();
-	}
-
-	void AdditiveGenerator::SetFaceMorphData(Face::MorphData* morphData)
-	{
-		baseGen->SetFaceMorphData(morphData);
-	}
-
-	void AdditiveGenerator::AdvanceTime(float deltaTime)
-	{
-		baseGen->AdvanceTime(deltaTime);
-	}
-
 	ProceduralGenerator::ProceduralGenerator(const std::shared_ptr<Procedural::PGraph>& a_graph, const OzzSkeleton* a_skeleton)
 	{
 		pGraph = a_graph;
@@ -130,7 +73,8 @@ namespace Animation
 	void ProceduralGenerator::Generate(PoseCache& cache)
 	{
 		auto result = pGraph->Evaluate(pGraphInstance, cache);
-		std::copy(result.begin(), result.end(), output.begin());
+		auto outSpan = output->get();
+		std::copy(result.begin(), result.end(), outSpan.begin());
 	}
 
 	void ProceduralGenerator::AdvanceTime(float deltaTime)
