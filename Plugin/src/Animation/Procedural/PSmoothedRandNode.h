@@ -3,7 +3,7 @@
 
 namespace Animation::Procedural
 {
-	class PSmoothedRandNode : public PNode
+	class PSmoothedRandNode : public PNodeT<PSmoothedRandNode>
 	{
 	public:
 		enum class RandState : uint8_t
@@ -34,7 +34,6 @@ namespace Animation::Procedural
 		virtual void SetCustomValues(const std::span<PEvaluationResult>& a_values) override;
 		void UpdateTargetValue(InstanceData* a_instanceData);
 
-	private:
 		inline static Registration _reg{
 			"smooth_rand",
 			{},

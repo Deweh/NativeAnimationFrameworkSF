@@ -19,19 +19,6 @@ namespace Animation::Procedural
 	class PNode
 	{
 	public:
-		std::vector<PNode*> inputs;
-
-		virtual std::unique_ptr<PNodeInstanceData> CreateInstanceData(const OzzSkeleton* a_skeleton);
-		virtual PEvaluationResult Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, std::unordered_map<PNode*, PEvaluationResult>& a_results) = 0;
-		virtual void AdvanceTime(PNodeInstanceData* a_instanceData, float a_deltaTime);
-		virtual void SetCustomValues(const std::span<PEvaluationResult>& a_values);
-
-		template <typename T>
-		static std::unique_ptr<PNode> CreateNodeOfType()
-		{
-			return std::make_unique<T>();
-		}
-
 		struct Registration
 		{
 			typedef std::unique_ptr<PNode> (*CreationFunctor)();
@@ -48,7 +35,31 @@ namespace Animation::Procedural
 			size_t output;
 			CreationFunctor createFunctor;
 		};
+
+		std::vector<PNode*> inputs;
+
+		virtual std::unique_ptr<PNodeInstanceData> CreateInstanceData(const OzzSkeleton* a_skeleton);
+		virtual PEvaluationResult Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, std::unordered_map<PNode*, PEvaluationResult>& a_results) = 0;
+		virtual void AdvanceTime(PNodeInstanceData* a_instanceData, float a_deltaTime);
+		virtual void SetCustomValues(const std::span<PEvaluationResult>& a_values);
+		virtual Registration* GetTypeInfo();
+
+		template <typename T>
+		static std::unique_ptr<PNode> CreateNodeOfType()
+		{
+			return std::make_unique<T>();
+		}
 	};
 
 	std::unordered_map<std::string_view, PNode::Registration*>& GetRegisteredNodeTypes();
+
+	template <typename T>
+	class PNodeT : public PNode
+	{
+	public:
+		virtual Registration* GetTypeInfo() override
+		{
+			return &T::_reg;
+		}
+	};
 }

@@ -5,7 +5,7 @@
 
 namespace Animation::Procedural
 {
-	class PFullAnimationNode : public PNode
+	class PFullAnimationNode : public PNodeT<PFullAnimationNode>
 	{
 	public:
 		struct InstanceData : public PNodeInstanceData
@@ -24,7 +24,6 @@ namespace Animation::Procedural
 		virtual void AdvanceTime(PNodeInstanceData* a_instanceData, float a_deltaTime) override;
 		virtual void SetCustomValues(const std::span<PEvaluationResult>& a_values) override;
 
-	private:
 		inline static Registration _reg{
 			"anim",
 			{},

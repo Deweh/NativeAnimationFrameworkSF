@@ -15,6 +15,11 @@ namespace Animation::Procedural
 	{
 	}
 
+	PNode::Registration* PNode::GetTypeInfo()
+	{
+		return nullptr;
+	}
+
 	PNode::Registration::Registration(const char* a_typeName,
 		const std::vector<std::pair<const char*, size_t>>& a_inputs,
 		const std::vector<std::pair<const char*, size_t>>& a_customValues,
