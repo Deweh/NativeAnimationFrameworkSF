@@ -28,16 +28,12 @@ namespace Animation::Procedural
 			inst->localTime = 0.0f;
 
 			if (inst->state == RandState::kTransitioning) {
-				float delayRand = static_cast<float>(Util::GetRandomInt(0, 100)) * 0.01f;
-
-				inst->duration = ((delayMax - delayMin) * delayRand) + delayMin;
+				inst->duration = delayMin + Util::GetRandomFloat(0.0f, 1.0f) * (delayMax - delayMin);
 				inst->localTime = 0.0f;
 				inst->state = RandState::kDelaying;
 				inst->startValue = inst->targetValue;
 			} else {
-				float durRand = static_cast<float>(Util::GetRandomInt(0, 100)) * 0.01f;
-
-				inst->duration = ((durMax - durMin) * durRand) + durMin;
+				inst->duration = durMin + Util::GetRandomFloat(0.0f, 1.0f) * (durMax - durMin);
 				inst->localTime = 0.0f;
 				inst->state = RandState::kTransitioning;
 				UpdateTargetValue(inst);
@@ -72,7 +68,7 @@ namespace Animation::Procedural
 
 	void PSmoothedRandNode::UpdateTargetValue(InstanceData* a_instanceData)
 	{
-		float difference = diffMin + (static_cast<float>(Util::GetRandomInt(0, 10000)) * 0.0001f) * (diffMax - diffMin);
+		float difference = diffMin + Util::GetRandomFloat(0.0f, 1.0f) * (diffMax - diffMin);
 
 		static constexpr float edgeThreshold = 0.45f;
 		float edgeBiasProbability;
@@ -86,7 +82,7 @@ namespace Animation::Procedural
 			edgeBiasProbability = 0.5f;
 		}
 
-		bool addDifference = static_cast<float>(Util::GetRandomInt(0, 10000)) * 0.0001f < edgeBiasProbability;
+		bool addDifference = Util::GetRandomFloat(0.0f, 1.0f) < edgeBiasProbability;
 		float newValue = addDifference ? currentValue + difference : currentValue - difference;
 		a_instanceData->targetValue = std::max(0.0f, std::min(1.0f, newValue));
 	}
