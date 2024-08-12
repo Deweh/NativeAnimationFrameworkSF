@@ -27,8 +27,8 @@ namespace Animation::Procedural
 			instIter++;
 		}
 
-		// TODO: Save the index of the actor output node, in case it's not the last one.
-		return std::get<PoseCache::Handle>(a_graphInst.resultMap[sortedNodes.back()]).get();
+		auto resultNode = std::get<PNode*>(a_graphInst.resultMap[actorNode]);
+		return std::get<PoseCache::Handle>(a_graphInst.resultMap[resultNode]).get();
 	}
 
 	void PGraph::AdvanceTime(InstanceData& a_graphInst, float a_deltaTime)

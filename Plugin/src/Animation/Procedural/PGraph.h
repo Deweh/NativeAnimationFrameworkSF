@@ -17,6 +17,7 @@ namespace Animation::Procedural
 
 		std::vector<std::unique_ptr<PNode>> nodes;
 		std::vector<PNode*> sortedNodes;
+		PNode* actorNode;
 
 		bool SortNodes();
 		std::span<ozz::math::SoaTransform> Evaluate(InstanceData& a_graphInst, PoseCache& a_poseCache);

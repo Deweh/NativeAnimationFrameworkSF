@@ -16,12 +16,12 @@ namespace
 		NAFAPI_CustomGeneratorFunction onDestroyFunc = nullptr;
 		bool detaching = false;
 
-		virtual void Generate(float deltaTime) override
+		virtual void Generate(Animation::PoseCache& cache) override
 		{
 			if (detaching) [[unlikely]]
 				return;
 
-			generateFunc(userData, this, deltaTime, { userOutput.data(), userOutput.size() });
+			generateFunc(userData, this, 0.0f, { userOutput.data(), userOutput.size() });
 			Animation::Transform::StoreSoaTransforms(output, [&](size_t i) {
 				return userOutput[i];
 			});

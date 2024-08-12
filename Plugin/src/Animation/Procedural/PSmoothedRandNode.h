@@ -32,5 +32,21 @@ namespace Animation::Procedural
 		virtual PEvaluationResult Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, std::unordered_map<PNode*, PEvaluationResult>& a_results) override;
 		virtual void AdvanceTime(PNodeInstanceData* a_instanceData, float a_deltaTime) override;
 		void UpdateTargetValue(InstanceData* a_instanceData);
+
+	private:
+		inline static Registration _reg{
+			"smooth_rand",
+			{},
+			{
+				{ "dur_min", PEvaluationType<float> },
+				{ "dur_max", PEvaluationType<float> },
+				{ "diff_min", PEvaluationType<float> },
+				{ "diff_max", PEvaluationType<float> },
+				{ "delay_min", PEvaluationType<float> },
+				{ "delay_max", PEvaluationType<float> }
+			},
+			PEvaluationType<float>,
+			CreateNodeOfType<PSmoothedRandNode>
+		};
 	};
 }

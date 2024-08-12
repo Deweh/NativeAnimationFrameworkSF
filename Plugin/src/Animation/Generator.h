@@ -36,6 +36,8 @@ namespace Animation
 		std::shared_ptr<Procedural::PGraph> pGraph;
 		Procedural::PGraph::InstanceData pGraphInstance;
 
+		ProceduralGenerator(const std::shared_ptr<Procedural::PGraph>& a_graph, const OzzSkeleton* a_skeleton);
+
 		virtual void Generate(PoseCache& cache);
 		virtual void AdvanceTime(float deltaTime);
 

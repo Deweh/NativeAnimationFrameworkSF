@@ -1,23 +1,14 @@
 #pragma once
 #include "PNode.h"
-#include "Animation/Ozz.h"
-#include "Animation/FileID.h"
 
 namespace Animation::Procedural
 {
-	class PFullAnimationNode : public PNode
+	class PBlend1DNode : public PNode
 	{
 	public:
 		struct InstanceData : public PNodeInstanceData
 		{
-			bool looped{ false };
-			bool paused{ false };
-			float localTime{ 0.0f };
-			std::shared_ptr<OzzAnimation> anim;
-			ozz::animation::SamplingJob::Context context;
 		};
-
-		FileID file;
 
 		virtual std::unique_ptr<PNodeInstanceData> CreateInstanceData(const OzzSkeleton* a_skeleton) override;
 		virtual PEvaluationResult Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, std::unordered_map<PNode*, PEvaluationResult>& a_results) override;
@@ -25,13 +16,15 @@ namespace Animation::Procedural
 
 	private:
 		inline static Registration _reg{
-			"anim",
-			{},
+			"blend_1d",
 			{
-				{ "file", PEvaluationType<std::string> }
+				{ "1", PEvaluationType<PoseCache::Handle> },
+				{ "2", PEvaluationType<PoseCache::Handle> },
+				{ "val", PEvaluationType<float> }
 			},
+			{},
 			PEvaluationType<PoseCache::Handle>,
-			CreateNodeOfType<PFullAnimationNode>
+			CreateNodeOfType<PBlend1DNode>
 		};
 	};
 }

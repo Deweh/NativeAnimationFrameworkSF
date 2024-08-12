@@ -5,7 +5,7 @@ namespace Animation::Procedural
 {
 	std::unique_ptr<PNodeInstanceData> PFullAnimationNode::CreateInstanceData(const OzzSkeleton* a_skeleton)
 	{
-		auto result = std::make_unique<PFullAnimationNode::InstanceData>();
+		auto result = std::make_unique<InstanceData>();
 		result->anim = FileManager::GetSingleton()->DemandAnimation(file, a_skeleton->name);
 		result->context.Resize(a_skeleton->data->num_joints());
 		return result;
@@ -13,7 +13,7 @@ namespace Animation::Procedural
 
 	PEvaluationResult PFullAnimationNode::Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, std::unordered_map<PNode*, PEvaluationResult>& a_results)
 	{
-		auto inst = static_cast<PFullAnimationNode::InstanceData*>(a_instanceData);
+		auto inst = static_cast<InstanceData*>(a_instanceData);
 		PoseCache::Handle result = a_poseCache.acquire_handle();
 
 		ozz::animation::SamplingJob sampleJob;
@@ -28,7 +28,7 @@ namespace Animation::Procedural
 
 	void PFullAnimationNode::AdvanceTime(PNodeInstanceData* a_instanceData, float a_deltaTime)
 	{
-		auto inst = static_cast<PFullAnimationNode::InstanceData*>(a_instanceData);
+		auto inst = static_cast<InstanceData*>(a_instanceData);
 		auto duration = inst->anim->data->duration();
 		if (!inst->paused) {
 			inst->localTime += a_deltaTime;

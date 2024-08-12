@@ -5,7 +5,7 @@ namespace Animation::Procedural
 {
 	std::unique_ptr<PNodeInstanceData> PSmoothedRandNode::CreateInstanceData(const OzzSkeleton* a_skeleton)
 	{
-		return std::make_unique<PSmoothedRandNode::InstanceData>();
+		return std::make_unique<InstanceData>();
 	}
 
 	PEvaluationResult PSmoothedRandNode::Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, std::unordered_map<PNode*, PEvaluationResult>& a_results)

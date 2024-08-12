@@ -121,6 +121,12 @@ namespace Animation
 		baseGen->AdvanceTime(deltaTime);
 	}
 
+	ProceduralGenerator::ProceduralGenerator(const std::shared_ptr<Procedural::PGraph>& a_graph, const OzzSkeleton* a_skeleton)
+	{
+		pGraph = a_graph;
+		a_graph->InitInstanceData(pGraphInstance, a_skeleton);
+	}
+
 	void ProceduralGenerator::Generate(PoseCache& cache)
 	{
 		auto result = pGraph->Evaluate(pGraphInstance, cache);
