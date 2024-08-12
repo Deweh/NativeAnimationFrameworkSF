@@ -1,5 +1,6 @@
 #include "PSmoothedRandNode.h"
 #include "Util/General.h"
+#include "Animation/Easing.h"
 
 namespace Animation::Procedural
 {
@@ -12,7 +13,8 @@ namespace Animation::Procedural
 	{
 		auto inst = static_cast<InstanceData*>(a_instanceData);
 		if (inst->state == RandState::kTransitioning) {
-			return inst->localTime == 0.0f ? 0.0f : std::lerp(inst->startValue, inst->targetValue, inst->localTime / inst->duration);
+			Animation::CubicInOutEase<float> ease;
+			return inst->localTime == 0.0f ? inst->startValue : std::lerp(inst->startValue, inst->targetValue, ease(inst->localTime / inst->duration));
 		} else {
 			return inst->targetValue;
 		}
@@ -51,15 +53,41 @@ namespace Animation::Procedural
 		diffMax = std::get<float>(a_values[3]);
 		delayMin = std::get<float>(a_values[4]);
 		delayMax = std::get<float>(a_values[5]);
+
+		durMin = std::max(0.1f, durMin);
+		durMax = std::max(0.1f, durMax);
+
+		if (durMin > durMax) {
+			std::swap(durMin, durMax);
+		}
+
+		if (diffMin > diffMax) {
+			std::swap(diffMin, diffMax);
+		}
+
+		if (delayMin > delayMax) {
+			std::swap(delayMin, delayMax);
+		}
 	}
 
 	void PSmoothedRandNode::UpdateTargetValue(InstanceData* a_instanceData)
 	{
-		float minMaxDiff = diffMax - diffMin;
-		float halfDiff = minMaxDiff * 0.5f;
+		float difference = diffMin + (static_cast<float>(Util::GetRandomInt(0, 10000)) * 0.0001f) * (diffMax - diffMin);
 
-		float diffRand = static_cast<float>(Util::GetRandomInt(0, 100)) * 0.01f;
-		float diff = (((minMaxDiff * diffRand) + diffMin) - halfDiff) + a_instanceData->startValue;
-		a_instanceData->targetValue = std::clamp(diff, 0.0f, 1.0f);
+		static constexpr float edgeThreshold = 0.45f;
+		float edgeBiasProbability;
+		
+		float currentValue = a_instanceData->targetValue;
+		if (currentValue < edgeThreshold) {
+			edgeBiasProbability = 0.5f + (edgeThreshold - currentValue) / edgeThreshold * 0.5f;
+		} else if (currentValue > (1.0f - edgeThreshold)) {
+			edgeBiasProbability = 0.5f - (currentValue - (1.0f - edgeThreshold)) / edgeThreshold * 0.5f;
+		} else {
+			edgeBiasProbability = 0.5f;
+		}
+
+		bool addDifference = static_cast<float>(Util::GetRandomInt(0, 10000)) * 0.0001f < edgeBiasProbability;
+		float newValue = addDifference ? currentValue + difference : currentValue - difference;
+		a_instanceData->targetValue = std::max(0.0f, std::min(1.0f, newValue));
 	}
 }

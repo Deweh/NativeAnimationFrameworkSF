@@ -16,6 +16,7 @@ namespace Animation::Procedural
 		blendLayers[1].transform = pose2Input.get_ozz();
 
 		ozz::animation::BlendingJob blendJob;
+		blendJob.layers = ozz::make_span(blendLayers);
 		blendJob.output = output.get_ozz();
 		blendJob.rest_pose = pose1Input.get_ozz();
 		blendJob.threshold = 1.0f;
