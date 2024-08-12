@@ -20,6 +20,7 @@ namespace Animation::Procedural
 		PNode* actorNode;
 
 		bool SortNodes();
+		void InsertCacheReleaseNodes();
 		std::span<ozz::math::SoaTransform> Evaluate(InstanceData& a_graphInst, PoseCache& a_poseCache);
 		void AdvanceTime(InstanceData& a_graphInst, float a_deltaTime);
 		void InitInstanceData(InstanceData& a_graphInst, const OzzSkeleton* a_skeleton);

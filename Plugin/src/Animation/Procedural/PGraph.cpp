@@ -1,4 +1,5 @@
 #include "PGraph.h"
+#include "PInternalCacheReleaseNode.h"
 
 namespace Animation::Procedural
 {
@@ -17,6 +18,37 @@ namespace Animation::Procedural
 		}
 
 		return true;
+	}
+
+	void PGraph::InsertCacheReleaseNodes()
+	{
+		std::map<PNode*, size_t> lastUsageMap;
+		for (auto iter = sortedNodes.begin(); iter != sortedNodes.end(); iter++) {
+			auto& n = *iter;
+			size_t idx = std::distance(sortedNodes.begin(), iter);
+			lastUsageMap[n] = idx;
+			for (auto& i : n->inputs) {
+				lastUsageMap[i] = idx;
+			}
+		}
+
+		std::vector<std::pair<PNode*, size_t>> sortedLastUsages(lastUsageMap.begin(), lastUsageMap.end());
+		std::sort(sortedLastUsages.begin(), sortedLastUsages.end(),
+			[](const auto& a, const auto& b) { return a.second > b.second; });
+
+		for (const auto& [n, idx] : sortedLastUsages) {
+			if (auto typeInfo = n->GetTypeInfo(); !typeInfo || typeInfo->output != PEvaluationType<PoseCache::Handle>) {
+				continue;
+			}
+			if (idx == (sortedNodes.size() - 1)) {
+				continue;
+			}
+
+			auto& releaseNode = nodes.emplace_back(std::make_unique<PInternalCacheReleaseNode>());
+			releaseNode->inputs.emplace_back(n);
+
+			sortedNodes.insert(sortedNodes.begin() + (idx + 1), releaseNode.get());
+		}
 	}
 
 	std::span<ozz::math::SoaTransform> PGraph::Evaluate(InstanceData& a_graphInst, PoseCache& a_poseCache)

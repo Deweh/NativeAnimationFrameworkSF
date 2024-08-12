@@ -93,6 +93,8 @@ namespace Serialization
 			if (!result->SortNodes()) {
 				throw std::exception{ "Failed to sort nodes (either due to a dependency loop or too many nodes.)" };
 			}
+
+			result->InsertCacheReleaseNodes();
 		}
 		catch (const std::exception& ex) {
 			WARN("{}", ex.what());

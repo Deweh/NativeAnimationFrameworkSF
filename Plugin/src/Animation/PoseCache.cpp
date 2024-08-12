@@ -49,6 +49,8 @@ namespace Animation
 	{
 		if (_owner != nullptr && _impl != UINT64_MAX) {
 			_owner->release_handle(_impl);
+			_impl = UINT64_MAX;
+			_owner = nullptr;
 		}
 	}
 
