@@ -94,7 +94,8 @@ add_library(
  "src/Util/General.cpp"
  "src/Animation/Procedural/PBlend1DNode.cpp"
  "src/Animation/Procedural/PActorNode.cpp"
- "src/Animation/Procedural/PNode.cpp")
+ "src/Animation/Procedural/PNode.cpp"
+ "src/Serialization/BlendGraphImport.cpp")
 
 # copy to Starfield directory
 set(STARFIELD_PATH "C:/Program Files (x86)/Steam/steamapps/common/Starfield/Data/SFSE/Plugins")

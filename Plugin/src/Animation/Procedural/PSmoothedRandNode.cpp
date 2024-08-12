@@ -43,6 +43,16 @@ namespace Animation::Procedural
 		}
 	}
 
+	void PSmoothedRandNode::SetCustomValues(const std::span<PEvaluationResult>& a_values)
+	{
+		durMin = std::get<float>(a_values[0]);
+		durMax = std::get<float>(a_values[1]);
+		diffMin = std::get<float>(a_values[2]);
+		diffMax = std::get<float>(a_values[3]);
+		delayMin = std::get<float>(a_values[4]);
+		delayMax = std::get<float>(a_values[5]);
+	}
+
 	void PSmoothedRandNode::UpdateTargetValue(InstanceData* a_instanceData)
 	{
 		float minMaxDiff = diffMax - diffMin;

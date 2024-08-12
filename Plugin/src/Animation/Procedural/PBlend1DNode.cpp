@@ -2,11 +2,6 @@
 
 namespace Animation::Procedural
 {
-	std::unique_ptr<PNodeInstanceData> PBlend1DNode::CreateInstanceData(const OzzSkeleton* a_skeleton)
-	{
-		return nullptr;
-	}
-
 	PEvaluationResult PBlend1DNode::Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, std::unordered_map<PNode*, PEvaluationResult>& a_results)
 	{
 		auto& pose1Input = std::get<PoseCache::Handle>(a_results[inputs[0]]);
@@ -28,9 +23,5 @@ namespace Animation::Procedural
 		blendJob.Run();
 
 		return output;
-	}
-
-	void PBlend1DNode::AdvanceTime(PNodeInstanceData* a_instanceData, float a_deltaTime)
-	{
 	}
 }

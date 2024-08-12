@@ -21,9 +21,10 @@ namespace Animation::Procedural
 	public:
 		std::vector<PNode*> inputs;
 
-		virtual std::unique_ptr<PNodeInstanceData> CreateInstanceData(const OzzSkeleton* a_skeleton) = 0;
+		virtual std::unique_ptr<PNodeInstanceData> CreateInstanceData(const OzzSkeleton* a_skeleton);
 		virtual PEvaluationResult Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, std::unordered_map<PNode*, PEvaluationResult>& a_results) = 0;
-		virtual void AdvanceTime(PNodeInstanceData* a_instanceData, float a_deltaTime) = 0;
+		virtual void AdvanceTime(PNodeInstanceData* a_instanceData, float a_deltaTime);
+		virtual void SetCustomValues(const std::span<PEvaluationResult>& a_values);
 
 		template <typename T>
 		static std::unique_ptr<PNode> CreateNodeOfType()

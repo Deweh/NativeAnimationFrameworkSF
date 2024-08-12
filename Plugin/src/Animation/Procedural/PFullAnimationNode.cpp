@@ -40,4 +40,9 @@ namespace Animation::Procedural
 			}
 		}
 	}
+
+	void PFullAnimationNode::SetCustomValues(const std::span<PEvaluationResult>& a_values)
+	{
+		file = FileID{ std::get<std::string>(a_values[0]), "" };
+	}
 }

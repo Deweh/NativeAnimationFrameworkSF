@@ -2,10 +2,17 @@
 
 namespace Animation::Procedural
 {
-	std::unordered_map<std::string_view, PNode::Registration*>& GetRegisteredNodeTypes()
+	std::unique_ptr<PNodeInstanceData> PNode::CreateInstanceData(const OzzSkeleton* a_skeleton)
 	{
-		static std::unordered_map<std::string_view, PNode::Registration*> instance;
-		return instance;
+		return nullptr;
+	}
+
+	void PNode::AdvanceTime(PNodeInstanceData* a_instanceData, float a_deltaTime)
+	{
+	}
+
+	void PNode::SetCustomValues(const std::span<PEvaluationResult>& a_values)
+	{
 	}
 
 	PNode::Registration::Registration(const char* a_typeName,
@@ -20,5 +27,11 @@ namespace Animation::Procedural
 		createFunctor(a_createFunctor)
 	{
 		GetRegisteredNodeTypes()[{ a_typeName }] = this;
+	}
+
+	std::unordered_map<std::string_view, PNode::Registration*>& GetRegisteredNodeTypes()
+	{
+		static std::unordered_map<std::string_view, PNode::Registration*> instance;
+		return instance;
 	}
 }

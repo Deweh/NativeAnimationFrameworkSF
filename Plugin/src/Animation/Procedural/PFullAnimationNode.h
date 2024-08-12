@@ -22,6 +22,7 @@ namespace Animation::Procedural
 		virtual std::unique_ptr<PNodeInstanceData> CreateInstanceData(const OzzSkeleton* a_skeleton) override;
 		virtual PEvaluationResult Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, std::unordered_map<PNode*, PEvaluationResult>& a_results) override;
 		virtual void AdvanceTime(PNodeInstanceData* a_instanceData, float a_deltaTime) override;
+		virtual void SetCustomValues(const std::span<PEvaluationResult>& a_values) override;
 
 	private:
 		inline static Registration _reg{
