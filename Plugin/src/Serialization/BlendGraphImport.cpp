@@ -16,7 +16,7 @@ namespace Serialization
 				throw std::exception{ "Failed to parse JSON." };
 			}
 
-			int version = doc["id"];
+			uint64_t version = doc["version"];
 			if (version > 1) {
 				throw std::exception{ "Blend graph uses an unsupported format version." };
 			}
@@ -49,7 +49,7 @@ namespace Serialization
 				if (!typeInfo->inputs.empty()) {
 					auto inputs = n["inputs"];
 					for (auto& i : typeInfo->inputs) {
-						uint64_t targetNode = inputs[i.first][0];
+						uint64_t targetNode = inputs[i.first].get_array().at(0);
 						//We don't have pointers to all the nodes yet, so just store the uint64 ID as a pointer until the next step.
 						currentNode->inputs.push_back(reinterpret_cast<PNode*>(targetNode));
 					}
@@ -95,7 +95,7 @@ namespace Serialization
 			}
 		}
 		catch (const std::exception& ex) {
-			ERROR("{}", ex.what());
+			WARN("{}", ex.what());
 			return nullptr;
 		}
 
