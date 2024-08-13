@@ -62,4 +62,10 @@ namespace Animation::Procedural
 			return &T::_reg;
 		}
 	};
+
+	template <typename T>
+	bool IsNodeOfType(PNode* a_node)
+	{
+		return a_node->GetTypeInfo() == &T::_reg;
+	}
 }

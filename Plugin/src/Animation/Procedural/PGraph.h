@@ -17,7 +17,7 @@ namespace Animation::Procedural
 
 		std::vector<std::unique_ptr<PNode>> nodes;
 		std::vector<PNode*> sortedNodes;
-		PNode* actorNode;
+		PNode* actorNode{ nullptr };
 
 		bool SortNodes();
 		void InsertCacheReleaseNodes();

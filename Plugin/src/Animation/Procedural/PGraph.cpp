@@ -1,5 +1,6 @@
 #include "PGraph.h"
 #include "PInternalCacheReleaseNode.h"
+#include "PActorNode.h"
 
 namespace Animation::Procedural
 {
@@ -40,7 +41,9 @@ namespace Animation::Procedural
 			if (auto typeInfo = n->GetTypeInfo(); !typeInfo || typeInfo->output != PEvaluationType<PoseCache::Handle>) {
 				continue;
 			}
-			if (idx == (sortedNodes.size() - 1)) {
+
+			//If the last user of this pose is the actor output node, don't free it.
+			if (IsNodeOfType<PActorNode>(sortedNodes[idx])) {
 				continue;
 			}
 

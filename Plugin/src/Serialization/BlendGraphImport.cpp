@@ -1,5 +1,6 @@
 #include "BlendGraphImport.h"
 #include "simdjson.h"
+#include "Animation/Procedural/PActorNode.h"
 
 namespace Serialization
 {
@@ -42,8 +43,12 @@ namespace Serialization
 				uint64_t id = n["id"];
 				nodeIdMap[id] = currentNode.get();
 
-				if (typeName == "actor") {
-					result->actorNode = currentNode.get();
+				if (typeInfo == &PActorNode::_reg) {
+					if (result->actorNode != nullptr) {
+						throw std::exception{ "Blend graph contains multiple actor nodes." };
+					} else {
+						result->actorNode = currentNode.get();
+					}
 				}
 
 				if (!typeInfo->inputs.empty()) {
@@ -79,16 +84,29 @@ namespace Serialization
 				result->nodes.emplace_back(std::move(currentNode));
 			}
 
+			if (result->actorNode == nullptr) {
+				throw std::exception{ "Blend graph contains no actor node." };
+			}
+
 			//Pass 2: Connect inputs together.
 			for (auto& n : result->nodes) {
+				auto destTypeInfo = n->GetTypeInfo();
+				auto destInputIter = destTypeInfo->inputs.begin();
 				for (auto& i : n->inputs) {
 					if (auto iter = nodeIdMap.find(reinterpret_cast<uint64_t>(i)); iter != nodeIdMap.end()) {
-						i = iter->second;
+						if (iter->second->GetTypeInfo()->output == destInputIter->second) {
+							i = iter->second;
+						} else {
+							throw std::exception{ "Node connection has mismatched input/output types." };
+						}
 					} else {
 						throw std::exception{ "Blend graph refers to non-existant node ID." };
 					}
+					destInputIter++;
 				}
 			}
+
+			//TODO: Add 3rd pass for discarding nodes that are disconnected from the graph flow.
 
 			if (!result->SortNodes()) {
 				throw std::exception{ "Failed to sort nodes (either due to a dependency loop or too many nodes.)" };
