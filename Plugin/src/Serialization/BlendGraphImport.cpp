@@ -44,10 +44,10 @@ namespace Serialization
 				nodeIdMap[id] = currentNode.get();
 
 				if (typeInfo == &PActorNode::_reg) {
-					if (result->actorNode != nullptr) {
+					if (result->actorNode != 0) {
 						throw std::exception{ "Blend graph contains multiple actor nodes." };
 					} else {
-						result->actorNode = currentNode.get();
+						result->actorNode = reinterpret_cast<uint64_t>(currentNode.get());
 					}
 				}
 
@@ -56,7 +56,7 @@ namespace Serialization
 					for (auto& i : typeInfo->inputs) {
 						uint64_t targetNode = inputs[i.first].get_array().at(0);
 						//We don't have pointers to all the nodes yet, so just store the uint64 ID as a pointer until the next step.
-						currentNode->inputs.push_back(reinterpret_cast<PNode*>(targetNode));
+						currentNode->inputs.push_back(targetNode);
 					}
 				}
 				if (!typeInfo->customValues.empty()) {
@@ -86,7 +86,7 @@ namespace Serialization
 				result->nodes.emplace_back(std::move(currentNode));
 			}
 
-			if (result->actorNode == nullptr) {
+			if (result->actorNode == 0) {
 				throw std::exception{ "Blend graph contains no actor node." };
 			}
 
@@ -95,9 +95,9 @@ namespace Serialization
 				auto destTypeInfo = n->GetTypeInfo();
 				auto destInputIter = destTypeInfo->inputs.begin();
 				for (auto& i : n->inputs) {
-					if (auto iter = nodeIdMap.find(reinterpret_cast<uint64_t>(i)); iter != nodeIdMap.end()) {
+					if (auto iter = nodeIdMap.find(i); iter != nodeIdMap.end()) {
 						if (iter->second->GetTypeInfo()->output == destInputIter->second) {
-							i = iter->second;
+							i = reinterpret_cast<uint64_t>(iter->second);
 						} else {
 							throw std::exception{ "Node connection has mismatched input/output types." };
 						}
@@ -115,6 +115,7 @@ namespace Serialization
 			}
 
 			result->InsertCacheReleaseNodes();
+			result->PointersToIndexes();
 		}
 		catch (const std::exception& ex) {
 			WARN("{}", ex.what());

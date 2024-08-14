@@ -6,7 +6,7 @@
 namespace Animation::Procedural
 {
 	class PNode;
-	using PEvaluationResult = std::variant<float, PoseCache::Handle, PNode*, std::string>;
+	using PEvaluationResult = std::variant<float, PoseCache::Handle, uint64_t, std::string>;
 
 	template <typename T>
 	inline constexpr std::size_t PEvaluationType = variant_index<T, PEvaluationResult>::value;
@@ -14,6 +14,12 @@ namespace Animation::Procedural
 	struct PNodeInstanceData
 	{
 		virtual ~PNodeInstanceData() = default;
+	};
+
+	struct PEvaluationContext
+	{
+		std::vector<std::unique_ptr<PNodeInstanceData>> nodeInstances;
+		std::vector<PEvaluationResult> results;
 	};
 
 	class PNode
@@ -36,10 +42,10 @@ namespace Animation::Procedural
 			CreationFunctor createFunctor;
 		};
 
-		std::vector<PNode*> inputs;
+		std::vector<uint64_t> inputs;
 
 		virtual std::unique_ptr<PNodeInstanceData> CreateInstanceData();
-		virtual PEvaluationResult Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, std::unordered_map<PNode*, PEvaluationResult>& a_results) = 0;
+		virtual PEvaluationResult Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, PEvaluationContext& a_evalContext) = 0;
 		virtual void AdvanceTime(PNodeInstanceData* a_instanceData, float a_deltaTime);
 		virtual bool SetCustomValues(const std::span<PEvaluationResult>& a_values, const std::string_view a_skeleton);
 		virtual Registration* GetTypeInfo();

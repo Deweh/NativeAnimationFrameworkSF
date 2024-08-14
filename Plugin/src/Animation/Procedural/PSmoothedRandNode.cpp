@@ -9,7 +9,7 @@ namespace Animation::Procedural
 		return std::make_unique<InstanceData>();
 	}
 
-	PEvaluationResult PSmoothedRandNode::Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, std::unordered_map<PNode*, PEvaluationResult>& a_results)
+	PEvaluationResult PSmoothedRandNode::Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, PEvaluationContext& a_evalContext)
 	{
 		auto inst = static_cast<InstanceData*>(a_instanceData);
 		if (inst->state == RandState::kTransitioning) {

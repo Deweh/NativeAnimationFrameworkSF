@@ -10,7 +10,7 @@ namespace Animation::Procedural
 		return result;
 	}
 
-	PEvaluationResult PFullAnimationNode::Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, std::unordered_map<PNode*, PEvaluationResult>& a_results)
+	PEvaluationResult PFullAnimationNode::Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, PEvaluationContext& a_evalContext)
 	{
 		auto inst = static_cast<InstanceData*>(a_instanceData);
 		PoseCache::Handle result = a_poseCache.acquire_handle();

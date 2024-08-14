@@ -30,7 +30,7 @@ namespace Animation::Procedural
 			size_t idx = std::distance(sortedNodes.begin(), iter);
 			lastUsageMap[n] = idx;
 			for (auto& i : n->inputs) {
-				lastUsageMap[i] = idx;
+				lastUsageMap[reinterpret_cast<PNode*>(i)] = idx;
 			}
 		}
 
@@ -49,7 +49,7 @@ namespace Animation::Procedural
 			}
 
 			auto& releaseNode = nodes.emplace_back(std::make_unique<PInternalCacheReleaseNode>());
-			releaseNode->inputs.emplace_back(n);
+			releaseNode->inputs.emplace_back(reinterpret_cast<uint64_t>(n));
 
 			sortedNodes.insert(sortedNodes.begin() + (idx + 1), releaseNode.get());
 		}
@@ -58,13 +58,13 @@ namespace Animation::Procedural
 	std::span<ozz::math::SoaTransform> PGraph::Evaluate(InstanceData& a_graphInst, PoseCache& a_poseCache)
 	{
 		auto instIter = a_graphInst.nodeInstances.begin();
-		for (auto& n : sortedNodes) {
-			a_graphInst.resultMap[n] = std::move(n->Evaluate(instIter->get(), a_poseCache, a_graphInst.resultMap));
+		for (auto iter = sortedNodes.begin(); iter != sortedNodes.end(); iter++) {
+			a_graphInst.results[std::distance(sortedNodes.begin(), iter)] = std::move((*iter)->Evaluate(instIter->get(), a_poseCache, a_graphInst));
 			instIter++;
 		}
 
-		auto resultNode = std::get<PNode*>(a_graphInst.resultMap[actorNode]);
-		return std::get<PoseCache::Handle>(a_graphInst.resultMap[resultNode]).get();
+		auto resultIdx = std::get<uint64_t>(a_graphInst.results[actorNode]);
+		return std::get<PoseCache::Handle>(a_graphInst.results[resultIdx]).get();
 	}
 
 	void PGraph::AdvanceTime(InstanceData& a_graphInst, float a_deltaTime)
@@ -80,6 +80,21 @@ namespace Animation::Procedural
 	{
 		for (auto& n : sortedNodes) {
 			a_graphInst.nodeInstances.emplace_back(n->CreateInstanceData());
+		}
+		a_graphInst.results.resize(sortedNodes.size());
+	}
+
+	void PGraph::PointersToIndexes()
+	{
+		std::unordered_map<PNode*, size_t> idxMap;
+		for (auto iter = sortedNodes.begin(); iter != sortedNodes.end(); iter++) {
+			idxMap[*iter] = std::distance(sortedNodes.begin(), iter);
+		}
+		actorNode = idxMap[reinterpret_cast<PNode*>(actorNode)];
+		for (auto& n : sortedNodes) {
+			for (auto& i : n->inputs) {
+				i = idxMap[reinterpret_cast<PNode*>(i)];
+			}
 		}
 	}
 
@@ -98,7 +113,8 @@ namespace Animation::Procedural
 		a_visited.insert(a_node);
 		a_recursionStack.insert(a_node);
 
-		for (PNode* dependency : a_node->inputs) {
+		for (uint64_t ptr : a_node->inputs) {
+			auto dependency = reinterpret_cast<PNode*>(ptr);
 			if (a_recursionStack.find(dependency) != a_recursionStack.end()) {
 				// Cycle detected in graph.
 				return false;

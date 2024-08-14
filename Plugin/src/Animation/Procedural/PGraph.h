@@ -9,22 +9,18 @@ namespace Animation::Procedural
 	{
 	public:
 		inline static constexpr size_t MAX_DEPTH{ 100 };
-
-		struct InstanceData
-		{
-			std::vector<std::unique_ptr<PNodeInstanceData>> nodeInstances;
-			std::unordered_map<PNode*, PEvaluationResult> resultMap;
-		};
+		using InstanceData = PEvaluationContext;
 
 		std::vector<std::unique_ptr<PNode>> nodes;
 		std::vector<PNode*> sortedNodes;
-		PNode* actorNode{ nullptr };
+		uint64_t actorNode = 0;
 
 		bool SortNodes();
 		void InsertCacheReleaseNodes();
 		std::span<ozz::math::SoaTransform> Evaluate(InstanceData& a_graphInst, PoseCache& a_poseCache);
 		void AdvanceTime(InstanceData& a_graphInst, float a_deltaTime);
 		void InitInstanceData(InstanceData& a_graphInst);
+		void PointersToIndexes();
 		virtual std::unique_ptr<Generator> CreateGenerator() override;
 
 	private:

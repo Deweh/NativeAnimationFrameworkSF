@@ -2,11 +2,11 @@
 
 namespace Animation::Procedural
 {
-	PEvaluationResult PBlend1DNode::Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, std::unordered_map<PNode*, PEvaluationResult>& a_results)
+	PEvaluationResult PBlend1DNode::Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, PEvaluationContext& a_evalContext)
 	{
-		auto& pose1Input = std::get<PoseCache::Handle>(a_results[inputs[0]]);
-		auto& pose2Input = std::get<PoseCache::Handle>(a_results[inputs[1]]);
-		auto& valueInput = std::get<float>(a_results[inputs[2]]);
+		auto& pose1Input = std::get<PoseCache::Handle>(a_evalContext.results[inputs[0]]);
+		auto& pose2Input = std::get<PoseCache::Handle>(a_evalContext.results[inputs[1]]);
+		auto& valueInput = std::get<float>(a_evalContext.results[inputs[2]]);
 		auto output = a_poseCache.acquire_handle();
 
 		std::array<ozz::animation::BlendingJob::Layer, 2> blendLayers;

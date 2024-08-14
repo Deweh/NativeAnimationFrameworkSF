@@ -2,7 +2,7 @@
 
 namespace Animation::Procedural
 {
-	PEvaluationResult PActorNode::Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, std::unordered_map<PNode*, PEvaluationResult>& a_results)
+	PEvaluationResult PActorNode::Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, PEvaluationContext& a_evalContext)
 	{
 		return inputs[0];
 	}
