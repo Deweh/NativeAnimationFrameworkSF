@@ -7,8 +7,9 @@ namespace Animation::Procedural
 		return value;
 	}
 
-	void PFixedValueNode::SetCustomValues(const std::span<PEvaluationResult>& a_values)
+	bool PFixedValueNode::SetCustomValues(const std::span<PEvaluationResult>& a_values, const std::string_view a_skeleton)
 	{
 		value = std::get<float>(a_values[0]);
+		return true;
 	}
 }

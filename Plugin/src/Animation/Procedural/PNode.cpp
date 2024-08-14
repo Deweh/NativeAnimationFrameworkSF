@@ -2,7 +2,7 @@
 
 namespace Animation::Procedural
 {
-	std::unique_ptr<PNodeInstanceData> PNode::CreateInstanceData(const OzzSkeleton* a_skeleton)
+	std::unique_ptr<PNodeInstanceData> PNode::CreateInstanceData()
 	{
 		return nullptr;
 	}
@@ -11,8 +11,9 @@ namespace Animation::Procedural
 	{
 	}
 
-	void PNode::SetCustomValues(const std::span<PEvaluationResult>& a_values)
+	bool PNode::SetCustomValues(const std::span<PEvaluationResult>& a_values, const std::string_view a_skeleton)
 	{
+		return true;
 	}
 
 	PNode::Registration* PNode::GetTypeInfo()

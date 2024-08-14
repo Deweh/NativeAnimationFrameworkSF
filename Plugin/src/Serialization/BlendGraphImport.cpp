@@ -4,7 +4,7 @@
 
 namespace Serialization
 {
-	std::unique_ptr<Animation::Procedural::PGraph> BlendGraphImport::LoadGraph(const std::filesystem::path& a_filePath)
+	std::unique_ptr<Animation::Procedural::PGraph> BlendGraphImport::LoadGraph(const std::filesystem::path& a_filePath, const std::string_view a_skeleton)
 	{
 		using namespace Animation::Procedural;
 
@@ -78,7 +78,9 @@ namespace Serialization
 							break;
 						}
 					}
-					currentNode->SetCustomValues(values);
+					if (!currentNode->SetCustomValues(values, a_skeleton)) {
+						throw std::runtime_error{ std::format("Failed to process custom value(s) for '{}' node.", typeInfo->typeName) };
+					}
 				}
 
 				result->nodes.emplace_back(std::move(currentNode));

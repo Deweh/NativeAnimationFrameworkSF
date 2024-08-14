@@ -38,7 +38,7 @@ namespace Animation
 		return belongsToThis;
 	}
 
-	bool Sequencer::OnAnimationReady(const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim)
+	bool Sequencer::OnAnimationReady(const FileID& a_id, std::shared_ptr<IAnimationFile> a_anim)
 	{
 		if (!flags.any(FLAG::kPausedForLoading, FLAG::kLoadingNextAnim) || a_id != loadingFile) {
 			return false;
@@ -137,7 +137,7 @@ namespace Animation
 
 	void Sequencer::TransitionToLoadedAnimation()
 	{
-		owner->StartTransition(std::make_unique<LinearClipGenerator>(loadedAnim), currentPhase->transitionTime);
+		owner->StartTransition(loadedAnim->CreateGenerator(), currentPhase->transitionTime);
 		LoadNextAnimation();
 		SFSE::GetTaskInterface()->AddTask([idx = GetPhase(), target = owner->target]() {
 			GraphManager::GetSingleton()->SendEvent(SequencePhaseChangeEvent{

@@ -25,7 +25,7 @@ namespace Animation
 		EnableEyeTracking();
 	}
 
-	void Graph::OnAnimationReady(const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim)
+	void Graph::OnAnimationReady(const FileID& a_id, std::shared_ptr<IAnimationFile> a_anim)
 	{
 		std::unique_lock l{ lock };
 		if (!loadedData) {
@@ -43,7 +43,7 @@ namespace Animation
 
 			flags.reset(FLAGS::kLoadingAnimation);
 			if (a_anim != nullptr) {
-				StartTransition(std::make_unique<LinearClipGenerator>(a_anim), loadedData->transition.queuedDuration);
+				StartTransition(a_anim->CreateGenerator(), loadedData->transition.queuedDuration);
 			}
 		}
 	}

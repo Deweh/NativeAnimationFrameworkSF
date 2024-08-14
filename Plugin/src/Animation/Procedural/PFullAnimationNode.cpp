@@ -3,11 +3,10 @@
 
 namespace Animation::Procedural
 {
-	std::unique_ptr<PNodeInstanceData> PFullAnimationNode::CreateInstanceData(const OzzSkeleton* a_skeleton)
+	std::unique_ptr<PNodeInstanceData> PFullAnimationNode::CreateInstanceData()
 	{
 		auto result = std::make_unique<InstanceData>();
-		result->anim = FileManager::GetSingleton()->DemandAnimation(file, a_skeleton->name);
-		result->context.Resize(a_skeleton->data->num_joints());
+		result->context.Resize(anim->data->num_tracks());
 		return result;
 	}
 
@@ -17,10 +16,10 @@ namespace Animation::Procedural
 		PoseCache::Handle result = a_poseCache.acquire_handle();
 
 		ozz::animation::SamplingJob sampleJob;
-		sampleJob.animation = inst->anim->data.get();
+		sampleJob.animation = anim->data.get();
 		sampleJob.context = &inst->context;
 		sampleJob.output = result.get_ozz();
-		sampleJob.ratio = inst->localTime / inst->anim->data->duration();
+		sampleJob.ratio = inst->localTime / anim->data->duration();
 		sampleJob.Run();
 
 		return result;
@@ -29,20 +28,25 @@ namespace Animation::Procedural
 	void PFullAnimationNode::AdvanceTime(PNodeInstanceData* a_instanceData, float a_deltaTime)
 	{
 		auto inst = static_cast<InstanceData*>(a_instanceData);
-		auto duration = inst->anim->data->duration();
-		if (!inst->paused) {
-			inst->localTime += a_deltaTime;
-			if (inst->localTime > duration || inst->localTime < 0.0f) {
-				inst->localTime = std::fmodf(std::abs(inst->localTime), duration);
-				inst->looped = true;
-			} else {
-				inst->looped = false;
-			}
+		auto duration = anim->data->duration();
+		inst->localTime += a_deltaTime;
+		if (inst->localTime > duration || inst->localTime < 0.0f) {
+			inst->localTime = std::fmodf(std::abs(inst->localTime), duration);
+			inst->looped = true;
+		} else {
+			inst->looped = false;
 		}
 	}
 
-	void PFullAnimationNode::SetCustomValues(const std::span<PEvaluationResult>& a_values)
+	bool PFullAnimationNode::SetCustomValues(const std::span<PEvaluationResult>& a_values, const std::string_view a_skeleton)
 	{
-		file = FileID{ std::get<std::string>(a_values[0]), "" };
+		auto file = FileID{ std::get<std::string>(a_values[0]), "" };
+		auto loadedFile = Animation::FileManager::GetSingleton()->DemandAnimation(file, a_skeleton, true);
+		if (loadedFile == nullptr) {
+			return false;
+		}
+
+		anim = std::dynamic_pointer_cast<OzzAnimation>(loadedFile);
+		return anim != nullptr;
 	}
 }

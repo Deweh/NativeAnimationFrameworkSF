@@ -1,6 +1,7 @@
 #include "PGraph.h"
 #include "PInternalCacheReleaseNode.h"
 #include "PActorNode.h"
+#include "Animation/Generator.h"
 
 namespace Animation::Procedural
 {
@@ -75,11 +76,16 @@ namespace Animation::Procedural
 		}
 	}
 
-	void PGraph::InitInstanceData(InstanceData& a_graphInst, const OzzSkeleton* a_skeleton)
+	void PGraph::InitInstanceData(InstanceData& a_graphInst)
 	{
 		for (auto& n : sortedNodes) {
-			a_graphInst.nodeInstances.emplace_back(n->CreateInstanceData(a_skeleton));
+			a_graphInst.nodeInstances.emplace_back(n->CreateInstanceData());
 		}
+	}
+
+	std::unique_ptr<Generator> PGraph::CreateGenerator()
+	{
+		return std::make_unique<ProceduralGenerator>(std::static_pointer_cast<PGraph>(shared_from_this()));
 	}
 
 	bool PGraph::DepthFirstNodeSort(PNode* a_node, size_t a_depth, std::unordered_set<PNode*>& a_visited, std::unordered_set<PNode*>& a_recursionStack)

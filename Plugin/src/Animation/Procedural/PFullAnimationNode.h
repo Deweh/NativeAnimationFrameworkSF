@@ -11,18 +11,16 @@ namespace Animation::Procedural
 		struct InstanceData : public PNodeInstanceData
 		{
 			bool looped{ false };
-			bool paused{ false };
 			float localTime{ 0.0f };
-			std::shared_ptr<OzzAnimation> anim;
 			ozz::animation::SamplingJob::Context context;
 		};
 
-		FileID file;
+		std::shared_ptr<OzzAnimation> anim;
 
-		virtual std::unique_ptr<PNodeInstanceData> CreateInstanceData(const OzzSkeleton* a_skeleton) override;
+		virtual std::unique_ptr<PNodeInstanceData> CreateInstanceData() override;
 		virtual PEvaluationResult Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, std::unordered_map<PNode*, PEvaluationResult>& a_results) override;
 		virtual void AdvanceTime(PNodeInstanceData* a_instanceData, float a_deltaTime) override;
-		virtual void SetCustomValues(const std::span<PEvaluationResult>& a_values) override;
+		virtual bool SetCustomValues(const std::span<PEvaluationResult>& a_values, const std::string_view a_skeleton) override;
 
 		inline static Registration _reg{
 			"anim",

@@ -64,10 +64,10 @@ namespace Animation
 		return anim->extra.id.file.QPath();
 	}
 
-	ProceduralGenerator::ProceduralGenerator(const std::shared_ptr<Procedural::PGraph>& a_graph, const OzzSkeleton* a_skeleton)
+	ProceduralGenerator::ProceduralGenerator(const std::shared_ptr<Procedural::PGraph>& a_graph)
 	{
 		pGraph = a_graph;
-		a_graph->InitInstanceData(pGraphInstance, a_skeleton);
+		a_graph->InitInstanceData(pGraphInstance);
 	}
 
 	void ProceduralGenerator::Generate(PoseCache& cache)
@@ -79,6 +79,6 @@ namespace Animation
 
 	void ProceduralGenerator::AdvanceTime(float deltaTime)
 	{
-		pGraph->AdvanceTime(pGraphInstance, deltaTime);
+		pGraph->AdvanceTime(pGraphInstance, (deltaTime * speed) * static_cast<float>(!paused));
 	}
 }

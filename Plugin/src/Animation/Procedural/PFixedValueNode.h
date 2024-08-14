@@ -9,7 +9,7 @@ namespace Animation::Procedural
 		float value;
 
 		virtual PEvaluationResult Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, std::unordered_map<PNode*, PEvaluationResult>& a_results) override;
-		virtual void SetCustomValues(const std::span<PEvaluationResult>& a_values) override;
+		virtual bool SetCustomValues(const std::span<PEvaluationResult>& a_values, const std::string_view a_skeleton) override;
 
 		inline static Registration _reg{
 			"fixed_val",

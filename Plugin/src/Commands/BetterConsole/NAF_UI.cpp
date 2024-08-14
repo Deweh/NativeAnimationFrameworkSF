@@ -32,7 +32,7 @@ namespace
 	};
 
 	struct AnimationsTabData : 
-		public ListTabData<std::pair<Animation::AnimID, std::weak_ptr<Animation::OzzAnimation>>>,
+		public ListTabData<std::pair<Animation::AnimID, std::weak_ptr<Animation::IAnimationFile>>>,
 		public Util::Event::Listener<Animation::FileLoadUnloadEvent>
 	{
 		AnimationsTabData()
@@ -152,14 +152,20 @@ namespace
 		UI->VBoxEnd();
 	}
 
-	inline void DrawAnimInfo(const std::pair<Animation::AnimID, std::weak_ptr<Animation::OzzAnimation>>& a_anim) {
+	inline void DrawAnimInfo(const std::pair<Animation::AnimID, std::weak_ptr<Animation::IAnimationFile>>& a_anim) {
 		UI->Text("Animation: %s (%s)", a_anim.first.file.QPath().data(), a_anim.first.skeleton.c_str());
 
 		auto animPtr = a_anim.second.lock();
 		if (!animPtr)
 			return;
 
-		size_t byteSize = animPtr->GetSize();
+		size_t byteSize = 0;
+		bool hasFaceData = false;
+		if (auto ozz = dynamic_cast<Animation::OzzAnimation*>(animPtr.get()); ozz) {
+			byteSize = ozz->GetSize();
+			hasFaceData = ozz->faceData.get() != nullptr;
+		}
+
 		if (byteSize < 1024) {
 			UI->Text("In-Memory Size: %.2f KB", static_cast<float>(byteSize) / 1024.0f);
 		} else {
@@ -167,7 +173,7 @@ namespace
 		}
 
 		UI->Text("Time-to-Load: %.3f ms", animPtr->extra.loadTime);
-		UI->Text("Has Face Animation: %s", animPtr->faceData ? "True" : "False");
+		UI->Text("Has Face Animation: %s", hasFaceData ? "True" : "False");
 		UI->Text("Use Count: %i", animPtr.use_count() - 1);
 	}
 

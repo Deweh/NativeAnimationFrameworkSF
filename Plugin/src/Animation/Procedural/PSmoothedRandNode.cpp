@@ -4,7 +4,7 @@
 
 namespace Animation::Procedural
 {
-	std::unique_ptr<PNodeInstanceData> PSmoothedRandNode::CreateInstanceData(const OzzSkeleton* a_skeleton)
+	std::unique_ptr<PNodeInstanceData> PSmoothedRandNode::CreateInstanceData()
 	{
 		return std::make_unique<InstanceData>();
 	}
@@ -41,7 +41,7 @@ namespace Animation::Procedural
 		}
 	}
 
-	void PSmoothedRandNode::SetCustomValues(const std::span<PEvaluationResult>& a_values)
+	bool PSmoothedRandNode::SetCustomValues(const std::span<PEvaluationResult>& a_values, const std::string_view a_skeleton)
 	{
 		durMin = std::get<float>(a_values[0]);
 		durMax = std::get<float>(a_values[1]);
@@ -64,6 +64,8 @@ namespace Animation::Procedural
 		if (delayMin > delayMax) {
 			std::swap(delayMin, delayMax);
 		}
+
+		return true;
 	}
 
 	void PSmoothedRandNode::UpdateTargetValue(InstanceData* a_instanceData)
