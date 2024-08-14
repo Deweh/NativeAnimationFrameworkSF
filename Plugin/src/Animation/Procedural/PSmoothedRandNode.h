@@ -27,6 +27,7 @@ namespace Animation::Procedural
 		float diffMax;
 		float delayMin;
 		float delayMax;
+		float edgeThreshold;
 
 		virtual std::unique_ptr<PNodeInstanceData> CreateInstanceData() override;
 		virtual PEvaluationResult Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, PEvaluationContext& a_evalContext) override;
@@ -43,7 +44,8 @@ namespace Animation::Procedural
 				{ "diff_min", PEvaluationType<float> },
 				{ "diff_max", PEvaluationType<float> },
 				{ "delay_min", PEvaluationType<float> },
-				{ "delay_max", PEvaluationType<float> }
+				{ "delay_max", PEvaluationType<float> },
+				{ "edge", PEvaluationType<float> }
 			},
 			PEvaluationType<float>,
 			CreateNodeOfType<PSmoothedRandNode>

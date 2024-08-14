@@ -49,6 +49,7 @@ namespace Animation::Procedural
 		diffMax = std::get<float>(a_values[3]);
 		delayMin = std::get<float>(a_values[4]);
 		delayMax = std::get<float>(a_values[5]);
+		edgeThreshold = std::get<float>(a_values[6]);
 
 		durMin = std::max(0.1f, durMin);
 		durMax = std::max(0.1f, durMax);
@@ -65,14 +66,14 @@ namespace Animation::Procedural
 			std::swap(delayMin, delayMax);
 		}
 
+		edgeThreshold = std::clamp(edgeThreshold, 0.01f, 0.49f);
+
 		return true;
 	}
 
 	void PSmoothedRandNode::UpdateTargetValue(InstanceData* a_instanceData)
 	{
 		float difference = diffMin + Util::GetRandomFloat(0.0f, 1.0f) * (diffMax - diffMin);
-
-		static constexpr float edgeThreshold = 0.45f;
 		float edgeBiasProbability;
 		
 		float currentValue = a_instanceData->targetValue;
