@@ -41,6 +41,22 @@ namespace Animation::Procedural
 		}
 	}
 
+	void PSmoothedRandNode::Synchronize(PNodeInstanceData* a_instanceData, PNodeInstanceData* a_ownerInstance, float a_correctionDelta)
+	{
+		auto inst = static_cast<InstanceData*>(a_instanceData);
+		auto owner = static_cast<InstanceData*>(a_ownerInstance);
+
+		inst->duration = owner->duration;
+		inst->localTime = owner->localTime;
+		inst->startValue = owner->startValue;
+		inst->state = owner->state;
+		inst->targetValue = owner->targetValue;
+
+		if (a_correctionDelta > 0.0f) {
+			AdvanceTime(a_instanceData, a_correctionDelta);
+		}
+	}
+
 	bool PSmoothedRandNode::SetCustomValues(const std::span<PEvaluationResult>& a_values, const std::string_view a_skeleton)
 	{
 		durMin = std::get<float>(a_values[0]);
@@ -50,6 +66,7 @@ namespace Animation::Procedural
 		delayMin = std::get<float>(a_values[4]);
 		delayMax = std::get<float>(a_values[5]);
 		edgeThreshold = std::get<float>(a_values[6]);
+		syncId = std::get<uint64_t>(a_values[7]);
 
 		durMin = std::max(0.1f, durMin);
 		durMax = std::max(0.1f, durMax);

@@ -76,6 +76,36 @@ namespace Animation::Procedural
 		}
 	}
 
+	void PGraph::Synchronize(InstanceData& a_graphInst, InstanceData& a_ownerInst, PGraph* a_ownerGraph, float a_correctionDelta)
+	{
+		if (a_graphInst.lastSyncOwner != a_ownerGraph) {
+			a_graphInst.syncMap.clear();
+
+			for (auto selfIter = sortedNodes.begin(); selfIter != sortedNodes.end(); selfIter++) {
+				auto& n = *selfIter;
+				if (n->syncId == UINT64_MAX)
+					continue;
+
+				for (auto ownerIter = a_ownerGraph->sortedNodes.begin(); ownerIter != a_ownerGraph->sortedNodes.end(); ownerIter++) {
+					auto& oN = *ownerIter;
+					if (oN->syncId == n->syncId && oN->GetTypeInfo() == n->GetTypeInfo()) {
+						auto& d = a_graphInst.syncMap.emplace_back();
+						d.node = n;
+						d.selfInstData = a_graphInst.nodeInstances[std::distance(sortedNodes.begin(), selfIter)].get();
+						d.ownerInstData = a_ownerInst.nodeInstances[std::distance(a_ownerGraph->sortedNodes.begin(), ownerIter)].get();
+						break;
+					}
+				}
+			}
+
+			a_graphInst.lastSyncOwner = a_ownerGraph;
+		}
+
+		for (auto& i : a_graphInst.syncMap) {
+			i.node->Synchronize(i.selfInstData, i.ownerInstData, a_correctionDelta);
+		}
+	}
+
 	void PGraph::InitInstanceData(InstanceData& a_graphInst)
 	{
 		for (auto& n : sortedNodes) {

@@ -10,6 +10,8 @@ namespace Animation
 	void Generator::OnDetaching() {}
 	void Generator::AdvanceTime(float deltaTime) { localTime += deltaTime * speed; }
 	const std::string_view Generator::GetSourceFile() { return ""; }
+	void Generator::Synchronize(Generator* a_other, float a_correctionDelta) {}
+	GenType Generator::GetType() { return GenType::kBase; }
 
 	LinearClipGenerator::LinearClipGenerator(const std::shared_ptr<OzzAnimation>& a_anim)
 	{
@@ -64,6 +66,19 @@ namespace Animation
 		return anim->extra.id.file.QPath();
 	}
 
+	void LinearClipGenerator::Synchronize(Generator* a_other, float a_correctionDelta)
+	{
+		if (a_other->GetType() != GenType::kLinear)
+			return;
+
+		localTime = a_other->localTime + a_correctionDelta;
+	}
+
+	GenType LinearClipGenerator::GetType()
+	{
+		return GenType::kLinear;
+	}
+
 	ProceduralGenerator::ProceduralGenerator(const std::shared_ptr<Procedural::PGraph>& a_graph)
 	{
 		pGraph = a_graph;
@@ -80,5 +95,24 @@ namespace Animation
 	void ProceduralGenerator::AdvanceTime(float deltaTime)
 	{
 		pGraph->AdvanceTime(pGraphInstance, (deltaTime * speed) * static_cast<float>(!paused));
+	}
+
+	const std::string_view ProceduralGenerator::GetSourceFile()
+	{
+		return pGraph->extra.id.file.QPath();
+	}
+
+	void ProceduralGenerator::Synchronize(Generator* a_other, float a_correctionDelta)
+	{
+		if (a_other->GetType() != GenType::kProcedural)
+			return;
+
+		auto otherProcGen = static_cast<ProceduralGenerator*>(a_other);
+		pGraph->Synchronize(pGraphInstance, otherProcGen->pGraphInstance, otherProcGen->pGraph.get(), a_correctionDelta);
+	}
+
+	GenType ProceduralGenerator::GetType()
+	{
+		return GenType::kProcedural;
 	}
 }

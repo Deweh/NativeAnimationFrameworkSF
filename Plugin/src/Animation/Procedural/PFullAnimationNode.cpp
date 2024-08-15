@@ -38,9 +38,22 @@ namespace Animation::Procedural
 		}
 	}
 
+	void PFullAnimationNode::Synchronize(PNodeInstanceData* a_instanceData, PNodeInstanceData* a_ownerInstance, float a_correctionDelta)
+	{
+		auto inst = static_cast<InstanceData*>(a_instanceData);
+		auto owner = static_cast<InstanceData*>(a_ownerInstance);
+
+		inst->localTime = owner->localTime;
+
+		if (a_correctionDelta > 0.0f) {
+			AdvanceTime(a_instanceData, a_correctionDelta);
+		}
+	}
+
 	bool PFullAnimationNode::SetCustomValues(const std::span<PEvaluationResult>& a_values, const std::string_view a_skeleton)
 	{
 		auto file = FileID{ std::get<std::string>(a_values[0]), "" };
+		syncId = std::get<uint64_t>(a_values[1]);
 		auto loadedFile = Animation::FileManager::GetSingleton()->DemandAnimation(file, a_skeleton, true);
 		if (loadedFile == nullptr) {
 			return false;

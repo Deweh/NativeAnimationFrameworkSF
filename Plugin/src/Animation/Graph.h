@@ -9,6 +9,7 @@
 #include "SyncInstance.h"
 #include "Face/Manager.h"
 #include "PoseCache.h"
+#include "Sequencer.h"
 
 namespace Animation
 {

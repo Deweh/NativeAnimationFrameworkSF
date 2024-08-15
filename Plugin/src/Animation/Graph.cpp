@@ -16,9 +16,7 @@ namespace Animation
 
 	Graph::~Graph() noexcept
 	{
-		if (syncInst != nullptr && syncInst->GetOwner() == this) {
-			syncInst->SetOwner(nullptr);
-		}
+		StopSyncing();
 		if (loadedData) {
 			Face::Manager::GetSingleton()->OnAnimDataChange(loadedData->faceAnimData, nullptr);
 		}
@@ -158,20 +156,18 @@ namespace Animation
 				sequencePhase = std::distance(sequencer->phases.begin(), sequencer->currentPhase);
 			}
 
-			auto sOwner = syncInst->GetOwner();
-			if (sOwner == this) {
-				syncInst->NotifyOwnerUpdate(generator->localTime, rootTransform, syncEnabled, sequencePhase);
-			} else if (!sOwner) {
+			auto syncOwner = syncInst->GetOwner();
+			if (!syncOwner) [[unlikely]] {
 				syncInst = nullptr;
-			} else if (syncEnabled) {
-				auto data = syncInst->NotifyGraphUpdate(this);
-				if (sequencer && sequencePhase != data.sequencePhase) {
-					sequencer->SetPhase(data.sequencePhase);
-				}
-				if (data.syncEnabled) {
-					generator->localTime = data.time + (data.hasOwnerUpdated ? 0.0f : a_deltaTime);
-					rootTransform = data.rootTransform;
-				}
+			} else {
+				syncInst->NotifyGraphUpdateFinished(this);
+				if (syncOwner != this) {
+					syncInst->VisitOwner([&](Graph* owner, bool a_ownerUpdated) {
+						if (owner->generator != nullptr) {
+							generator->Synchronize(owner->generator.get(), a_ownerUpdated ? 0.0f : a_deltaTime * owner->generator->speed);
+						}
+					});
+				}	
 			}
 		}
 

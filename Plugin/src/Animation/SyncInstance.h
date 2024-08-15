@@ -22,26 +22,14 @@ namespace Animation
 		struct InstData
 		{
 			Graph* owner = nullptr;
-			Transform rootTransform;
-			float time = 0.0f;
 			std::vector<Graph*> updatedGraphs;
-			size_t sequencePhase = UINT64_MAX;
-			bool syncEnabled = true;
-		};
-
-		struct UpdateData
-		{
-			Transform rootTransform;
-			float time;
-			bool hasOwnerUpdated;
-			size_t sequencePhase;
-			bool syncEnabled;
+			bool ownerUpdatedThisFrame = false;
 		};
 
 		Util::Guarded<InstData> data;
 		
-		UpdateData NotifyGraphUpdate(Graph* a_grph);
-		void NotifyOwnerUpdate(float a_time, const Transform& a_rootTransform, bool a_syncEnabled = true, size_t a_sequencePhase = UINT64_MAX);
+		void NotifyGraphUpdateFinished(Graph* a_grph);
+		void VisitOwner(std::function<void(Graph*, bool)> a_visitFunc);
 		Graph* GetOwner();
 		void SetOwner(Graph* a_grph);
 	};

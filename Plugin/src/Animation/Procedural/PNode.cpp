@@ -11,6 +11,10 @@ namespace Animation::Procedural
 	{
 	}
 
+	void PNode::Synchronize(PNodeInstanceData* a_instanceData, PNodeInstanceData* a_ownerInstance, float a_correctionDelta)
+	{
+	}
+
 	bool PNode::SetCustomValues(const std::span<PEvaluationResult>& a_values, const std::string_view a_skeleton)
 	{
 		return true;

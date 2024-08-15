@@ -19,6 +19,7 @@ namespace Animation::Procedural
 		void InsertCacheReleaseNodes();
 		std::span<ozz::math::SoaTransform> Evaluate(InstanceData& a_graphInst, PoseCache& a_poseCache);
 		void AdvanceTime(InstanceData& a_graphInst, float a_deltaTime);
+		void Synchronize(InstanceData& a_graphInst, InstanceData& a_ownerInst, PGraph* a_ownerGraph, float a_correctionDelta);
 		void InitInstanceData(InstanceData& a_graphInst);
 		void PointersToIndexes();
 		virtual std::unique_ptr<Generator> CreateGenerator() override;

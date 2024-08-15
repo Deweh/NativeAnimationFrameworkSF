@@ -3,9 +3,17 @@
 #include "Ozz.h"
 #include "Face/Manager.h"
 #include "Procedural/PGraph.h"
+#include "SyncInstance.h"
 
 namespace Animation
 {
+	enum class GenType : uint8_t
+	{
+		kBase,
+		kLinear,
+		kProcedural
+	};
+
 	class Generator
 	{
 	public:
@@ -26,6 +34,8 @@ namespace Animation
 		virtual void OnDetaching();
 		virtual void AdvanceTime(float deltaTime);
 		virtual const std::string_view GetSourceFile();
+		virtual void Synchronize(Generator* a_other, float a_correctionDelta);
+		virtual GenType GetType();
 
 		virtual ~Generator() = default;
 	};
@@ -38,8 +48,11 @@ namespace Animation
 
 		ProceduralGenerator(const std::shared_ptr<Procedural::PGraph>& a_graph);
 
-		virtual void Generate(PoseCache& cache);
-		virtual void AdvanceTime(float deltaTime);
+		virtual void Generate(PoseCache& cache) override;
+		virtual void AdvanceTime(float deltaTime) override;
+		virtual const std::string_view GetSourceFile() override;
+		virtual void Synchronize(Generator* a_other, float a_correctionDelta) override;
+		virtual GenType GetType() override;
 
 		virtual ~ProceduralGenerator() = default;
 	};
@@ -57,6 +70,9 @@ namespace Animation
 		virtual void SetFaceMorphData(Face::MorphData* morphData) override;
 		virtual void AdvanceTime(float deltaTime) override;
 		virtual const std::string_view GetSourceFile() override;
+		virtual void Synchronize(Generator* a_other, float a_correctionDelta);
+		virtual GenType GetType();
+
 		virtual ~LinearClipGenerator() = default;
 	};
 }

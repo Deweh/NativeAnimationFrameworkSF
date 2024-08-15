@@ -30,6 +30,9 @@ namespace Serialization
 
 			//Pass 1: Parse all node data.
 			std::vector<PEvaluationResult> values;
+			std::string_view stringVal;
+			double numVal;
+			uint64_t intVal;
 			for (auto n : nodes) {
 				std::string_view typeName = n["type"];
 				PNode::Registration* typeInfo = nullptr;
@@ -62,8 +65,7 @@ namespace Serialization
 				if (!typeInfo->customValues.empty()) {
 					auto customVals = n["values"];
 					values.clear();
-					std::string_view stringVal;
-					double numVal;
+					
 					for (auto& v : typeInfo->customValues) {
 						auto curVal = customVals[v.first];
 
@@ -76,6 +78,9 @@ namespace Serialization
 							stringVal = curVal;
 							values.emplace_back(std::string{ stringVal });
 							break;
+						case PEvaluationType<uint64_t>:
+							intVal = curVal;
+							values.emplace_back(intVal);
 						}
 					}
 					if (!currentNode->SetCustomValues(values, a_skeleton)) {

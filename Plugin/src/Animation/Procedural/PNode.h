@@ -6,6 +6,7 @@
 namespace Animation::Procedural
 {
 	class PNode;
+	class PGraph;
 	using PEvaluationResult = std::variant<float, PoseCache::Handle, uint64_t, std::string>;
 
 	template <typename T>
@@ -18,8 +19,17 @@ namespace Animation::Procedural
 
 	struct PEvaluationContext
 	{
+		struct SyncData
+		{
+			PNode* node;
+			PNodeInstanceData* selfInstData;
+			PNodeInstanceData* ownerInstData;
+		};
+
 		std::vector<std::unique_ptr<PNodeInstanceData>> nodeInstances;
 		std::vector<PEvaluationResult> results;
+		PGraph* lastSyncOwner = nullptr;
+		std::vector<SyncData> syncMap;
 	};
 
 	class PNode
@@ -42,11 +52,13 @@ namespace Animation::Procedural
 			CreationFunctor createFunctor;
 		};
 
+		uint64_t syncId = UINT64_MAX;
 		std::vector<uint64_t> inputs;
 
 		virtual std::unique_ptr<PNodeInstanceData> CreateInstanceData();
 		virtual PEvaluationResult Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, PEvaluationContext& a_evalContext) = 0;
 		virtual void AdvanceTime(PNodeInstanceData* a_instanceData, float a_deltaTime);
+		virtual void Synchronize(PNodeInstanceData* a_instanceData, PNodeInstanceData* a_ownerInstance, float a_correctionDelta);
 		virtual bool SetCustomValues(const std::span<PEvaluationResult>& a_values, const std::string_view a_skeleton);
 		virtual Registration* GetTypeInfo();
 		virtual ~PNode() = default;

@@ -32,6 +32,7 @@ namespace Animation::Procedural
 		virtual std::unique_ptr<PNodeInstanceData> CreateInstanceData() override;
 		virtual PEvaluationResult Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, PEvaluationContext& a_evalContext) override;
 		virtual void AdvanceTime(PNodeInstanceData* a_instanceData, float a_deltaTime) override;
+		virtual void Synchronize(PNodeInstanceData* a_instanceData, PNodeInstanceData* a_ownerInstance, float a_correctionDelta) override;
 		virtual bool SetCustomValues(const std::span<PEvaluationResult>& a_values, const std::string_view a_skeleton) override;
 		void UpdateTargetValue(InstanceData* a_instanceData);
 
@@ -45,7 +46,8 @@ namespace Animation::Procedural
 				{ "diff_max", PEvaluationType<float> },
 				{ "delay_min", PEvaluationType<float> },
 				{ "delay_max", PEvaluationType<float> },
-				{ "edge", PEvaluationType<float> }
+				{ "edge", PEvaluationType<float> },
+				{ "syncId", PEvaluationType<uint64_t> }
 			},
 			PEvaluationType<float>,
 			CreateNodeOfType<PSmoothedRandNode>

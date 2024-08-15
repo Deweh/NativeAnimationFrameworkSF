@@ -39,6 +39,15 @@ namespace Util
 				data(&data), lock(mutex)
 			{}
 
+			DataLock(DataLock<L>&) = delete;
+			DataLock(const DataLock<L>&) = delete;
+			DataLock(DataLock<L>&& a_rhs)
+			{
+				lock = std::move(a_rhs.lock);
+				data = a_rhs.data;
+				a_rhs.data = nullptr;
+			}
+
 			void unlock() {
 				lock.unlock();
 				data = nullptr;
@@ -56,6 +65,9 @@ namespace Util
 				return *data;
 			}
 		};
+
+		using write_lock = DataLock<WL>;
+		using read_lock = DataLock<RL>;
 
 		DataLock<WL> lock() {
 			return DataLock<WL>(data, mutex);
