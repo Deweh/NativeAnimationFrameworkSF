@@ -28,7 +28,7 @@ namespace Animation::Procedural
 
 		std::vector<std::unique_ptr<PNodeInstanceData>> nodeInstances;
 		std::vector<PEvaluationResult> results;
-		PGraph* lastSyncOwner = nullptr;
+		PEvaluationContext* lastSyncOwner = nullptr;
 		std::vector<SyncData> syncMap;
 	};
 

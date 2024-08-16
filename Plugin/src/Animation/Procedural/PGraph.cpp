@@ -78,7 +78,7 @@ namespace Animation::Procedural
 
 	void PGraph::Synchronize(InstanceData& a_graphInst, InstanceData& a_ownerInst, PGraph* a_ownerGraph, float a_correctionDelta)
 	{
-		if (a_graphInst.lastSyncOwner != a_ownerGraph) {
+		if (a_graphInst.lastSyncOwner != std::addressof(a_ownerInst)) {
 			a_graphInst.syncMap.clear();
 
 			for (auto selfIter = sortedNodes.begin(); selfIter != sortedNodes.end(); selfIter++) {
@@ -98,7 +98,7 @@ namespace Animation::Procedural
 				}
 			}
 
-			a_graphInst.lastSyncOwner = a_ownerGraph;
+			a_graphInst.lastSyncOwner = std::addressof(a_ownerInst);
 		}
 
 		for (auto& i : a_graphInst.syncMap) {
