@@ -12,6 +12,7 @@ namespace Animation::Procedural
 		{
 			bool looped{ false };
 			float localTime{ 0.0f };
+			float speedMod{ 0.0f };
 			ozz::animation::SamplingJob::Context context;
 		};
 
@@ -25,7 +26,9 @@ namespace Animation::Procedural
 
 		inline static Registration _reg{
 			"anim",
-			{},
+			{
+				{ "speedMod", PEvaluationType<float>, true }
+			},
 			{
 				{ "file", PEvaluationType<std::string> },
 				{ "syncId", PEvaluationType<uint64_t> }

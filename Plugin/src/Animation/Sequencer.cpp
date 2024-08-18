@@ -12,14 +12,27 @@ namespace Animation
 
 	void Sequencer::Update()
 	{
-		if (owner->generator->rootResetRequired || (flags.all(FLAG::kForceAdvance) && flags.none(FLAG::kSmoothAdvance))) {
-			if (loopsRemaining == 0 || flags.all(FLAG::kForceAdvance)) {
+		if (owner->generator->rootResetRequired || (flags.any(FLAG::kForceAdvance) && flags.none(FLAG::kSmoothAdvance))) {
+			if (loopsRemaining == 0 || flags.any(FLAG::kForceAdvance)) {
 				owner->generator->rootResetRequired = false;
 				owner->generator->localTime = (owner->generator->duration - 0.0001f);
 				AdvancePhase();
 			} else if (loopsRemaining > 0) {
 				loopsRemaining--;
 			}
+		}
+	}
+
+	bool Sequencer::Synchronize(Sequencer* a_owner)
+	{
+		if (flags.any(FLAG::kPausedForLoading) || a_owner->flags.any(FLAG::kPausedForLoading))
+			return false;
+
+		if (auto idx = a_owner->GetPhase(); GetPhase() != idx) {
+			SetPhase(idx);
+			return false;
+		} else {
+			return true;
 		}
 	}
 

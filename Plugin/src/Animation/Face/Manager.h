@@ -40,7 +40,7 @@ namespace Animation::Face
 		struct InternalData
 		{
 			std::unordered_set<RE::BSFaceGenAnimationData*> noBlink;
-			std::map<RE::BSFaceGenAnimationData*, std::shared_ptr<MorphData>> controlledDatas;
+			std::unordered_map<RE::BSFaceGenAnimationData*, std::shared_ptr<MorphData>> controlledDatas;
 		};
 
 		static Manager* GetSingleton();

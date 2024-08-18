@@ -57,7 +57,7 @@ namespace Serialization
 				if (!typeInfo->inputs.empty()) {
 					auto inputs = n["inputs"];
 					for (auto& i : typeInfo->inputs) {
-						uint64_t targetNode = inputs[i.first].get_array().at(0);
+						uint64_t targetNode = inputs[i.name].get_array().at(0);
 						//We don't have pointers to all the nodes yet, so just store the uint64 ID as a pointer until the next step.
 						currentNode->inputs.push_back(targetNode);
 					}
@@ -101,11 +101,13 @@ namespace Serialization
 				auto destInputIter = destTypeInfo->inputs.begin();
 				for (auto& i : n->inputs) {
 					if (auto iter = nodeIdMap.find(i); iter != nodeIdMap.end()) {
-						if (iter->second->GetTypeInfo()->output == destInputIter->second) {
+						if (iter->second->GetTypeInfo()->output == destInputIter->evalType) {
 							i = reinterpret_cast<uint64_t>(iter->second);
 						} else {
 							throw std::exception{ "Node connection has mismatched input/output types." };
 						}
+					} else if(destInputIter->optional == true) {
+						i = 0;
 					} else {
 						throw std::exception{ "Blend graph refers to non-existant node ID." };
 					}

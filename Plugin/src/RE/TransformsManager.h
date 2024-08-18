@@ -21,7 +21,7 @@ namespace RE
 		void RequestPositionUpdate(RE::TESObjectREFR* a_ref, const RE::NiPoint3& a_pos)
 		{
 			using func_t = decltype(&TransformsManager::RequestTransformUpdate);
-			REL::Relocation<func_t> func{ REL::ID(149852) };
+			static REL::Relocation<func_t> func{ REL::ID(149852) };
 			func(this, 0x1007, a_ref, 'X', a_pos.x);
 			func(this, 0x1007, a_ref, 'Y', a_pos.y);
 			func(this, 0x1007, a_ref, 'Z', a_pos.z);

@@ -30,6 +30,9 @@ namespace Animation::Procedural
 			size_t idx = std::distance(sortedNodes.begin(), iter);
 			lastUsageMap[n] = idx;
 			for (auto& i : n->inputs) {
+				if (i == 0)
+					continue;
+
 				lastUsageMap[reinterpret_cast<PNode*>(i)] = idx;
 			}
 		}
@@ -123,7 +126,11 @@ namespace Animation::Procedural
 		actorNode = idxMap[reinterpret_cast<PNode*>(actorNode)];
 		for (auto& n : sortedNodes) {
 			for (auto& i : n->inputs) {
-				i = idxMap[reinterpret_cast<PNode*>(i)];
+				if (i != 0) {
+					i = idxMap[reinterpret_cast<PNode*>(i)];
+				} else {
+					i = UINT64_MAX;
+				}
 			}
 		}
 	}
@@ -144,6 +151,9 @@ namespace Animation::Procedural
 		a_recursionStack.insert(a_node);
 
 		for (uint64_t ptr : a_node->inputs) {
+			if (ptr == 0)
+				continue;
+
 			auto dependency = reinterpret_cast<PNode*>(ptr);
 			if (a_recursionStack.find(dependency) != a_recursionStack.end()) {
 				// Cycle detected in graph.

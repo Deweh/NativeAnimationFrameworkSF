@@ -14,8 +14,7 @@ namespace RE
 		NiPoint3A rootAngle2;
 		float unk01;
 		float unk02;
-		float unk03;
-		float unk04;
+		IPostAnimationChannelUpdateFunctor* postUpdateFunctor;
 		float unk05;
 		float unk06;
 		float unk07;

@@ -163,7 +163,11 @@ namespace Animation
 				syncInst->NotifyGraphUpdateFinished(this);
 				if (syncOwner != this) {
 					syncInst->VisitOwner([&](Graph* owner, bool a_ownerUpdated) {
-						if (owner->generator != nullptr) {
+						bool doSync = true;
+						if (sequencer && owner->sequencer) {
+							doSync = sequencer->Synchronize(owner->sequencer.get());
+						}
+						if (doSync && owner->generator) {
 							generator->Synchronize(owner->generator.get(), a_ownerUpdated ? 0.0f : a_deltaTime * owner->generator->speed);
 						}
 					});

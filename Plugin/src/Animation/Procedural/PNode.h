@@ -35,18 +35,27 @@ namespace Animation::Procedural
 	class PNode
 	{
 	public:
+		struct InputConnection
+		{
+			InputConnection(const char* a_name, size_t a_evalType, bool a_optional = false);
+
+			const char* name;
+			size_t evalType;
+			bool optional;
+		};
+
 		struct Registration
 		{
 			typedef std::unique_ptr<PNode> (*CreationFunctor)();
 
 			Registration(const char* a_typeName,
-				const std::vector<std::pair<const char*, size_t>>& a_inputs,
+				const std::vector<InputConnection>& a_inputs,
 				const std::vector<std::pair<const char*, size_t>>& a_customValues,
 				size_t a_output,
 				CreationFunctor a_createFunctor);
 
 			const char* typeName;
-			std::vector<std::pair<const char*, size_t>> inputs;
+			std::vector<InputConnection> inputs;
 			std::vector<std::pair<const char*, size_t>> customValues;
 			size_t output;
 			CreationFunctor createFunctor;
