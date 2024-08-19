@@ -1,6 +1,7 @@
 #include "Ozz.h"
 #include "FileManager.h"
 #include "Transform.h"
+#include "Generator.h"
 
 size_t Animation::OzzAnimation::GetSize()
 {
@@ -19,9 +20,9 @@ size_t Animation::OzzAnimation::GetSize()
 	return result;
 }
 
-Animation::OzzAnimation::~OzzAnimation() noexcept
+std::unique_ptr<Animation::Generator> Animation::OzzAnimation::CreateGenerator()
 {
-	FileManager::GetSingleton()->OnAnimationDestroyed(this);
+	return std::make_unique<LinearClipGenerator>(std::static_pointer_cast<OzzAnimation>(shared_from_this()));
 }
 
 std::unique_ptr<std::vector<ozz::math::Transform>> Animation::OzzSkeleton::GetRestPose() const

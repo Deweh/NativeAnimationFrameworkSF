@@ -2,14 +2,16 @@
 
 namespace Animation
 {
-	void Generator::Generate(float) {}
+	void Generator::Generate(PoseCache&) {}
 	bool Generator::HasFaceAnimation() { return false; }
 	void Generator::SetFaceMorphData(Face::MorphData* morphData){}
-	void Generator::SetOutput(const ozz::span<ozz::math::SoaTransform>& span) { output = span; }
+	void Generator::SetOutput(PoseCache::Handle* hndl) { output = hndl; }
 	void Generator::SetContext(ozz::animation::SamplingJob::Context* ctxt) { context = ctxt; }
 	void Generator::OnDetaching() {}
 	void Generator::AdvanceTime(float deltaTime) { localTime += deltaTime * speed; }
 	const std::string_view Generator::GetSourceFile() { return ""; }
+	void Generator::Synchronize(Generator* a_other, float a_correctionDelta) {}
+	GenType Generator::GetType() { return GenType::kBase; }
 
 	LinearClipGenerator::LinearClipGenerator(const std::shared_ptr<OzzAnimation>& a_anim)
 	{
@@ -17,14 +19,12 @@ namespace Animation
 		duration = anim->data->duration();
 	}
 
-	void LinearClipGenerator::Generate(float deltaTime)
+	void LinearClipGenerator::Generate(PoseCache& cache)
 	{
-		AdvanceTime(deltaTime);
-
 		ozz::animation::SamplingJob sampleJob;
 		sampleJob.animation = anim->data.get();
 		sampleJob.context = context;
-		sampleJob.output = ozz::make_span(output);
+		sampleJob.output = output->get_ozz();
 		sampleJob.ratio = localTime / duration;
 		sampleJob.Run();
 
@@ -66,60 +66,53 @@ namespace Animation
 		return anim->extra.id.file.QPath();
 	}
 
-	void AdditiveGenerator::SetRestPose(const std::vector<ozz::math::SoaTransform>& pose)
+	void LinearClipGenerator::Synchronize(Generator* a_other, float a_correctionDelta)
 	{
-		restPose = pose;
-		if (!baseGenOutput.empty() && restPose.size() > baseGenOutput.size()) {
-			restPose.resize(baseGenOutput.size());
-		}
+		if (a_other->GetType() != GenType::kLinear)
+			return;
+
+		localTime = a_other->localTime + a_correctionDelta;
 	}
 
-	void AdditiveGenerator::Generate(float deltaTime)
+	GenType LinearClipGenerator::GetType()
 	{
-		if (!paused) {
-			baseGen->Generate(deltaTime);
-			std::array<ozz::animation::BlendingJob::Layer, 1> additiveLayers;
-			additiveLayers[0].weight = additiveWeight;
-			additiveLayers[0].transform = ozz::make_span(baseGenOutput);
-
-			ozz::animation::BlendingJob blendJob;
-			blendJob.additive_layers = ozz::make_span(additiveLayers);
-			blendJob.output = ozz::make_span(output);
-			blendJob.rest_pose = ozz::make_span(restPose);
-			blendJob.threshold = 1.0f;
-
-			blendJob.Run();
-		}
+		return GenType::kLinear;
 	}
 
-	void AdditiveGenerator::SetOutput(const ozz::span<ozz::math::SoaTransform>& span)
+	ProceduralGenerator::ProceduralGenerator(const std::shared_ptr<Procedural::PGraph>& a_graph)
 	{
-		Generator::SetOutput(span);
-		baseGenOutput.resize(span.size());
-		baseGen->SetOutput(ozz::make_span(baseGenOutput));
-		if (restPose.size() > baseGenOutput.size()) {
-			restPose.resize(baseGenOutput.size());
-		}
+		pGraph = a_graph;
+		a_graph->InitInstanceData(pGraphInstance);
 	}
 
-	void AdditiveGenerator::SetContext(ozz::animation::SamplingJob::Context* ctxt)
+	void ProceduralGenerator::Generate(PoseCache& cache)
 	{
-		Generator::SetContext(ctxt);
-		baseGen->SetContext(ctxt);
+		auto result = pGraph->Evaluate(pGraphInstance, cache);
+		auto outSpan = output->get();
+		std::copy(result.begin(), result.end(), outSpan.begin());
 	}
 
-	bool AdditiveGenerator::HasFaceAnimation()
+	void ProceduralGenerator::AdvanceTime(float deltaTime)
 	{
-		return baseGen->HasFaceAnimation();
+		pGraph->AdvanceTime(pGraphInstance, (deltaTime * speed) * static_cast<float>(!paused));
 	}
 
-	void AdditiveGenerator::SetFaceMorphData(Face::MorphData* morphData)
+	const std::string_view ProceduralGenerator::GetSourceFile()
 	{
-		baseGen->SetFaceMorphData(morphData);
+		return pGraph->extra.id.file.QPath();
 	}
 
-	void AdditiveGenerator::AdvanceTime(float deltaTime)
+	void ProceduralGenerator::Synchronize(Generator* a_other, float a_correctionDelta)
 	{
-		baseGen->AdvanceTime(deltaTime);
+		if (a_other->GetType() != GenType::kProcedural)
+			return;
+
+		auto otherProcGen = static_cast<ProceduralGenerator*>(a_other);
+		pGraph->Synchronize(pGraphInstance, otherProcGen->pGraphInstance, otherProcGen->pGraph.get(), a_correctionDelta);
+	}
+
+	GenType ProceduralGenerator::GetType()
+	{
+		return GenType::kProcedural;
 	}
 }

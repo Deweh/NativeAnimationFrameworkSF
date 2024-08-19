@@ -16,16 +16,14 @@ namespace Animation
 
 	Graph::~Graph() noexcept
 	{
-		if (syncInst != nullptr && syncInst->GetOwner() == this) {
-			syncInst->SetOwner(nullptr);
-		}
+		StopSyncing();
 		if (loadedData) {
 			Face::Manager::GetSingleton()->OnAnimDataChange(loadedData->faceAnimData, nullptr);
 		}
 		EnableEyeTracking();
 	}
 
-	void Graph::OnAnimationReady(const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim)
+	void Graph::OnAnimationReady(const FileID& a_id, std::shared_ptr<IAnimationFile> a_anim)
 	{
 		std::unique_lock l{ lock };
 		if (!loadedData) {
@@ -43,7 +41,7 @@ namespace Animation
 
 			flags.reset(FLAGS::kLoadingAnimation);
 			if (a_anim != nullptr) {
-				StartTransition(std::make_unique<LinearClipGenerator>(a_anim), loadedData->transition.queuedDuration);
+				StartTransition(a_anim->CreateGenerator(), loadedData->transition.queuedDuration);
 			}
 		}
 	}
@@ -158,25 +156,27 @@ namespace Animation
 				sequencePhase = std::distance(sequencer->phases.begin(), sequencer->currentPhase);
 			}
 
-			auto sOwner = syncInst->GetOwner();
-			if (sOwner == this) {
-				syncInst->NotifyOwnerUpdate(generator->localTime, rootTransform, syncEnabled, sequencePhase);
-			} else if (!sOwner) {
+			auto syncOwner = syncInst->GetOwner();
+			if (!syncOwner) [[unlikely]] {
 				syncInst = nullptr;
-			} else if (syncEnabled) {
-				auto data = syncInst->NotifyGraphUpdate(this);
-				if (sequencer && sequencePhase != data.sequencePhase) {
-					sequencer->SetPhase(data.sequencePhase);
-				}
-				if (data.syncEnabled) {
-					generator->localTime = data.time + (data.hasOwnerUpdated ? 0.0f : a_deltaTime);
-					rootTransform = data.rootTransform;
-				}
+			} else {
+				syncInst->NotifyGraphUpdateFinished(this);
+				if (syncOwner != this) {
+					syncInst->VisitOwner([&](Graph* owner, bool a_ownerUpdated) {
+						bool doSync = true;
+						if (sequencer && owner->sequencer) {
+							doSync = sequencer->Synchronize(owner->sequencer.get());
+						}
+						if (doSync && owner->generator) {
+							generator->Synchronize(owner->generator.get(), a_ownerUpdated ? 0.0f : a_deltaTime * owner->generator->speed);
+						}
+					});
+				}	
 			}
 		}
 
 		if (a_visible) {
-			generator->Generate(0.0f);
+			generator->Generate(loadedData->poseCache);
 
 			if (flags.any(FLAGS::kTransitioning)) {
 				auto blendPose = loadedData->blendedPose.get();
@@ -348,9 +348,6 @@ namespace Animation
 			l->generatedPose = l->poseCache.acquire_handle();
 			l->blendedPose = l->poseCache.acquire_handle();
 
-			l->blendLayers[0].transform = l->generatedPose.get_ozz();
-			l->blendLayers[1].transform = l->snapshotPose.get_ozz();
-
 			if (unloadedData && !unloadedData->restoreFile.QPath().empty()) {
 				loadedData->transition.queuedDuration = 0.2f;
 				FileManager::GetSingleton()->RequestAnimation(unloadedData->restoreFile, skeleton->name, weak_from_this());
@@ -428,6 +425,8 @@ namespace Animation
 	{
 		auto& transition = loadedData->transition;
 		auto& blendLayers = loadedData->blendLayers;
+		blendLayers[0].transform = loadedData->generatedPose.get_ozz();
+		blendLayers[1].transform = loadedData->snapshotPose.get_ozz();
 
 		ozz::animation::BlendingJob blendJob;
 		UpdateRestPose();
@@ -524,7 +523,7 @@ namespace Animation
 		if (a_dest != nullptr) {
 			generator = std::move(a_dest);
 			generator->SetContext(&loadedData->context);
-			generator->SetOutput(loadedData->generatedPose.get_ozz());
+			generator->SetOutput(&loadedData->generatedPose);
 
 			if (generator->HasFaceAnimation()) {
 				loadedData->transition.queuedDuration = a_transitionTime;

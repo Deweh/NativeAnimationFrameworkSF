@@ -111,12 +111,13 @@ namespace Animation
 		std::unique_lock ol{ owner->lock };
 		owner->MakeSyncOwner();
 		owner->ResetRootTransform();
-		owner->syncInst->data.lock()->rootTransform = owner->rootTransform;
+		auto rootTransform = owner->rootTransform;
 		ol.unlock();
 		for (size_t i = 1; i < a_actors.size(); i++) {
 			auto g = GetGraphLockless(a_actors[i], true);
 			std::unique_lock l{ g->lock };
 			g->SyncToGraph(owner.get());
+			g->rootTransform = rootTransform;
 		}
 	}
 

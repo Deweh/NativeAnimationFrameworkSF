@@ -9,6 +9,7 @@
 #include "SyncInstance.h"
 #include "Face/Manager.h"
 #include "PoseCache.h"
+#include "Sequencer.h"
 
 namespace Animation
 {
@@ -110,7 +111,7 @@ namespace Animation
 		Graph();
 		virtual ~Graph() noexcept;
 
-		virtual void OnAnimationReady(const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim);
+		virtual void OnAnimationReady(const FileID& a_id, std::shared_ptr<IAnimationFile> a_anim);
 		virtual void OnAnimationRequested(const FileID& a_id);
 
 		void SetSkeleton(std::shared_ptr<const OzzSkeleton> a_descriptor);

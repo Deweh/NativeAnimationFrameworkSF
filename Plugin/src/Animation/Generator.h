@@ -1,12 +1,19 @@
 #pragma once
 #include "Transform.h"
-#include "Timeline.h"
-#include "Interpolation.h"
 #include "Ozz.h"
 #include "Face/Manager.h"
+#include "Procedural/PGraph.h"
+#include "SyncInstance.h"
 
 namespace Animation
 {
+	enum class GenType : uint8_t
+	{
+		kBase,
+		kLinear,
+		kProcedural
+	};
+
 	class Generator
 	{
 	public:
@@ -16,19 +23,38 @@ namespace Animation
 		float duration = 0.0f;
 		float speed = 1.0f;
 		Transform localRootTransform;
-		std::span<ozz::math::SoaTransform> output;
+		PoseCache::Handle* output;
 		ozz::animation::SamplingJob::Context* context = nullptr;
 
-		virtual void Generate(float deltaTime);
+		virtual void Generate(PoseCache& cache);
 		virtual bool HasFaceAnimation();
 		virtual void SetFaceMorphData(Face::MorphData* morphData);
-		virtual void SetOutput(const ozz::span<ozz::math::SoaTransform>& span);
+		virtual void SetOutput(PoseCache::Handle* hndl);
 		virtual void SetContext(ozz::animation::SamplingJob::Context* ctxt);
 		virtual void OnDetaching();
 		virtual void AdvanceTime(float deltaTime);
 		virtual const std::string_view GetSourceFile();
+		virtual void Synchronize(Generator* a_other, float a_correctionDelta);
+		virtual GenType GetType();
 
 		virtual ~Generator() = default;
+	};
+
+	class ProceduralGenerator : public Generator
+	{
+	public:
+		std::shared_ptr<Procedural::PGraph> pGraph;
+		Procedural::PGraph::InstanceData pGraphInstance;
+
+		ProceduralGenerator(const std::shared_ptr<Procedural::PGraph>& a_graph);
+
+		virtual void Generate(PoseCache& cache) override;
+		virtual void AdvanceTime(float deltaTime) override;
+		virtual const std::string_view GetSourceFile() override;
+		virtual void Synchronize(Generator* a_other, float a_correctionDelta) override;
+		virtual GenType GetType() override;
+
+		virtual ~ProceduralGenerator() = default;
 	};
 
 	class LinearClipGenerator : public Generator
@@ -39,29 +65,14 @@ namespace Animation
 
 		LinearClipGenerator(const std::shared_ptr<OzzAnimation>& a_anim);
 
-		virtual void Generate(float deltaTime) override;
+		virtual void Generate(PoseCache& cache) override;
 		virtual bool HasFaceAnimation() override;
 		virtual void SetFaceMorphData(Face::MorphData* morphData) override;
 		virtual void AdvanceTime(float deltaTime) override;
 		virtual const std::string_view GetSourceFile() override;
+		virtual void Synchronize(Generator* a_other, float a_correctionDelta);
+		virtual GenType GetType();
+
 		virtual ~LinearClipGenerator() = default;
-	};
-
-	class AdditiveGenerator : public Generator
-	{
-	public:
-		float additiveWeight = 1.0f;
-		std::vector<ozz::math::SoaTransform> restPose;
-		std::vector<ozz::math::SoaTransform> baseGenOutput;
-		std::unique_ptr<Generator> baseGen = nullptr;
-
-		void SetRestPose(const std::vector<ozz::math::SoaTransform>& pose);
-		virtual void Generate(float deltaTime) override;
-		virtual void SetOutput(const ozz::span<ozz::math::SoaTransform>& span) override;
-		virtual void SetContext(ozz::animation::SamplingJob::Context* ctxt) override;
-		virtual bool HasFaceAnimation() override;
-		virtual void SetFaceMorphData(Face::MorphData* morphData) override;
-		virtual void AdvanceTime(float deltaTime) override;
-		virtual ~AdditiveGenerator() = default;
 	};
 }

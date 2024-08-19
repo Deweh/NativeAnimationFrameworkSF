@@ -1,8 +1,27 @@
 #pragma once
 #include "Trampoline.h"
 
+template <typename T, typename Variant>
+struct variant_index;
+
+template <typename T, typename... Types>
+struct variant_index<T, std::variant<Types...>>
+{
+	static constexpr std::size_t value = []() {
+		std::size_t result = 0;
+		bool found = ((std::is_same_v<T, Types> ? true : (++result, false)) || ...);
+		return found ? result : static_cast<std::size_t>(-1);
+	}();
+};
+
+template <typename T, typename Variant>
+inline constexpr std::size_t variant_index_v = variant_index<T, Variant>::value;
+
 namespace Util
 {
+	int GetRandomInt(int a_min, int a_max);
+	float GetRandomFloat(float a_min, float a_max);
+
 	template <typename T, typename M = std::mutex, typename WL = std::unique_lock<M>, typename RL = std::shared_lock<M>>
 	class Guarded
 	{
@@ -19,6 +38,15 @@ namespace Util
 			DataLock(T& data, M& mutex) :
 				data(&data), lock(mutex)
 			{}
+
+			DataLock(DataLock<L>&) = delete;
+			DataLock(const DataLock<L>&) = delete;
+			DataLock(DataLock<L>&& a_rhs)
+			{
+				lock = std::move(a_rhs.lock);
+				data = a_rhs.data;
+				a_rhs.data = nullptr;
+			}
 
 			void unlock() {
 				lock.unlock();
@@ -37,6 +65,9 @@ namespace Util
 				return *data;
 			}
 		};
+
+		using write_lock = DataLock<WL>;
+		using read_lock = DataLock<RL>;
 
 		DataLock<WL> lock() {
 			return DataLock<WL>(data, mutex);

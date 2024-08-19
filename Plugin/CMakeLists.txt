@@ -88,6 +88,17 @@ add_library(
  "src/Papyrus/EventManager.cpp"
  "src/Animation/PoseCache.cpp"
  "src/Animation/MorphAnimation.cpp"
+ "src/Animation/Procedural/PGraph.cpp"
+ "src/Animation/Procedural/PFullAnimationNode.cpp"
+ "src/Animation/Procedural/PSmoothedRandNode.cpp"
+ "src/Util/General.cpp"
+ "src/Animation/Procedural/PBlend1DNode.cpp"
+ "src/Animation/Procedural/PActorNode.cpp"
+ "src/Animation/Procedural/PNode.cpp"
+ "src/Serialization/BlendGraphImport.cpp"
+ "src/Animation/Procedural/PInternalCacheReleaseNode.cpp"
+ "src/Animation/Procedural/PFixedValueNode.cpp"
+ "src/Animation/IAnimationFile.cpp")
 
 # copy to Starfield directory
 set(STARFIELD_PATH "C:/Program Files (x86)/Steam/steamapps/common/Starfield/Data/SFSE/Plugins")

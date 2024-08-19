@@ -1,12 +1,18 @@
 #include "FileManager.h"
 #include "Util/String.h"
 #include "Serialization/GLTFImport.h"
+#include "Serialization/BlendGraphImport.h"
 #include "Settings/Settings.h"
 #include "Ozz.h"
 #include "Util/Timing.h"
 
 namespace Animation
 {
+	inline bool FileIsBlendGraph(const FileID& a_id)
+	{
+		return a_id.QPath().ends_with(Serialization::BlendGraphImport::FILE_EXTENSION);
+	}
+
 	FileManager::FileManager()
 	{
 		workerThread = std::jthread(&FileManager::DoProcessRequests, this);
@@ -51,22 +57,34 @@ namespace Animation
 		return false;
 	}
 
-	std::shared_ptr<OzzAnimation> FileManager::DemandAnimation(const FileID& a_id, const std::string_view a_skeleton)
+	std::shared_ptr<IAnimationFile> FileManager::DemandAnimation(const FileID& a_id, const std::string_view a_skeleton, bool a_noBlendGraphs)
 	{
+		bool isBlendGraph = FileIsBlendGraph(a_id);
+
+		if (a_noBlendGraphs && isBlendGraph) {
+			return nullptr;
+		}
+
 		AnimID aID{ .file = a_id, .skeleton = std::string(a_skeleton) };
 		if (auto anim = GetLoadedAnimation(aID); anim != nullptr) {
 			return anim;
 		}
 
-		if (auto anim = DoLoadAnimation(aID); anim != nullptr) {
-			auto ptr = InsertLoadedAnimation(aID, anim);
-			return ptr;
+		std::shared_ptr<IAnimationFile> result{ nullptr };
+		if (isBlendGraph) {
+			result = DoLoadBlendGraph(aID);
+		} else {
+			result = DoLoadAnimation(aID);
+		}
+		
+		if (result != nullptr) {
+			return InsertLoadedAnimation(aID, result);
 		}
 
 		return nullptr;
 	}
 
-	void FileManager::OnAnimationDestroyed(OzzAnimation* a_anim)
+	void FileManager::OnAnimationDestroyed(IAnimationFile* a_anim)
 	{
 		auto loaded = loadedAnimations.lock();
 		for (auto iter = loaded->begin(); iter != loaded->end(); iter++) {
@@ -84,7 +102,7 @@ namespace Animation
 		}
 	}
 
-	void FileManager::GetAllLoadedAnimations(std::vector<std::pair<AnimID, std::weak_ptr<OzzAnimation>>>& a_animsOut)
+	void FileManager::GetAllLoadedAnimations(std::vector<std::pair<AnimID, std::weak_ptr<IAnimationFile>>>& a_animsOut)
 	{
 		a_animsOut.clear();
 		auto loaded = loadedAnimations.lock();
@@ -113,14 +131,31 @@ namespace Animation
 			reqData.pop_front();
 			l.unlock();
 
-			auto anim = DoLoadAnimation(nextReq.anim);
-			if (anim == nullptr) {
+			std::shared_ptr<IAnimationFile> loadedFile{ nullptr };
+			if (FileIsBlendGraph(nextReq.anim.file)) {
+				loadedFile = DoLoadBlendGraph(nextReq.anim);
+			} else {
+				loadedFile = DoLoadAnimation(nextReq.anim);
+			}
+
+			if (loadedFile == nullptr) {
 				ReportFailedToLoadAnimation(nextReq);
 				continue;
 			}
 
-			ReportAnimationLoaded(nextReq, anim);
+			ReportAnimationLoaded(nextReq, loadedFile);
 		}
+	}
+
+	std::shared_ptr<Procedural::PGraph> FileManager::DoLoadBlendGraph(const AnimID& a_id)
+	{
+		auto start = Util::Timing::HighResTimeNow();
+		auto result = Serialization::BlendGraphImport::LoadGraph(Util::String::GetDataPath() / a_id.file.QPath(), a_id.skeleton);
+		if (result) {
+			result->extra.loadTime = Util::Timing::HighResTimeDiffMilliSec(start);
+			result->extra.id = a_id;
+		}
+		return result;
 	}
 
 	std::shared_ptr<OzzAnimation> FileManager::DoLoadAnimation(const AnimID& a_id)
@@ -159,7 +194,7 @@ namespace Animation
 		return result;
 	}
 
-	std::shared_ptr<OzzAnimation> FileManager::GetLoadedAnimation(const AnimID& a_id)
+	std::shared_ptr<IAnimationFile> FileManager::GetLoadedAnimation(const AnimID& a_id)
 	{
 		auto anims = loadedAnimations.lock();
 		if (auto iter = anims->find(a_id); iter != anims->end()) {
@@ -168,7 +203,7 @@ namespace Animation
 		return nullptr;
 	}
 
-	std::shared_ptr<OzzAnimation> FileManager::InsertLoadedAnimation(const AnimID& a_id, std::shared_ptr<OzzAnimation> a_anim)
+	std::shared_ptr<IAnimationFile> FileManager::InsertLoadedAnimation(const AnimID& a_id, std::shared_ptr<IAnimationFile> a_anim)
 	{
 		auto anims = loadedAnimations.lock();
 		auto insertedAnim = anims->insert(std::make_pair(a_id, LoadedAnimData{ .raw = a_anim.get(), .shared_handle = a_anim })).first->second.shared_handle.lock();
@@ -192,7 +227,7 @@ namespace Animation
 		return insertedAnim;
 	}
 
-	void FileManager::ReportAnimationLoaded(RequestData& a_req, std::shared_ptr<OzzAnimation> a_anim)
+	void FileManager::ReportAnimationLoaded(RequestData& a_req, std::shared_ptr<IAnimationFile> a_anim)
 	{
 		auto insertedAnim = InsertLoadedAnimation(a_req.anim, a_anim);
 		NotifyAnimationReady(a_req.requester, a_req.anim.file, insertedAnim);
@@ -203,7 +238,7 @@ namespace Animation
 		NotifyAnimationReady(a_req.requester, a_req.anim.file, nullptr);
 	}
 
-	void DoNotifyAnimationReady(std::weak_ptr<FileRequesterBase> a_requester, const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim)
+	void DoNotifyAnimationReady(std::weak_ptr<FileRequesterBase> a_requester, const FileID& a_id, std::shared_ptr<IAnimationFile> a_anim)
 	{
 		if (auto r = a_requester.lock(); r != nullptr) {
 			r->OnAnimationReady(a_id, a_anim);
@@ -217,7 +252,7 @@ namespace Animation
 		}
 	}
 
-	void FileManager::NotifyAnimationReady(std::weak_ptr<FileRequesterBase> a_requester, const FileID& a_id, std::shared_ptr<OzzAnimation> a_anim, bool a_queue)
+	void FileManager::NotifyAnimationReady(std::weak_ptr<FileRequesterBase> a_requester, const FileID& a_id, std::shared_ptr<IAnimationFile> a_anim, bool a_queue)
 	{
 		if (a_queue) {
 			SFSE::GetTaskInterface()->AddTask(std::bind(DoNotifyAnimationReady, a_requester, a_id, a_anim));

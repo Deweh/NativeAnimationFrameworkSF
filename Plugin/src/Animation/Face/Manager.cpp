@@ -153,11 +153,12 @@ namespace Animation::Face
 		});
 
 	static Util::Call5Hook<bool(RE::BSFaceGenAnimationData*, float, bool)> FaceUpdateHook(113883, 0xE0, "BSFaceGenAnimationData::Update",
-		[](RE::BSFaceGenAnimationData* a1, float a2, bool a3) {
+		[](RE::BSFaceGenAnimationData* a1, float a2, bool a3) -> bool {
 			static Manager* m = Manager::GetSingleton();
 			bool res = FaceUpdateHook(a1, a2, a3);
-			if (auto d = m->GetMorphData(a1); d != nullptr) {
-				bool requiresDetach = d->lock()->Update(a2, a1);
+			auto d = m->data.lock_read_only();
+			if (auto iter = d->controlledDatas.find(a1); iter != d->controlledDatas.end()) {
+				bool requiresDetach = iter->second->lock()->Update(a2, a1);
 				if (requiresDetach) {
 					m->DoDetach(a1);
 				}

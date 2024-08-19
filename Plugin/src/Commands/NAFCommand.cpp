@@ -1,6 +1,7 @@
 #include "NAFCommand.h"
 #include "Serialization/GLTFImport.h"
 #include "Serialization/GLTFExport.h"
+#include "Serialization/BlendGraphImport.h"
 #include "Settings/Settings.h"
 #include "Animation/GraphManager.h"
 #include "Animation/Ozz.h"
