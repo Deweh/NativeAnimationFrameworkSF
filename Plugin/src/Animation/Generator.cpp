@@ -94,7 +94,7 @@ namespace Animation
 
 	void ProceduralGenerator::AdvanceTime(float deltaTime)
 	{
-		pGraph->AdvanceTime(pGraphInstance, (deltaTime * speed) * static_cast<float>(!paused));
+		rootResetRequired = pGraph->AdvanceTime(pGraphInstance, (deltaTime * speed) * static_cast<float>(!paused));
 	}
 
 	const std::string_view ProceduralGenerator::GetSourceFile()

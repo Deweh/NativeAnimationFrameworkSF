@@ -160,6 +160,7 @@ namespace Animation::Face
 			if (auto iter = d->controlledDatas.find(a1); iter != d->controlledDatas.end()) {
 				bool requiresDetach = iter->second->lock()->Update(a2, a1);
 				if (requiresDetach) {
+					d.unlock();
 					m->DoDetach(a1);
 				}
 			}

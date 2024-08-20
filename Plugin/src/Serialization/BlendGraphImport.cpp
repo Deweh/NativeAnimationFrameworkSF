@@ -1,6 +1,7 @@
 #include "BlendGraphImport.h"
 #include "simdjson.h"
 #include "Animation/Procedural/PActorNode.h"
+#include "Animation/Procedural/PFullAnimationNode.h"
 
 namespace Serialization
 {
@@ -98,6 +99,16 @@ namespace Serialization
 			//Pass 2: Connect inputs together.
 			for (auto& n : result->nodes) {
 				auto destTypeInfo = n->GetTypeInfo();
+
+				// Find the animation node with the longest duration.
+				if (destTypeInfo == &PFullAnimationNode::_reg) {
+					if (auto ptr = reinterpret_cast<PFullAnimationNode*>(result->loopTrackingNode);
+						ptr == nullptr || ptr->anim->data->duration() < static_cast<PFullAnimationNode*>(n.get())->anim->data->duration())
+					{
+						result->loopTrackingNode = reinterpret_cast<uint64_t>(n.get());
+					}
+				}
+
 				auto destInputIter = destTypeInfo->inputs.begin();
 				for (auto& i : n->inputs) {
 					if (auto iter = nodeIdMap.find(i); iter != nodeIdMap.end()) {
@@ -117,12 +128,16 @@ namespace Serialization
 
 			//TODO: Add 3rd pass for discarding nodes that are disconnected from the graph flow.
 
-			if (!result->SortNodes()) {
+			std::vector<PNode*> sortedNodes;
+			sortedNodes.reserve(result->nodes.size());
+
+			if (!result->SortNodes(sortedNodes)) {
 				throw std::exception{ "Failed to sort nodes (either due to a dependency loop or too many nodes.)" };
 			}
 
-			result->InsertCacheReleaseNodes();
-			result->PointersToIndexes();
+			result->InsertCacheReleaseNodes(sortedNodes);
+			result->PointersToIndexes(sortedNodes);
+			result->EmplaceNodeOrder(sortedNodes);
 		}
 		catch (const std::exception& ex) {
 			WARN("{}", ex.what());
