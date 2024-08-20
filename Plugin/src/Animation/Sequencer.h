@@ -51,6 +51,8 @@ namespace Animation
 		void Update();
 		bool Synchronize(Sequencer* a_owner);
 		void OnAttachedToGraph(Graph* a_graph);
+		void OnGraphLoaded();
+		void OnGraphUnloaded();
 		bool OnAnimationRequested(const FileID& a_id);
 		bool OnAnimationReady(const FileID& a_id, std::shared_ptr<IAnimationFile> a_anim);
 		void LoadNextAnimation();

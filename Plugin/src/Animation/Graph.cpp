@@ -148,14 +148,6 @@ namespace Animation
 		}
 
 		if (syncInst) {
-			bool syncEnabled = true;
-			size_t sequencePhase = UINT64_MAX;
-
-			if (sequencer) {
-				syncEnabled = sequencer->flags.none(Sequencer::FLAG::kPausedForLoading);
-				sequencePhase = std::distance(sequencer->phases.begin(), sequencer->currentPhase);
-			}
-
 			auto syncOwner = syncInst->GetOwner();
 			if (!syncOwner) [[unlikely]] {
 				syncInst = nullptr;
@@ -366,6 +358,10 @@ namespace Animation
 				u->restoreFile = FileID(generator->GetSourceFile(), "");
 				generator.reset();
 				flags.reset(FLAGS::kHasGenerator);
+			}
+
+			if (sequencer) {
+				sequencer->OnGraphUnloaded();
 			}
 
 #ifdef ENABLE_PERFORMANCE_MONITORING

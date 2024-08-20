@@ -40,6 +40,25 @@ namespace Animation
 	{
 		owner = a_graph;
 		AdvancePhase(true);
+		if (owner->flags.any(Graph::FLAGS::kUnloaded3D)) {
+			OnGraphUnloaded();
+		}
+	}
+
+	void Sequencer::OnGraphLoaded()
+	{
+		flags.reset(FLAG::kSuspended);
+		if (!loadedAnim) {
+			LoadNextAnimation();
+		}
+	}
+
+	void Sequencer::OnGraphUnloaded()
+	{
+		loadedAnim.reset();
+		loadingFile = FileID{ "", "" };
+		flags.reset(FLAG::kLoadingNextAnim, FLAG::kPausedForLoading);
+		flags.set(FLAG::kSuspended);
 	}
 
 	bool Sequencer::OnAnimationRequested(const FileID& a_id)
@@ -115,7 +134,7 @@ namespace Animation
 	{
 		auto next = std::next(currentPhase);
 		if (next == phases.end()) {
-			if (flags.all(FLAG::kLoop)) {
+			if (flags.any(FLAG::kLoop)) {
 				return phases.begin();
 			} else {
 				return std::nullopt;
@@ -163,6 +182,13 @@ namespace Animation
 
 	void Sequencer::SpotLoadCurrentAnimation()
 	{
+		if (owner->flags.any(Graph::FLAGS::kUnloaded3D)) {
+			if (owner->unloadedData) {
+				owner->unloadedData->restoreFile = currentPhase->file;
+			}
+			return;
+		}
+
 		flags.set(FLAG::kPausedForLoading);
 		if (owner->generator) {
 			owner->generator->paused = true;
