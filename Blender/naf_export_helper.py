@@ -9,7 +9,7 @@ from bpy.types import Operator, Panel, PropertyGroup
 bl_info = {
     "name": "NAF Export Helper",
     "author": "Snapdragon",
-    "version": (1, 2, 0),
+    "version": (1, 3, 0),
     "blender": (3, 6, 0),
     "location": "View3D > Sidebar > Starfield Tools",
     "description": "Export animations for Starfield",
@@ -66,6 +66,11 @@ class NAFHelperProperties(PropertyGroup):
     limit_to_playback_range: BoolProperty(
         name="Limit to Playback Range",
         description="Crop animation to the current scene playback range",
+        default=False
+    )
+    is_additive: BoolProperty(
+        name="Additive Animation",
+        description="Export this animation as an additive animation (relative motion). Used for blend graphs",
         default=False
     )
 
@@ -261,11 +266,12 @@ class OBJECT_OT_NAFExportHelper(Operator, ExportHelper):
         
         # Load the DLL
         optimizer_lib = ctypes.CDLL(dll_path)
-        optimizer_lib.OptimizeAnimation.argtypes = [ctypes.c_char_p, ctypes.c_int]
+        optimizer_lib.OptimizeAnimation.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int, ctypes.c_bool]
         optimizer_lib.OptimizeAnimation.restype = ctypes.c_bool
         
         # Optimize the animation
-        result = optimizer_lib.OptimizeAnimation(output_file.encode('utf-8'), optimization_level)
+        is_additive = context.scene.naf_helper_props.is_additive
+        result = optimizer_lib.OptimizeAnimation(output_file.encode('utf-8'), gltf_file.encode('utf-8'), optimization_level, is_additive)
         if not result:
             self.report({'ERROR'}, "Failed to optimize animation.")
             return {'CANCELLED'}
@@ -292,6 +298,7 @@ class VIEW3D_PT_NAFExportHelper(Panel):
         layout.prop(props, "export_negative_frame")
         layout.prop(props, "export_anim_slide_to_zero")
         layout.prop(props, "limit_to_playback_range")
+        layout.prop(props, "is_additive")
         layout.operator("object.naf_export_animation")
 
 def register():

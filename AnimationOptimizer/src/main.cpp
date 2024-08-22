@@ -3,7 +3,7 @@
 #include "Settings/Settings.h"
 #include "zstr.hpp"
 
-DLLEXPORT bool OptimizeAnimation(const char* filePath, int level)
+DLLEXPORT bool OptimizeAnimation(const char* filePath, const char* skeletonPath, int level, bool additive)
 {
 	uint8_t shortLevel = static_cast<uint8_t>(std::clamp(level, 0, 255));
 
@@ -114,23 +114,40 @@ DLLEXPORT bool OptimizeAnimation(const char* filePath, int level)
 		"Mask"
 	});
 
+	auto skeleFile = Serialization::GLTFImport::LoadGLTF(skeletonPath);
+	if (!skeleFile) {
+		return false;
+	}
+
+	auto skeleData = Serialization::GLTFImport::BuildSkeleton(skeleFile.get());
+	if (!skeleData || !skeleData->skeleton) {
+		return false;
+	}
+
+	skeleFile.reset();
+
 	auto baseFile = Serialization::GLTFImport::LoadGLTF(filePath);
 	if (!baseFile || baseFile->asset.animations.empty()) {
 		return false;
 	}
 
-	auto skele = Serialization::GLTFImport::BuildSkeleton(baseFile.get());
-	if (!skele) {
-		return false;
-	}
-
-	auto rawAnim = Serialization::GLTFImport::CreateRawAnimation(baseFile.get(), &baseFile->asset.animations[0], skele.get());
+	auto rawAnim = Serialization::GLTFImport::CreateRawAnimation(baseFile.get(), &baseFile->asset.animations[0], skeleData->skeleton.get());
 	if (!rawAnim) {
 		return false;
 	}
 
 	baseFile.reset();
-	auto optimizedAsset = Serialization::GLTFExport::CreateOptimizedAsset(rawAnim.get(), skele.get(), shortLevel);
+
+	if (additive) {
+		ozz::animation::offline::AdditiveAnimationBuilder addBuilder;
+		auto addResult = ozz::make_unique<ozz::animation::offline::RawAnimation>();
+		if (!addBuilder(*rawAnim->data, ozz::make_span(skeleData->restPose), addResult.get())) {
+			return false;
+		}
+		rawAnim->data = std::move(addResult);
+	}
+
+	auto optimizedAsset = Serialization::GLTFExport::CreateOptimizedAsset(rawAnim.get(), skeleData->skeleton.get(), shortLevel);
 
 	try {
 		zstr::ofstream file(filePath, std::ios::binary);

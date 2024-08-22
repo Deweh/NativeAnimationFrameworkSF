@@ -111,8 +111,9 @@ namespace Serialization
 		}
 	}
 
-	ozz::unique_ptr<ozz::animation::Skeleton> GLTFImport::BuildSkeleton(const AssetData* assetData)
+	std::unique_ptr<GLTFImport::SkeletonData> GLTFImport::BuildSkeleton(const AssetData* assetData)
 	{
+		auto result = std::make_unique<GLTFImport::SkeletonData>();
 		std::set<std::string_view> nameSet;
 		std::vector<std::string> nodeNames;
 
@@ -126,6 +127,20 @@ namespace Serialization
 			if (!nameSet.contains(curName)) {
 				nameSet.insert(curName);
 				nodeNames.emplace_back(curName);
+				auto& t = result->restPose.emplace_back();
+				auto& trs = std::get<fastgltf::TRS>(n.transform);
+				t.rotation = {
+					trs.rotation[0],
+					trs.rotation[1],
+					trs.rotation[2],
+					trs.rotation[3]
+				};
+				t.translation = {
+					trs.translation[0],
+					trs.translation[1],
+					trs.translation[2]
+				};
+				t.scale = ozz::math::Float3::one();
 			}
 		}
 
@@ -137,7 +152,8 @@ namespace Serialization
 		}
 
 		ozz::animation::offline::SkeletonBuilder builder;
-		return builder(raw);
+		result->skeleton = builder(raw);
+		return result;
 	}
 
 	std::unique_ptr<Animation::RawOzzAnimation> GLTFImport::CreateRawAnimation(const AssetData* assetData, const fastgltf::Animation* anim, const ozz::animation::Skeleton* skeleton)
