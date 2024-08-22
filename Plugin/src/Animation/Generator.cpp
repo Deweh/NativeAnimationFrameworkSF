@@ -1,4 +1,6 @@
 #include "Generator.h"
+#include "Util/String.h"
+#include "Procedural/PVariableNode.h"
 
 namespace Animation
 {
@@ -83,6 +85,25 @@ namespace Animation
 	{
 		pGraph = a_graph;
 		a_graph->InitInstanceData(pGraphInstance);
+	}
+
+	bool ProceduralGenerator::SetVariable(const std::string_view a_name, float a_value)
+	{
+		if (auto iter = pGraphInstance.variableMap.find(Util::String::ToLower(a_name)); iter != pGraphInstance.variableMap.end()) {
+			iter->second->value = a_value;
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	float ProceduralGenerator::GetVariable(const std::string_view a_name)
+	{
+		if (auto iter = pGraphInstance.variableMap.find(Util::String::ToLower(a_name)); iter != pGraphInstance.variableMap.end()) {
+			return iter->second->value;
+		} else {
+			return 0.0f;
+		}
 	}
 
 	void ProceduralGenerator::Generate(PoseCache& cache)

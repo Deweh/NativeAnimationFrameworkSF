@@ -98,7 +98,11 @@ add_library(
  "src/Serialization/BlendGraphImport.cpp"
  "src/Animation/Procedural/PInternalCacheReleaseNode.cpp"
  "src/Animation/Procedural/PFixedValueNode.cpp"
- "src/Animation/IAnimationFile.cpp")
+ "src/Animation/IAnimationFile.cpp"
+ "src/Animation/Procedural/PAdditiveBlendNode.cpp"
+ "src/Animation/Procedural/PVariableNode.cpp"
+ "src/Animation/Procedural/PLimitROCNode.cpp"
+ "src/Animation/Procedural/PTransformRangeNode.cpp")
 
 # copy to Starfield directory
 set(STARFIELD_PATH "C:/Program Files (x86)/Steam/steamapps/common/Starfield/Data/SFSE/Plugins")

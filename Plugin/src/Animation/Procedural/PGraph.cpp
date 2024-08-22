@@ -1,6 +1,7 @@
 #include "PGraph.h"
 #include "PInternalCacheReleaseNode.h"
 #include "PFullAnimationNode.h"
+#include "PVariableNode.h"
 #include "PActorNode.h"
 #include "Animation/Generator.h"
 
@@ -63,8 +64,12 @@ namespace Animation::Procedural
 
 	void PGraph::InitInstanceData(InstanceData& a_graphInst)
 	{
+		a_graphInst.nodeInstances.reserve(nodes.size());
 		for (auto& n : nodes) {
 			a_graphInst.nodeInstances.emplace_back(n->CreateInstanceData());
+			if (IsNodeOfType<PVariableNode>(n.get())) {
+				a_graphInst.variableMap.emplace(static_cast<PVariableNode*>(n.get())->name, static_cast<PVariableInstance*>(a_graphInst.nodeInstances.back().get()));
+			}
 		}
 		a_graphInst.results.resize(nodes.size());
 	}

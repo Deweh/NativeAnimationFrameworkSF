@@ -33,7 +33,6 @@ namespace Animation::Procedural
 	void PFullAnimationNode::AdvanceTime(PNodeInstanceData* a_instanceData, float a_deltaTime)
 	{
 		auto inst = static_cast<InstanceData*>(a_instanceData);
-		auto duration = anim->data->duration();
 		inst->localTime += a_deltaTime * (1.0f + inst->speedMod);
 		if (inst->localTime > duration || inst->localTime < 0.0f) {
 			inst->localTime = std::fmodf(std::abs(inst->localTime), duration);
@@ -58,7 +57,7 @@ namespace Animation::Procedural
 
 	bool PFullAnimationNode::SetCustomValues(const std::span<PEvaluationResult>& a_values, const std::string_view a_skeleton)
 	{
-		auto file = FileID{ std::get<std::string>(a_values[0]), "" };
+		auto file = FileID{ std::get<RE::BSFixedString>(a_values[0]), "" };
 		syncId = std::get<uint64_t>(a_values[1]);
 		auto loadedFile = Animation::FileManager::GetSingleton()->DemandAnimation(file, a_skeleton, true);
 		if (loadedFile == nullptr) {
@@ -66,6 +65,10 @@ namespace Animation::Procedural
 		}
 
 		anim = std::dynamic_pointer_cast<OzzAnimation>(loadedFile);
-		return anim != nullptr;
+		bool result = anim != nullptr;
+		if (result) {
+			duration = anim->data->duration();
+		}
+		return result;
 	}
 }

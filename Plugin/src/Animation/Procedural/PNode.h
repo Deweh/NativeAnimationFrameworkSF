@@ -7,7 +7,8 @@ namespace Animation::Procedural
 {
 	class PNode;
 	class PGraph;
-	using PEvaluationResult = std::variant<float, PoseCache::Handle, uint64_t, std::string>;
+	struct PVariableInstance;
+	using PEvaluationResult = std::variant<float, PoseCache::Handle, uint64_t, RE::BSFixedString>;
 
 	template <typename T>
 	inline constexpr std::size_t PEvaluationType = variant_index<T, PEvaluationResult>::value;
@@ -28,6 +29,7 @@ namespace Animation::Procedural
 
 		std::vector<std::unique_ptr<PNodeInstanceData>> nodeInstances;
 		std::vector<PEvaluationResult> results;
+		std::unordered_map<std::string_view, PVariableInstance*> variableMap;
 		PEvaluationContext* lastSyncOwner = nullptr;
 		std::vector<SyncData> syncMap;
 	};

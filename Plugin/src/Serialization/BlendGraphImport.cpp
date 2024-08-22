@@ -75,9 +75,9 @@ namespace Serialization
 							numVal = curVal;
 							values.emplace_back(static_cast<float>(numVal));
 							break;
-						case PEvaluationType<std::string>:
+						case PEvaluationType<RE::BSFixedString>:
 							stringVal = curVal;
-							values.emplace_back(std::string{ stringVal });
+							values.emplace_back(RE::BSFixedString{ std::string(stringVal).c_str() });
 							break;
 						case PEvaluationType<uint64_t>:
 							intVal = curVal;

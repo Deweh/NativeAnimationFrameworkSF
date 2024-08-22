@@ -168,6 +168,16 @@ namespace Papyrus::NAFScript
 		return result;
 	}
 
+	bool SetBlendGraphVariable(std::monostate, RE::Actor* a_actor, RE::BSFixedString a_name, float a_value)
+	{
+		return agm->SetProceduralVariable(a_actor, a_name, a_value);
+	}
+
+	float GetBlendGraphVariable(std::monostate, RE::Actor* a_actor, RE::BSFixedString a_name)
+	{
+		return agm->GetProceduralVariable(a_actor, a_name);
+	}
+
 	void RegisterForPhaseBegin(IVirtualMachine& a_vm, uint32_t a_stackID, std::monostate, RE::BSTSmartPointer<RE::BSScript::Object> a_script, RE::BSFixedString a_funcName)
 	{
 		detail::RegisterScriptForEvent(a_vm, a_stackID, EventType::kPhaseBegin, a_script.get(), a_funcName);
@@ -200,7 +210,8 @@ namespace Papyrus::NAFScript
 		a_vm->BindNativeMethod(SCRIPT_NAME, "GetSequencePhase", &GetSequencePhase, true, false);
 		a_vm->BindNativeMethod(SCRIPT_NAME, "SetAnimationSpeed", &SetAnimationSpeed, true, false);
 		a_vm->BindNativeMethod(SCRIPT_NAME, "GetAnimationSpeed", &GetAnimationSpeed, true, false);
-		a_vm->BindNativeMethod(SCRIPT_NAME, "GetCurrentAnimation", &GetCurrentAnimation, true, false);
+		a_vm->BindNativeMethod(SCRIPT_NAME, "SetBlendGraphVariable", &SetBlendGraphVariable, true, false);
+		a_vm->BindNativeMethod(SCRIPT_NAME, "GetBlendGraphVariable", &GetBlendGraphVariable, true, false);
 
 		a_vm->BindNativeMethod(SCRIPT_NAME, "RegisterForPhaseBegin", &RegisterForPhaseBegin, true, false);
 		a_vm->BindNativeMethod(SCRIPT_NAME, "RegisterForSequenceEnd", &RegisterForSequenceEnd, true, false);

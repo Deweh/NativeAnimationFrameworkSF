@@ -48,6 +48,8 @@ namespace Animation
 
 		ProceduralGenerator(const std::shared_ptr<Procedural::PGraph>& a_graph);
 
+		bool SetVariable(const std::string_view a_name, float a_value);
+		float GetVariable(const std::string_view a_name);
 		virtual void Generate(PoseCache& cache) override;
 		virtual void AdvanceTime(float deltaTime) override;
 		virtual const std::string_view GetSourceFile() override;

@@ -3,6 +3,7 @@
 #include "Serialization/GLTFImport.h"
 #include "Util/String.h"
 #include "Graph.h"
+#include "Generator.h"
 #include "FileManager.h"
 #include "Util/Trampoline.h"
 #include "Util/Timing.h"
@@ -127,6 +128,39 @@ namespace Animation
 			g->StopSyncing();
 			return true;
 		});
+	}
+
+	bool GraphManager::SetProceduralVariable(RE::Actor* a_actor, const std::string_view a_name, float a_value)
+	{
+		return VisitGraph(a_actor, [&](Graph* g) {
+			auto gen = g->generator.get();
+			if (!gen)
+				return false;
+
+			if (gen->GetType() != GenType::kProcedural)
+				return false;
+
+			return static_cast<ProceduralGenerator*>(gen)->SetVariable(a_name, a_value);
+		});
+	}
+
+	float GraphManager::GetProceduralVariable(RE::Actor* a_actor, const std::string_view a_name)
+	{
+		float result = 0.0f;
+
+		VisitGraph(a_actor, [&](Graph* g) {
+			auto gen = g->generator.get();
+			if (!gen)
+				return false;
+
+			if (gen->GetType() != GenType::kProcedural)
+				return false;
+
+			result = static_cast<ProceduralGenerator*>(gen)->GetVariable(a_name);
+			return true;
+		});
+
+		return result;
 	}
 
 	bool GraphManager::AttachGenerator(RE::Actor* a_actor, std::unique_ptr<Generator> a_gen, float a_transitionTime)
