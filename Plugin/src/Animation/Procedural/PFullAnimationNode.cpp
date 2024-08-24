@@ -19,12 +19,13 @@ namespace Animation::Procedural
 		}
 
 		PoseCache::Handle result = a_poseCache.acquire_handle();
+		auto resultSpan = result.get_ozz();
 
 		ozz::animation::SamplingJob sampleJob;
-		sampleJob.animation = anim->data.get();
+		sampleJob.animation = cachedRawAnim;
 		sampleJob.context = &inst->context;
-		sampleJob.output = result.get_ozz();
-		sampleJob.ratio = inst->localTime / anim->data->duration();
+		sampleJob.output = resultSpan;
+		sampleJob.ratio = inst->localTime;
 		sampleJob.Run();
 
 		return result;
@@ -33,13 +34,13 @@ namespace Animation::Procedural
 	void PFullAnimationNode::AdvanceTime(PNodeInstanceData* a_instanceData, float a_deltaTime)
 	{
 		auto inst = static_cast<InstanceData*>(a_instanceData);
-		inst->localTime += a_deltaTime * (1.0f + inst->speedMod);
-		if (inst->localTime > duration || inst->localTime < 0.0f) {
-			inst->localTime = std::fmodf(std::abs(inst->localTime), duration);
-			inst->looped = true;
-		} else {
-			inst->looped = false;
-		}
+		float newTime = inst->localTime + (a_deltaTime * (1.0f + inst->speedMod) / cachedRawAnim->duration());
+
+		//Loops within the time ratio 0-1.
+		//If the floor is non-zero (outside 0-1), then it's going to loop this frame.
+		float flr = floorf(newTime);
+		inst->localTime = newTime - flr;
+		inst->looped = flr;
 	}
 
 	void PFullAnimationNode::Synchronize(PNodeInstanceData* a_instanceData, PNodeInstanceData* a_ownerInstance, float a_correctionDelta)
@@ -67,7 +68,7 @@ namespace Animation::Procedural
 		anim = std::dynamic_pointer_cast<OzzAnimation>(loadedFile);
 		bool result = anim != nullptr;
 		if (result) {
-			duration = anim->data->duration();
+			cachedRawAnim = anim->data.get();
 		}
 		return result;
 	}

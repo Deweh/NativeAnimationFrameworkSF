@@ -17,7 +17,7 @@ namespace Animation::Procedural
 		};
 
 		std::shared_ptr<OzzAnimation> anim;
-		float duration;
+		ozz::animation::Animation* cachedRawAnim;
 
 		virtual std::unique_ptr<PNodeInstanceData> CreateInstanceData() override;
 		virtual PEvaluationResult Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, PEvaluationContext& a_evalContext) override;

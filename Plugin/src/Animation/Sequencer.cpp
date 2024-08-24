@@ -4,6 +4,8 @@
 
 namespace Animation
 {
+	constexpr float AT_END{ 1.0f - std::numeric_limits<float>::epsilon() };
+
 	Sequencer::Sequencer(std::vector<PhaseData>&& a_phases)
 	{
 		phases = std::move(a_phases);
@@ -15,7 +17,7 @@ namespace Animation
 		if (owner->generator->rootResetRequired || (flags.any(FLAG::kForceAdvance) && flags.none(FLAG::kSmoothAdvance))) {
 			if (loopsRemaining == 0 || flags.any(FLAG::kForceAdvance)) {
 				owner->generator->rootResetRequired = false;
-				owner->generator->localTime = (owner->generator->duration - 0.0001f);
+				owner->generator->localTime = AT_END;
 				AdvancePhase();
 			} else if (loopsRemaining > 0) {
 				loopsRemaining--;
@@ -201,7 +203,7 @@ namespace Animation
 	{
 		if (owner->generator) {
 			owner->generator->rootResetRequired = false;
-			owner->generator->localTime = (owner->generator->duration - 0.0001f);
+			owner->generator->localTime = AT_END;
 			owner->generator->paused = true;
 		}
 		owner->DetachSequencer();

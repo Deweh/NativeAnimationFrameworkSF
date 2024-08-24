@@ -54,13 +54,16 @@ namespace Animation
 
 	void LinearClipGenerator::AdvanceTime(float deltaTime)
 	{
-		if (!paused) {
-			localTime += deltaTime * speed;
-			if (localTime > duration || localTime < 0.0f) {
-				localTime = std::fmodf(std::abs(localTime), duration);
-				rootResetRequired = true;
-			}
-		}
+		if (paused)
+			return;
+
+		float newTime = localTime + (deltaTime * speed / duration);
+
+		//Loops within the time ratio 0-1.
+		//If the floor is non-zero (outside 0-1), then it's going to loop this frame.
+		float flr = floorf(newTime);
+		localTime = newTime - flr;
+		rootResetRequired = flr;
 	}
 
 	const std::string_view LinearClipGenerator::GetSourceFile()
