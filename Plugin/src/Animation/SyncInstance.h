@@ -22,6 +22,7 @@ namespace Animation
 		struct InstData
 		{
 			Graph* owner = nullptr;
+			std::weak_ptr<Graph> ownerHandle;
 			std::vector<Graph*> updatedGraphs;
 			bool ownerUpdatedThisFrame = false;
 		};

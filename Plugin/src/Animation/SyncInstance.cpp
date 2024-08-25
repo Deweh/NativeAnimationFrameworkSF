@@ -22,13 +22,15 @@ namespace Animation
 	void SyncInstance::VisitOwner(std::function<void(Graph*, bool)> a_visitFunc)
 	{
 		auto d = data.lock();
-		auto& owner = d->owner;
+		auto updated = d->ownerUpdatedThisFrame;
+		auto owner = d->ownerHandle.lock();
 		if (owner == nullptr) {
 			return;
 		}
+		d.unlock();
 
 		std::unique_lock l{ owner->lock };
-		a_visitFunc(owner, d->ownerUpdatedThisFrame);
+		a_visitFunc(owner.get(), updated);
 	}
 
 	Graph* SyncInstance::GetOwner()
@@ -40,5 +42,10 @@ namespace Animation
 	{
 		auto d = data.lock();
 		d->owner = a_grph;
+		if (a_grph) {
+			d->ownerHandle = std::static_pointer_cast<Graph>(a_grph->shared_from_this());
+		} else {
+			d->ownerHandle.reset();
+		}
 	}
 }

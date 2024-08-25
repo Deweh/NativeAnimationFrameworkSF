@@ -98,6 +98,41 @@ namespace RE::EyeTracking
 
 namespace RE
 {
+	struct BSAnimationGraphEvent
+	{
+		TESObjectREFR* refr;
+		BSFixedString animEvent;
+		BSFixedString argument;
+	};
+
+	inline void SendAnimEvent(TESObjectREFR* a_refr, const BSFixedString& a_evnt, const BSFixedString& a_arg = "")
+	{
+		BSTSmartPointer<BSAnimationGraphManager> grphMngr;
+		if (!a_refr->GetAnimationGraphManagerImpl(grphMngr) || grphMngr.get() == nullptr) {
+			return;
+		}
+
+		if (grphMngr->activeGraph > grphMngr->graphs.size()) {
+			return;
+		}
+
+		auto& g = grphMngr->graphs[grphMngr->activeGraph];
+		if (g == nullptr) {
+			return;
+		}
+
+		auto src = static_cast<BSTEventSource<BSAnimationGraphEvent>*>(g.get());
+		BSAnimationGraphEvent e{ .refr = a_refr, .animEvent = a_evnt, .argument = a_arg };
+
+		// std::function<BSEventNotifyControl(SinkBase*)>
+		void* f[8]{};
+		f[0] = reinterpret_cast<void*>(REL::Relocation{ REL::ID(388458) }.address());
+		f[1] = &e;
+		f[2] = src;
+
+		src->Notify(f);
+	}
+
 	class hkVector4f
 	{
 	public:
