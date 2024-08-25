@@ -15,8 +15,7 @@ namespace Animation::Procedural
 			instIter++;
 		}
 
-		auto resultIdx = std::get<uint64_t>(a_graphInst.results[actorNode]);
-		return std::get<PoseCache::Handle>(a_graphInst.results[resultIdx]).get();
+		return std::get<PoseCache::Handle>(a_graphInst.results[actorNode]).get();
 	}
 
 	bool PGraph::AdvanceTime(InstanceData& a_graphInst, float a_deltaTime)
@@ -115,12 +114,7 @@ namespace Animation::Procedural
 			[](const auto& a, const auto& b) { return a.second > b.second; });
 
 		for (const auto& [n, idx] : sortedLastUsages) {
-			if (auto typeInfo = n->GetTypeInfo(); !typeInfo || typeInfo->output != PEvaluationType<PoseCache::Handle>) {
-				continue;
-			}
-
-			//If the last user of this pose is the actor output node, don't free it.
-			if (IsNodeOfType<PActorNode>(a_sortedNodes[idx])) {
+			if (auto typeInfo = n->GetTypeInfo(); !typeInfo || typeInfo->output != PEvaluationType<PoseCache::Handle> || n == reinterpret_cast<PNode*>(actorNode)) {
 				continue;
 			}
 

@@ -50,6 +50,7 @@ namespace Animation
 
 		bool SetVariable(const std::string_view a_name, float a_value);
 		float GetVariable(const std::string_view a_name);
+		void ForEachVariable(const std::function<void(const std::string_view, float&)> a_func);
 		virtual void Generate(PoseCache& cache) override;
 		virtual void AdvanceTime(float deltaTime) override;
 		virtual const std::string_view GetSourceFile() override;

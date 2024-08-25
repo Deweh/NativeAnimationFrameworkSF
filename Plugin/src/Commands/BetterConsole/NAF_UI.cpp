@@ -77,17 +77,27 @@ namespace
 
 		UI->Text("Memory Usage: %.2f KB", static_cast<float>(memorySize) / 1024.0f);
 #endif
-		UI->Separator();
 
 		if (isLoaded) {
 			UI->Separator();
 			UI->Text("Generator");
 			UI->Separator();
 
-			if (g->generator) {
+			auto gen = g->generator.get();
+			if (gen) {
 				UI->Text("Has Generator: True");
-				UI->DragFloat("Current Time (Seconds)", &g->generator->localTime, 0.0f, g->generator->duration);
-				UI->Checkbox("Paused", &g->generator->paused);
+				UI->Checkbox("Paused", &gen->paused);
+
+				if (gen->GetType() != Animation::GenType::kProcedural) {
+					UI->DragFloat("Current Time (Seconds)", &gen->localTime, 0.0f, 1.0f);
+				} else {
+					UI->Text("Blend Graph Variables:");
+					auto pGen = static_cast<Animation::ProceduralGenerator*>(gen);
+					pGen->ForEachVariable([&](const std::string_view a_name, float& a_value) {
+						UI->DragFloat(a_name.data(), &a_value, -10000.0f, 10000.0f);
+					});
+				}
+				
 			} else {
 				UI->Text("Has Generator: False");
 			}

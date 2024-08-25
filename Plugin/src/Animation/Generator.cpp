@@ -27,7 +27,7 @@ namespace Animation
 		sampleJob.animation = anim->data.get();
 		sampleJob.context = context;
 		sampleJob.output = output->get_ozz();
-		sampleJob.ratio = localTime / duration;
+		sampleJob.ratio = localTime;
 		sampleJob.Run();
 
 		if (anim->faceData != nullptr && faceMorphData != nullptr) {
@@ -106,6 +106,13 @@ namespace Animation
 			return iter->second->value;
 		} else {
 			return 0.0f;
+		}
+	}
+
+	void ProceduralGenerator::ForEachVariable(const std::function<void(const std::string_view, float&)> a_func)
+	{
+		for (auto& v : pGraphInstance.variableMap) {
+			a_func(v.first, v.second->value);
 		}
 	}
 

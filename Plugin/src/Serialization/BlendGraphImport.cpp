@@ -5,10 +5,32 @@
 
 namespace Serialization
 {
+	using namespace Animation::Procedural;
+
+	namespace detail
+	{
+		bool BuildOutputSetRecursive(PNode* a_outputNode, std::unordered_set<PNode*>& a_outputSet, size_t a_depth)
+		{
+			if (a_depth > PGraph::MAX_DEPTH) {
+				return false;
+			}
+
+			a_outputSet.insert(a_outputNode);
+			for (uint64_t ptr : a_outputNode->inputs) {
+				if (ptr == 0)
+					continue;
+
+				if (!BuildOutputSetRecursive(reinterpret_cast<PNode*>(ptr), a_outputSet, a_depth + 1)) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+	}
+
 	std::unique_ptr<Animation::Procedural::PGraph> BlendGraphImport::LoadGraph(const std::filesystem::path& a_filePath, const std::string_view a_skeleton)
 	{
-		using namespace Animation::Procedural;
-
 		std::unique_ptr<PGraph> result;
 		try {
 			simdjson::ondemand::parser parser;
@@ -126,7 +148,21 @@ namespace Serialization
 				}
 			}
 
-			//TODO: Add 3rd pass for discarding nodes that are disconnected from the graph flow.
+			//The actor node itself isn't actually needed for anything except marking the final output, so mark the final true node as the actor node.
+			result->actorNode = reinterpret_cast<PNode*>(result->actorNode)->inputs[0];
+
+			//Pass 3: Discard unneeded nodes.
+			std::unordered_set<PNode*> outputSet;
+			if (!detail::BuildOutputSetRecursive(reinterpret_cast<PNode*>(result->actorNode), outputSet, 0)) {
+				throw std::exception{ "One or more node chains exceed the max chain depth." };
+			}
+			for (auto iter = result->nodes.begin(); iter != result->nodes.end();) {
+				if (!outputSet.contains(iter->get())) {
+					iter = result->nodes.erase(iter);
+				} else {
+					iter++;
+				}
+			}
 
 			std::vector<PNode*> sortedNodes;
 			sortedNodes.reserve(result->nodes.size());
