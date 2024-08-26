@@ -73,7 +73,11 @@ namespace Animation
 			return Handle{ this, targetIdx };
 		} else {
 			size_t start = _cache.size();
-			_cache.resize(start + _pose_size);
+			size_t newSize = start + _pose_size;
+			if (newSize > _cache.capacity()) {
+				_cache.reserve(newSize);
+			}
+			_cache.resize(newSize);
 			
 			return Handle{ this, start };
 		}

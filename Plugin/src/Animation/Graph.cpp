@@ -574,6 +574,7 @@ namespace Animation
 		static RE::TransformsManager* transformManager = RE::TransformsManager::GetSingleton();
 		auto rootXYZ = GetRootXYZ();
 		target->data.angle = rootXYZ.rotate;
+		target->data.location = rootXYZ.translate;
 		if (a_visible) {
 			transformManager->RequestPositionUpdate(target.get(), rootXYZ.translate);
 		} else {

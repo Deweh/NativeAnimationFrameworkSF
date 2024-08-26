@@ -23,6 +23,9 @@ namespace RE
 		float unk09;
 		uint16_t unk11;
 		bool forceUpdate;
+
+		//It appears this is also set to true when an actor is very far away & switches out to a lower-resolution LOD.
+		//When the actor is even further away, the animation update routine stops getting called at all, likely due to ShouldUpdateAnimation() returning false.
 		bool modelCulled;
 		bool unk13;
 		bool unkFlag;
