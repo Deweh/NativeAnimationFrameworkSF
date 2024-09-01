@@ -19,6 +19,10 @@ namespace Animation
 	{
 		anim = a_anim;
 		duration = anim->data->duration();
+
+		if (duration != 0.0f) {
+			duration = 1.0f / duration;
+		}
 	}
 
 	void LinearClipGenerator::Generate(PoseCache& cache)
@@ -57,7 +61,8 @@ namespace Animation
 		if (paused)
 			return;
 
-		float newTime = localTime + (deltaTime * speed / duration);
+		float timeStep = (deltaTime * speed) * duration;
+		float newTime = localTime + timeStep;
 
 		//Loops within the time ratio 0-1.
 		//If the floor is non-zero (outside 0-1), then it's going to loop this frame.
@@ -76,7 +81,7 @@ namespace Animation
 		if (a_other->GetType() != GenType::kLinear)
 			return;
 
-		localTime = a_other->localTime + a_correctionDelta;
+		localTime = a_other->localTime + (a_correctionDelta * duration);
 	}
 
 	GenType LinearClipGenerator::GetType()
