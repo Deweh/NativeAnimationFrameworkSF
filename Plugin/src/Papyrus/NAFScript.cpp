@@ -210,6 +210,7 @@ namespace Papyrus::NAFScript
 		a_vm->BindNativeMethod(SCRIPT_NAME, "GetSequencePhase", &GetSequencePhase, true, false);
 		a_vm->BindNativeMethod(SCRIPT_NAME, "SetAnimationSpeed", &SetAnimationSpeed, true, false);
 		a_vm->BindNativeMethod(SCRIPT_NAME, "GetAnimationSpeed", &GetAnimationSpeed, true, false);
+		a_vm->BindNativeMethod(SCRIPT_NAME, "GetCurrentAnimation", &GetCurrentAnimation, true, false);
 		a_vm->BindNativeMethod(SCRIPT_NAME, "SetBlendGraphVariable", &SetBlendGraphVariable, true, false);
 		a_vm->BindNativeMethod(SCRIPT_NAME, "GetBlendGraphVariable", &GetBlendGraphVariable, true, false);
 
