@@ -16,15 +16,15 @@ namespace Tasks
 	static Util::VFuncHook<void(const RE::PlayerCamera*, const RE::InputEvent*)> PerformInputProcessingHook(428955, 0x1, "PlayerCamera::PerformInputProcessing",
 		[](const RE::PlayerCamera* a_camera, const RE::InputEvent* a_queueHead) {
 			static Input* m = Input::GetSingleton();
-			for (auto curEvent = a_queueHead; curEvent != nullptr && curEvent->status != RE::InputEvent::Stop; curEvent = curEvent->next) {
-				if (curEvent->eventType != RE::InputEvent::Button) {
+			for (auto curEvent = a_queueHead; curEvent != nullptr && curEvent->status != RE::InputEvent::Status::kStop; curEvent = curEvent->next) {
+				if (curEvent->eventType != RE::InputEvent::EventType::kButton) {
 					continue;
 				}
 
 				auto btnEvent = static_cast<const RE::ButtonEvent*>(curEvent);
 				bool downState;
 
-				if (btnEvent->held <= 0.0f && btnEvent->value > 0.0f) {
+				if (btnEvent->heldDownSecs <= 0.0f && btnEvent->value > 0.0f) {
 					downState = true;
 				} else if (btnEvent->value <= 0.0f) {
 					downState = false;

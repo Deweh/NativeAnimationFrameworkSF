@@ -7,7 +7,7 @@ namespace Util
 		static std::optional<std::filesystem::path> BasePath = std::nullopt;
 
 		if (!BasePath) {
-			std::filesystem::path p = REL::WinAPI::GetProcPath(nullptr);
+			std::filesystem::path p = REX::W32::GetProcPath(nullptr);
 			BasePath = p.parent_path();
 		}
 
