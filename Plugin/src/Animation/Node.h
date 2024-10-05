@@ -6,6 +6,8 @@ namespace Animation
 	class Node
 	{
 	public:
+		ozz::math::Float4x4* localMatrix;
+
 		virtual Transform GetLocal() = 0;
 		virtual Transform GetWorld() = 0;
 		virtual void SetLocal(const Transform& t) = 0;
@@ -34,6 +36,8 @@ namespace Animation
 	class NullNode : public Node
 	{
 	public:
+		NullNode(ozz::math::Float4x4* a_localMat);
+
 		virtual Transform GetLocal();
 		virtual Transform GetWorld();
 		virtual void SetLocal(const Transform& t);

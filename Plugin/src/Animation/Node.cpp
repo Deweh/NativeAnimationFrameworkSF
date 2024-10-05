@@ -5,7 +5,11 @@ namespace Animation
 	Node::~Node() {}
 
 	GameNode::GameNode(RE::NiAVObject* n) :
-		n(n) {}
+		n(n)
+	{
+		// ozz's Float4x4 is the same size & alignment and uses the same conventions as NiTransform, so they can be safely cast between.
+		localMatrix = reinterpret_cast<ozz::math::Float4x4*>(&n->local);
+	}
 
 	Transform GameNode::GetLocal()
 	{
@@ -39,6 +43,11 @@ namespace Animation
 	}
 
 	GameNode::~GameNode() {}
+
+	NullNode::NullNode(ozz::math::Float4x4* a_localMat)
+	{
+		localMatrix = a_localMat;
+	}
 
 	Transform NullNode::GetLocal() { return Transform(); }
 	Transform NullNode::GetWorld() { return Transform(); }

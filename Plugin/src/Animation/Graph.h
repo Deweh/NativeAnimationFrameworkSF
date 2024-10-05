@@ -70,6 +70,7 @@ namespace Animation
 
 		struct LOADED_DATA
 		{
+			ozz::math::Float4x4 defaultMatrix;
 			RE::BGSFadeNode* rootNode = nullptr;
 			ozz::animation::SamplingJob::Context context;
 			PoseCache poseCache;

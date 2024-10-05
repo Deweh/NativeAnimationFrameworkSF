@@ -91,7 +91,7 @@ namespace Animation
 			for (auto& name : skeleton->data->joint_names()) {
 				RE::NiNode* n = a_rootNode->GetObjectByName(name);
 				if (!n) {
-					nodes.push_back(std::make_unique<NullNode>());
+					nodes.push_back(std::make_unique<NullNode>(&l->defaultMatrix));
 				} else {
 					nodes.push_back(std::make_unique<GameNode>(n));
 				}
@@ -346,11 +346,14 @@ namespace Animation
 			}
 			unloadedData.reset();
 		}
-		else if (!a_loaded && loadedData)
+		else if (!a_loaded && !unloadedData)
 		{
-			Face::Manager::GetSingleton()->OnAnimDataChange(loadedData->faceAnimData, nullptr);
+			if (loadedData) {
+				Face::Manager::GetSingleton()->OnAnimDataChange(loadedData->faceAnimData, nullptr);
+				loadedData.reset();
+			}
+			
 			flags.set(FLAGS::kUnloaded3D);
-			loadedData.reset();
 			unloadedData = std::make_unique<UNLOADED_DATA>();
 			auto& u = unloadedData;
 
@@ -537,25 +540,21 @@ namespace Animation
 
 	void Graph::PushAnimationOutput(const std::span<ozz::math::SoaTransform>& a_output)
 	{
-		if (generator && generator->rootResetRequired) {
-			ResetRootOrientation();
-			generator->localRootTransform.MakeIdentity();
-			generator->rootResetRequired = false;
-		}
+		// This is a reduced version of the LocalToModelJob to simply convert SoaTransforms to Float4x4s without doing any additional math.
+		const int end = skeleton->data->num_joints();
+		for (int i = 0, process = i < end; process;) {
+			const ozz::math::SoaTransform& transform = a_output[i / 4];
+			const ozz::math::SoaFloat4x4 local_soa_matrices = ozz::math::SoaFloat4x4::FromAffine(
+				transform.translation, transform.rotation, transform.scale);
 
-		/*
-		if (updateCount > 0) {
-			const auto& rootRelative = a_output[0];
-			rootTransform.rotate = rootRelative.rotate.InvertVector() * rootTransform.rotate;
-			rootTransform.translate += rootOrientation * rootRelative.translate;
-		}
-		*/
+			ozz::math::Float4x4 local_aos_matrices[4];
+			ozz::math::Transpose16x16(&local_soa_matrices.cols[0].x,
+				local_aos_matrices->cols);
 
-		Transform::ExtractSoaTransformsReal(a_output, [&](size_t i, const RE::NiMatrix3& rot, const RE::NiPoint3& pos) {
-			if (i > 0 && i < nodes.size()) {
-				nodes[i]->SetLocalReal(rot, pos);
+			for (const int soa_end = (i + 4) & ~3; i < soa_end && process; ++i, process = i < end) {
+				*nodes[i]->localMatrix = local_aos_matrices[i & 3];
 			}
-		});
+		}
 
 		auto r = loadedData->rootNode;
 		if (!r)
@@ -603,7 +602,24 @@ namespace Animation
 
 	void Graph::UpdateRestPose()
 	{
-		Transform::StoreSoaTransforms(loadedData->restPose.get(), std::bind(&Graph::GetCurrentTransform, this, std::placeholders::_1));
+		const auto output = loadedData->restPose.get();
+		const int end = skeleton->data->num_joints();
+
+		for (size_t i = 0, k = 0; i < end; i += 4, k++) {
+			ozz::math::SimdFloat4 translations[4];
+			ozz::math::SimdFloat4 rotations[4];
+			ozz::math::SimdFloat4 scales[4];
+
+			size_t remaining = std::min(4ui64, end - i);
+			for (int j = 0; j < remaining; j++) {
+				ozz::math::ToAffine(*nodes[i + j]->localMatrix, &translations[j], &rotations[j], &scales[j]);
+			}
+
+			auto& out = output[k];
+			ozz::math::Transpose4x3(translations, &out.translation.x);
+			ozz::math::Transpose4x4(rotations, &out.rotation.x);
+			ozz::math::Transpose4x3(scales, &out.scale.x);
+		}
 	}
 
 	void Graph::SnapshotPose()
