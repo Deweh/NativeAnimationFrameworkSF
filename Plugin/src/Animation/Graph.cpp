@@ -116,9 +116,7 @@ namespace Animation
 	}
 
 	void Graph::Update(float a_deltaTime, bool a_visible) {
-#ifdef ENABLE_PERFORMANCE_MONITORING
-		auto start = Util::Timing::HighResTimeNow();
-#endif
+		PERF_TIMER_START(start);
 
 		if (!loadedData || !generator) {
 			return;
@@ -186,9 +184,8 @@ namespace Animation
 
 		PushRootOutput(a_visible);
 
-#ifdef ENABLE_PERFORMANCE_MONITORING
-		lastUpdateMs = Util::Timing::HighResTimeDiffMilliSec(start);
-#endif
+		PERF_TIMER_END(start, updateTime);
+		PERF_TIMER_COPY_VALUE(updateTime, lastUpdateMs);
 	}
 
 	IKTwoBoneData* Graph::AddIKJob(const std::span<std::string_view, 3> a_nodeNames, const RE::NiTransform& a_initialTargetWorld, const RE::NiPoint3& a_initialPolePtModel, float a_transitionTime)
@@ -373,6 +370,22 @@ namespace Animation
 		}
 	}
 
+	bool Graph::GetRequiresBaseTransforms() const
+	{
+		return requiresBaseTransforms.load();
+	}
+
+	bool Graph::GetRequiresDetach() const
+	{
+		return flags.none(
+			FLAGS::kPersistent,
+			FLAGS::kActiveIKChains,
+			FLAGS::kHasGenerator,
+			FLAGS::kTransitioning,
+			FLAGS::kLoadingAnimation,
+			FLAGS::kLoadingSequencerAnimation);
+	}
+
 	void Graph::UpdateFaceAnimData()
 	{
 		auto l = loadedData.get();
@@ -456,11 +469,15 @@ namespace Animation
 		const auto SetData = [&](TRANSITION_TYPE t) {
 			switch (t) {
 			case kGameToGraph:
+				requiresBaseTransforms = true;
 				transition.startLayer = -1;
 				transition.endLayer = 0;
-				transition.onEnd = nullptr;
+				transition.onEnd = [&]() {
+					requiresBaseTransforms = false;
+				};
 				break;
 			case kGraphToGame:
+				requiresBaseTransforms = true;
 				transition.startLayer = 0;
 				transition.endLayer = -1;
 				transition.onEnd = [&]() {
@@ -469,6 +486,7 @@ namespace Animation
 				};
 				break;
 			case kGeneratorToGenerator:
+				requiresBaseTransforms = false;
 				blendLayers[0].weight = 0.0f;
 				blendLayers[1].weight = 1.0f;
 				transition.startLayer = 1;
@@ -476,6 +494,7 @@ namespace Animation
 				transition.onEnd = nullptr;
 				break;
 			case kGraphSnapshotToGame:
+				requiresBaseTransforms = true;
 				blendLayers[0].weight = 0.0f;
 				blendLayers[1].weight = 1.0f;
 				transition.startLayer = 1;

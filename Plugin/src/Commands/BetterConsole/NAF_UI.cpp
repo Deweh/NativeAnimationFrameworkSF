@@ -68,7 +68,9 @@ namespace
 		UI->Separator();
 		UI->Text("Loaded: %s", isLoaded ? "True" : "False");
 #ifdef ENABLE_PERFORMANCE_MONITORING
+		UI->Text("Base Update Time: %.2f ms", g->baseUpdateMS);
 		UI->Text("Update Time: %.2f ms", g->lastUpdateMs);
+#endif
 
 		size_t memorySize = sizeof(Animation::Graph) + (isLoaded ? sizeof(Animation::Graph::LOADED_DATA) : sizeof(Animation::Graph::UNLOADED_DATA));
 		if (isLoaded) {
@@ -76,7 +78,6 @@ namespace
 		}
 
 		UI->Text("Memory Usage: %.2f KB", static_cast<float>(memorySize) / 1024.0f);
-#endif
 
 		if (isLoaded) {
 			UI->Separator();

@@ -311,25 +311,28 @@ namespace Animation
 
 	static Util::Call5Hook<void(RE::IAnimationGraphManagerHolder*, RE::BSAnimationUpdateData*, void*)> GraphUpdateHook(118488, 0x61, "IAnimationGraphManagerHolder::UpdateAnimationGraphManager",
 		[](RE::IAnimationGraphManagerHolder* a_graphHolder, RE::BSAnimationUpdateData* a_updateData, void* a_graph) {
-			GraphUpdateHook(a_graphHolder, a_updateData, a_graph);
-
 			std::shared_lock l{ gm.stateLock };
 			auto& m = gm.state->loadedGraphs;
 			if (auto iter = m.find(a_graphHolder); iter != m.end()) {
 				auto& g = iter->second;
-				std::unique_lock gl{ g->lock };
-				g->Update(a_updateData->timeDelta, !a_updateData->modelCulled);
 
-				if (g->flags.none(
-						Graph::FLAGS::kPersistent,
-						Graph::FLAGS::kActiveIKChains,
-						Graph::FLAGS::kHasGenerator,
-						Graph::FLAGS::kTransitioning,
-						Graph::FLAGS::kLoadingAnimation,
-						Graph::FLAGS::kLoadingSequencerAnimation)) {
+				bool modelCulled = a_updateData->modelCulled;
+				a_updateData->modelCulled = modelCulled || !g->GetRequiresBaseTransforms();
+				PERF_TIMER_START(start);
+				GraphUpdateHook(a_graphHolder, a_updateData, a_graph);
+				PERF_TIMER_END(start, baseUpdateTime);
+
+				std::unique_lock gl{ g->lock };
+				PERF_TIMER_COPY_VALUE(baseUpdateTime, g->baseUpdateMS);
+				g->Update(a_updateData->timeDelta, !modelCulled);
+
+				if (g->GetRequiresDetach()) {
 					l.unlock();
 					gm.DetachGraph(a_graphHolder);
 				}
+			} else {
+				l.unlock();
+				GraphUpdateHook(a_graphHolder, a_updateData, a_graph);
 			}
 		});
 

@@ -107,7 +107,10 @@ namespace Animation
 		std::unique_ptr<UNLOADED_DATA> unloadedData = nullptr;
 #ifdef ENABLE_PERFORMANCE_MONITORING
 		float lastUpdateMs = 0.0f;
+		float baseUpdateMS = 0.0f;
 #endif
+
+		std::atomic<bool> requiresBaseTransforms = false;
 
 		Graph();
 		virtual ~Graph() noexcept;
@@ -140,6 +143,11 @@ namespace Animation
 		void EnableEyeTracking();
 		void DetachSequencer(bool a_transitionOut = true);
 		void SetLoaded(bool a_loaded);
+
+		// This function can be called without acquiring the graph lock.
+		bool GetRequiresBaseTransforms() const;
+
+		bool GetRequiresDetach() const;
 		XYZTransform GetRootXYZ();
 	};
 }
