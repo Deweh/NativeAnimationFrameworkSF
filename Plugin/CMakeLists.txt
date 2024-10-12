@@ -46,63 +46,18 @@ find_dependency_path(CommonLibSF include/SFSE/SFSE.h)
 find_dependency_path(ozz-animation include/ozz/animation/runtime/animation.h)
 find_dependency_path(fastgltf include/fastgltf/core.hpp)
 
+file(GLOB_RECURSE SRC_FILES src/*.cpp)
+
 # cmake target
 # runtime
 add_library(
 	${PROJECT_NAME}
 	SHARED
-		${SOURCES}
 		${CMAKE_CURRENT_BINARY_DIR}/include/Plugin.h
 		${CMAKE_CURRENT_BINARY_DIR}/version.rc
 		.clang-format
 		vcpkg.json
- 
- "src/Tasks/MainLoop.cpp"
- "src/Animation/Graph.cpp"
- "src/Animation/Transform.cpp"
- "src/Util/Math.cpp"
- "src/Animation/GraphManager.cpp" 
- "src/Settings/Settings.cpp" 
- "src/API/API_Internal.cpp" 
- "src/Settings/SkeletonDescriptor.cpp" 
- "src/Animation/Node.cpp"  
- "src/Serialization/GLTFImport.cpp"
- "src/Util/String.cpp"
- "src/Commands/NAFCommand.cpp"
- "src/Tasks/SaveLoadListener.cpp"
- "src/Animation/Generator.cpp"
- "src/Animation/IKTwoBoneData.cpp"
- "src/Animation/FileManager.cpp" 
- "src/Animation/Ozz.cpp"
- "src/Animation/SyncInstance.cpp"
- "src/Util/Trampoline.cpp"
- "src/Animation/Face/Manager.cpp"
- "src/Util/Timing.cpp"
- "src/Serialization/GLTFExport.cpp"
- "src/Tasks/Input.cpp"
- "src/Animation/Sequencer.cpp"
- "src/Commands/BetterConsole/NAF_UI.cpp"
- "src/Util/VM.cpp" 
- "src/Papyrus/NAFScript.cpp"
- "src/Animation/FileID.cpp"
- "src/Papyrus/EventManager.cpp"
- "src/Animation/PoseCache.cpp"
- "src/Animation/MorphAnimation.cpp"
- "src/Animation/Procedural/PGraph.cpp"
- "src/Animation/Procedural/PFullAnimationNode.cpp"
- "src/Animation/Procedural/PSmoothedRandNode.cpp"
- "src/Util/General.cpp"
- "src/Animation/Procedural/PBlend1DNode.cpp"
- "src/Animation/Procedural/PActorNode.cpp"
- "src/Animation/Procedural/PNode.cpp"
- "src/Serialization/BlendGraphImport.cpp"
- "src/Animation/Procedural/PInternalCacheReleaseNode.cpp"
- "src/Animation/Procedural/PFixedValueNode.cpp"
- "src/Animation/IAnimationFile.cpp"
- "src/Animation/Procedural/PAdditiveBlendNode.cpp"
- "src/Animation/Procedural/PVariableNode.cpp"
- "src/Animation/Procedural/PLimitROCNode.cpp"
- "src/Animation/Procedural/PTransformRangeNode.cpp")
+		${SRC_FILES})
 
 # copy to Starfield directory
 set(STARFIELD_PATH "C:/Program Files (x86)/Steam/steamapps/common/Starfield/Data/SFSE/Plugins")

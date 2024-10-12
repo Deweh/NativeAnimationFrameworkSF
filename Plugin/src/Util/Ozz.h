@@ -1,6 +1,7 @@
 #pragma once
 #include "ozz/base/maths/simd_quaternion.h"
 #include "Animation/Transform.h"
+#include "Util/String.h"
 
 namespace Util::Ozz
 {
@@ -173,5 +174,31 @@ namespace Util::Ozz
 	inline RE::NiTransform& CastOzzToNi(ozz::math::Float4x4& a_matrix)
 	{
 		return *reinterpret_cast<RE::NiTransform*>(&a_matrix);
+	}
+
+	inline bool GetJointIndexes(const ozz::animation::Skeleton* a_skeleton, const std::span<std::string_view>& a_targetNames, const std::span<int32_t>& a_indexesOut)
+	{
+		if (a_targetNames.size() != a_indexesOut.size())
+			return false;
+
+		for (auto& i : a_indexesOut) {
+			i = -1;
+		}
+
+		const auto jointNames = a_skeleton->joint_names();
+		for (auto iter = jointNames.begin(); iter != jointNames.end(); iter++) {
+			for (size_t i = 0; i < a_targetNames.size(); i++) {
+				if (Util::String::CaseInsensitiveCompare(a_targetNames[i], *iter)) {
+					a_indexesOut[i] = std::distance(jointNames.begin(), iter);
+				}
+			}
+		}
+
+		for (size_t i = 0; i < a_targetNames.size(); i++) {
+			if (a_indexesOut[i] < 0) {
+				return false;
+			}
+		}
+		return true;
 	}
 }

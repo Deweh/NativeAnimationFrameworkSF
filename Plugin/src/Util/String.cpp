@@ -38,6 +38,15 @@ namespace Util
 		return s;
 	}
 
+	bool String::CaseInsensitiveCompare(const std::string_view& s1, const std::string_view& s2)
+	{
+		return std::equal(s1.begin(), s1.end(),
+			s2.begin(), s2.end(),
+			[](char a, char b) {
+				return tolower(a) == tolower(b);
+			});
+	}
+
 	std::vector<std::string_view> String::Split(const std::string_view& s, const std::string_view& delimiter, const std::optional<char>& escapeChar)
 	{
 		std::vector<std::string_view> substrings;
