@@ -17,20 +17,16 @@ namespace Animation
 	class Generator
 	{
 	public:
-		bool rootResetRequired = false;
+		bool looped = false;
 		bool paused = false;
 		float localTime = 0.0f;
 		float duration = 0.0f;
 		float speed = 1.0f;
-		Transform localRootTransform;
-		PoseCache::Handle* output;
-		ozz::animation::SamplingJob::Context* context = nullptr;
 
-		virtual void Generate(PoseCache& cache);
+		virtual std::span<ozz::math::SoaTransform> Generate(PoseCache& cache);
 		virtual bool HasFaceAnimation();
 		virtual void SetFaceMorphData(Face::MorphData* morphData);
-		virtual void SetOutput(PoseCache::Handle* hndl);
-		virtual void SetContext(ozz::animation::SamplingJob::Context* ctxt);
+		virtual void SetOutput(const std::span<ozz::math::Float4x4>& a_modelSpaceCache, const ozz::animation::Skeleton* a_skeleton);
 		virtual void OnDetaching();
 		virtual void AdvanceTime(float deltaTime);
 		virtual const std::string_view GetSourceFile();
@@ -51,7 +47,8 @@ namespace Animation
 		bool SetVariable(const std::string_view a_name, float a_value);
 		float GetVariable(const std::string_view a_name);
 		void ForEachVariable(const std::function<void(const std::string_view, float&)> a_func);
-		virtual void Generate(PoseCache& cache) override;
+		virtual std::span<ozz::math::SoaTransform> Generate(PoseCache& cache) override;
+		virtual void SetOutput(const std::span<ozz::math::Float4x4>& a_modelSpaceCache, const ozz::animation::Skeleton* a_skeleton) override;
 		virtual void AdvanceTime(float deltaTime) override;
 		virtual const std::string_view GetSourceFile() override;
 		virtual void Synchronize(Generator* a_other, float a_correctionDelta) override;
@@ -63,12 +60,14 @@ namespace Animation
 	class LinearClipGenerator : public Generator
 	{
 	public:
+		ozz::animation::SamplingJob::Context context;
 		std::shared_ptr<OzzAnimation> anim = nullptr;
 		Face::MorphData* faceMorphData = nullptr;
+		PoseCache::Handle output;
 
 		LinearClipGenerator(const std::shared_ptr<OzzAnimation>& a_anim);
 
-		virtual void Generate(PoseCache& cache) override;
+		virtual std::span<ozz::math::SoaTransform> Generate(PoseCache& cache) override;
 		virtual bool HasFaceAnimation() override;
 		virtual void SetFaceMorphData(Face::MorphData* morphData) override;
 		virtual void AdvanceTime(float deltaTime) override;

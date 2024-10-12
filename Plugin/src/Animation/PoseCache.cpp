@@ -54,6 +54,11 @@ namespace Animation
 		}
 	}
 
+	bool PoseCache::Handle::is_valid() const
+	{
+		return _owner != nullptr && _impl != UINT64_MAX;
+	}
+
 	void PoseCache::set_pose_size(size_t a_size)
 	{
 		_pose_size = a_size;

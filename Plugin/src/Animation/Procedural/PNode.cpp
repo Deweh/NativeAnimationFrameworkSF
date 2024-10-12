@@ -2,6 +2,17 @@
 
 namespace Animation::Procedural
 {
+	void PEvaluationContext::UpdateModelSpaceCache(const std::span<ozz::math::SoaTransform>& a_localPose, int a_from, int a_to)
+	{
+		ozz::animation::LocalToModelJob l2mJob;
+		l2mJob.skeleton = skeleton;
+		l2mJob.input = ozz::make_span(a_localPose);
+		l2mJob.output = ozz::make_span(modelSpaceCache);
+		l2mJob.from = a_from;
+		l2mJob.to = a_to;
+		l2mJob.Run();
+	}
+
 	std::unique_ptr<PNodeInstanceData> PNode::CreateInstanceData()
 	{
 		return nullptr;

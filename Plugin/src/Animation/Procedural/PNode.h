@@ -32,6 +32,13 @@ namespace Animation::Procedural
 		std::unordered_map<std::string_view, PVariableInstance*> variableMap;
 		PEvaluationContext* lastSyncOwner = nullptr;
 		std::vector<SyncData> syncMap;
+
+		const ozz::animation::Skeleton* skeleton = nullptr;
+		std::span<ozz::math::Float4x4> modelSpaceCache;
+
+		void UpdateModelSpaceCache(const std::span<ozz::math::SoaTransform>& a_localPose,
+			int a_from = ozz::animation::Skeleton::kNoParent,
+			int a_to = ozz::animation::Skeleton::kMaxJoints);
 	};
 
 	class PNode

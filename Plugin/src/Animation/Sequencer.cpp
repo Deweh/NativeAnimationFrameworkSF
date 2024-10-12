@@ -14,9 +14,9 @@ namespace Animation
 
 	void Sequencer::Update()
 	{
-		if (owner->generator->rootResetRequired || (flags.any(FLAG::kForceAdvance) && flags.none(FLAG::kSmoothAdvance))) {
+		if (owner->generator->looped || (flags.any(FLAG::kForceAdvance) && flags.none(FLAG::kSmoothAdvance))) {
 			if (loopsRemaining == 0 || flags.any(FLAG::kForceAdvance)) {
-				owner->generator->rootResetRequired = false;
+				owner->generator->looped = false;
 				owner->generator->localTime = AT_END;
 				AdvancePhase();
 			} else if (loopsRemaining > 0) {
@@ -202,7 +202,7 @@ namespace Animation
 	void Sequencer::Exit()
 	{
 		if (owner->generator) {
-			owner->generator->rootResetRequired = false;
+			owner->generator->looped = false;
 			owner->generator->localTime = AT_END;
 			owner->generator->paused = true;
 		}

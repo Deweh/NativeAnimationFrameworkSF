@@ -4,11 +4,10 @@
 
 namespace Animation
 {
-	void Generator::Generate(PoseCache&) {}
+	std::span<ozz::math::SoaTransform> Generator::Generate(PoseCache&) { return {}; }
 	bool Generator::HasFaceAnimation() { return false; }
 	void Generator::SetFaceMorphData(Face::MorphData* morphData){}
-	void Generator::SetOutput(PoseCache::Handle* hndl) { output = hndl; }
-	void Generator::SetContext(ozz::animation::SamplingJob::Context* ctxt) { context = ctxt; }
+	void Generator::SetOutput(const std::span<ozz::math::Float4x4>& a_modelSpaceCache, const ozz::animation::Skeleton* a_skeleton){}
 	void Generator::OnDetaching() {}
 	void Generator::AdvanceTime(float deltaTime) { localTime += deltaTime * speed; }
 	const std::string_view Generator::GetSourceFile() { return ""; }
@@ -19,18 +18,25 @@ namespace Animation
 	{
 		anim = a_anim;
 		duration = anim->data->duration();
+		context.Resize(anim->data->num_tracks());
 
 		if (duration != 0.0f) {
 			duration = 1.0f / duration;
 		}
 	}
 
-	void LinearClipGenerator::Generate(PoseCache& cache)
+	std::span<ozz::math::SoaTransform> LinearClipGenerator::Generate(PoseCache& cache)
 	{
+		if (!output.is_valid()) {
+			output = cache.acquire_handle();
+		}
+
+		auto outSpan = output.get();
+
 		ozz::animation::SamplingJob sampleJob;
 		sampleJob.animation = anim->data.get();
-		sampleJob.context = context;
-		sampleJob.output = output->get_ozz();
+		sampleJob.context = &context;
+		sampleJob.output = ozz::make_span(outSpan);
 		sampleJob.ratio = localTime;
 		sampleJob.Run();
 
@@ -44,6 +50,8 @@ namespace Animation
 				trackSampleJob.Run();
 			}
 		}
+
+		return outSpan;
 	}
 
 	bool LinearClipGenerator::HasFaceAnimation()
@@ -68,7 +76,7 @@ namespace Animation
 		//If the floor is non-zero (outside 0-1), then it's going to loop this frame.
 		float flr = floorf(newTime);
 		localTime = newTime - flr;
-		rootResetRequired = flr;
+		looped = flr;
 	}
 
 	const std::string_view LinearClipGenerator::GetSourceFile()
@@ -121,16 +129,20 @@ namespace Animation
 		}
 	}
 
-	void ProceduralGenerator::Generate(PoseCache& cache)
+	std::span<ozz::math::SoaTransform> ProceduralGenerator::Generate(PoseCache& cache)
 	{
-		auto result = pGraph->Evaluate(pGraphInstance, cache);
-		auto outSpan = output->get();
-		std::copy(result.begin(), result.end(), outSpan.begin());
+		return pGraph->Evaluate(pGraphInstance, cache);
+	}
+
+	void ProceduralGenerator::SetOutput(const std::span<ozz::math::Float4x4>& a_modelSpaceCache, const ozz::animation::Skeleton* a_skeleton)
+	{
+		pGraphInstance.skeleton = a_skeleton;
+		pGraphInstance.modelSpaceCache = a_modelSpaceCache;
 	}
 
 	void ProceduralGenerator::AdvanceTime(float deltaTime)
 	{
-		rootResetRequired = pGraph->AdvanceTime(pGraphInstance, (deltaTime * speed) * static_cast<float>(!paused));
+		looped = pGraph->AdvanceTime(pGraphInstance, (deltaTime * speed) * static_cast<float>(!paused));
 	}
 
 	const std::string_view ProceduralGenerator::GetSourceFile()

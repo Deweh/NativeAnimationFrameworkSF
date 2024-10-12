@@ -1,9 +1,10 @@
-#include "Graph.h"
 #include "Util/Math.h"
-#include "Tasks/MainLoop.h"
-#include "Node.h"
-#include "Face/Manager.h"
+#include "Util/Ozz.h"
 #include "Util/Timing.h"
+#include "Tasks/MainLoop.h"
+#include "Face/Manager.h"
+#include "Graph.h"
+#include "Node.h"
 #include "Sequencer.h"
 #include "GraphManager.h"
 
@@ -166,17 +167,15 @@ namespace Animation
 		}
 
 		if (a_visible) {
-			generator->Generate(loadedData->poseCache);
+			auto generatedPose = generator->Generate(loadedData->poseCache);
 
 			if (flags.any(FLAGS::kTransitioning)) {
 				auto blendPose = loadedData->blendedPose.get();
 				AdvanceTransitionTime(a_deltaTime);
-				UpdateTransition(ozz::make_span(blendPose));
-				loadedData->lastPose = kBlendedPose;
+				UpdateTransition(ozz::make_span(blendPose), ozz::make_span(generatedPose));
 				PushAnimationOutput(blendPose);
 			} else {
-				loadedData->lastPose = kGeneratedPose;
-				PushAnimationOutput(loadedData->generatedPose.get());
+				PushAnimationOutput(generatedPose);
 			}
 		} else if (flags.any(FLAGS::kTransitioning)) {
 			AdvanceTransitionTime(a_deltaTime);
@@ -329,12 +328,12 @@ namespace Animation
 				l->eyeTrackData = std::make_unique<EyeTrackingData>();
 			}
 
-			l->context.Resize(skeleton->data->num_joints());
+			l->lastOutput.reserve(skeleton->data->num_joints());
+			l->lastOutput.resize(skeleton->data->num_joints(), ozz::math::Float4x4::identity());
 			l->poseCache.set_pose_size(skeleton->data->num_soa_joints());
 			l->poseCache.reserve(4);
 			l->restPose = l->poseCache.acquire_handle();
 			l->snapshotPose = l->poseCache.acquire_handle();
-			l->generatedPose = l->poseCache.acquire_handle();
 			l->blendedPose = l->poseCache.acquire_handle();
 
 			if (unloadedData && !unloadedData->restoreFile.QPath().empty()) {
@@ -350,6 +349,7 @@ namespace Animation
 				loadedData.reset();
 			}
 			
+			flags.reset(FLAGS::kGeneratedFirstPose);
 			flags.set(FLAGS::kUnloaded3D);
 			unloadedData = std::make_unique<UNLOADED_DATA>();
 			auto& u = unloadedData;
@@ -433,11 +433,11 @@ namespace Animation
 		}
 	}
 
-	void Graph::UpdateTransition(const ozz::span<ozz::math::SoaTransform>& a_output)
+	void Graph::UpdateTransition(const ozz::span<ozz::math::SoaTransform>& a_output, const ozz::span<ozz::math::SoaTransform>& a_generatedPose)
 	{
 		auto& transition = loadedData->transition;
 		auto& blendLayers = loadedData->blendLayers;
-		blendLayers[0].transform = loadedData->generatedPose.get_ozz();
+		blendLayers[0].transform = a_generatedPose;
 		blendLayers[1].transform = loadedData->snapshotPose.get_ozz();
 
 		ozz::animation::BlendingJob blendJob;
@@ -540,8 +540,7 @@ namespace Animation
 		flags.set(FLAGS::kTransitioning);
 		if (a_dest != nullptr) {
 			generator = std::move(a_dest);
-			generator->SetContext(&loadedData->context);
-			generator->SetOutput(&loadedData->generatedPose);
+			generator->SetOutput(loadedData->lastOutput, skeleton->data.get());
 
 			if (generator->HasFaceAnimation()) {
 				loadedData->transition.queuedDuration = a_transitionTime;
@@ -559,21 +558,19 @@ namespace Animation
 
 	void Graph::PushAnimationOutput(const std::span<ozz::math::SoaTransform>& a_output)
 	{
-		// This is a reduced version of the LocalToModelJob to simply convert SoaTransforms to Float4x4s without doing any additional math.
-		const int end = skeleton->data->num_joints();
-		for (int i = 0, process = i < end; process;) {
-			const ozz::math::SoaTransform& transform = a_output[i / 4];
-			const ozz::math::SoaFloat4x4 local_soa_matrices = ozz::math::SoaFloat4x4::FromAffine(
-				transform.translation, transform.rotation, transform.scale);
+		if (loadedData->lastOutput.size() < 2)
+			return;
 
-			ozz::math::Float4x4 local_aos_matrices[4];
-			ozz::math::Transpose16x16(&local_soa_matrices.cols[0].x,
-				local_aos_matrices->cols);
+		Util::Ozz::UnpackSoaTransforms(a_output, loadedData->lastOutput, skeleton->data.get());
 
-			for (const int soa_end = (i + 4) & ~3; i < soa_end && process; ++i, process = i < end) {
-				*nodes[i]->localMatrix = local_aos_matrices[i & 3];
-			}
+		auto it1 = std::next(loadedData->lastOutput.begin());
+		auto it2 = std::next(nodes.begin());
+
+		for (; it1 != loadedData->lastOutput.end() && it2 != nodes.end(); ++it1, ++it2) {
+			*(*it2)->localMatrix = *it1;
 		}
+
+		flags.set(FLAGS::kGeneratedFirstPose);
 
 		auto r = loadedData->rootNode;
 		if (!r)
@@ -646,22 +643,14 @@ namespace Animation
 		if (!loadedData)
 			return;
 
-		std::span<ozz::math::SoaTransform> sourcePose;
-		switch (loadedData->lastPose) {
-		case kNoPose:
-			UpdateRestPose();
-			sourcePose = loadedData->restPose.get();
-			break;
-		case kGeneratedPose:
-			sourcePose = loadedData->generatedPose.get();
-			break;
-		case kBlendedPose:
-			sourcePose = loadedData->blendedPose.get();
-			break;
-		}
-
 		std::span<ozz::math::SoaTransform> snapshotPose = loadedData->snapshotPose.get();
-		std::copy(sourcePose.begin(), sourcePose.end(), snapshotPose.begin());
+		if (flags.any(FLAGS::kGeneratedFirstPose)) {
+			Util::Ozz::PackSoaTransforms(loadedData->lastOutput, snapshotPose, skeleton->data.get());
+		} else {
+			UpdateRestPose();
+			std::span<ozz::math::SoaTransform> restPose = loadedData->restPose.get();
+			std::copy(restPose.begin(), restPose.end(), snapshotPose.begin());
+		}
 	}
 
 	void Graph::ResetRootTransform()

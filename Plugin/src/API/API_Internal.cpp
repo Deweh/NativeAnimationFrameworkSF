@@ -5,33 +5,39 @@
 #include "Serialization/GLTFImport.h"
 #include "Animation/Ozz.h"
 #include "Animation/Transform.h"
+#include "Util/Ozz.h"
 namespace
 {
 	class NAFAPI_UserGenerator : public Animation::Generator
 	{
 	public:
+		Animation::PoseCache::Handle output;
+		const ozz::animation::Skeleton* skeleton;
 		void* userData;
 		std::vector<Animation::Transform> userOutput;
 		NAFAPI_CustomGeneratorFunction generateFunc = nullptr;
 		NAFAPI_CustomGeneratorFunction onDestroyFunc = nullptr;
 		bool detaching = false;
 
-		virtual void Generate(Animation::PoseCache& cache) override
+		virtual std::span<ozz::math::SoaTransform> Generate(Animation::PoseCache& cache) override
 		{
-			if (detaching) [[unlikely]]
-				return;
+			if (!output.is_valid()) {
+				output = cache.acquire_handle();
+			}
+
+			if (detaching) [[unlikely]] {
+				return output.get();
+			}
 
 			generateFunc(userData, this, 0.0f, { userOutput.data(), userOutput.size() });
-			auto outSpan = output->get();
-			Animation::Transform::StoreSoaTransforms(outSpan, [&](size_t i) {
-				return userOutput[i];
-			});
+			Util::Ozz::PackSoaTransforms(userOutput, output.get(), skeleton);
+			return output.get();
 		}
 
-		virtual void SetOutput(Animation::PoseCache::Handle* hndl) override
+		virtual void SetOutput(const std::span<ozz::math::Float4x4>& a_modelSpaceCache, const ozz::animation::Skeleton* a_skeleton) override
 		{
-			Animation::Generator::SetOutput(hndl);
-			userOutput.resize(hndl->get().size() * 4);
+			skeleton = a_skeleton;
+			userOutput.resize(skeleton->num_joints());
 		}
 
 		virtual void OnDetaching() override
@@ -135,27 +141,7 @@ uint16_t NAFAPI_PlayAnimationFromGLTF(
 	const char* a_fileName,
 	const NAFAPI_AnimationIdentifer& a_id)
 {
-	Serialization::GLTFImport::AnimationInfo info{ .targetActor = a_actor, .fileName = a_fileName };
-	info.id.type = static_cast<Serialization::GLTFImport::AnimationIdentifer::Type>(a_id.type);
-	info.id.index = a_id.index;
-	if (a_id.name != nullptr) {
-		info.id.name = a_id.name;
-	}
-
-	Serialization::GLTFImport::LoadAnimation(info);
-
-	if (info.result.error) {
-		return info.result.error;
-	}
-
-	auto sharedAnim = std::make_shared<Animation::OzzAnimation>();
-	sharedAnim->data = std::move(info.result.anim);
-
-	Animation::GraphManager::GetSingleton()->AttachGenerator(
-		a_actor,
-		std::make_unique<Animation::LinearClipGenerator>(sharedAnim),
-		a_transitionTime);
-	return 0;
+	return !Animation::GraphManager::GetSingleton()->LoadAndStartAnimation(a_actor, a_fileName, a_id.name, a_transitionTime);
 }
 
 NAFAPI_Handle<NAFAPI_Array<const char*>> NAFAPI_GetSkeletonNodes(

@@ -21,6 +21,7 @@ namespace Animation
 			std::span<ozz::math::SoaTransform> get();
 			ozz::span<ozz::math::SoaTransform> get_ozz();
 			void reset();
+			bool is_valid() const;
 
 		protected:
 			friend class PoseCache;

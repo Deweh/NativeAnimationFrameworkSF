@@ -49,7 +49,9 @@ namespace Animation
 			kLoadingAnimation = 1u << 5,
 			kRequiresEyeTrackUpdate = 1u << 6,
 			kLoadingSequencerAnimation = 1u << 7,
-			kRequiresFaceDataUpdate = 1u << 8
+			kRequiresFaceDataUpdate = 1u << 8,
+
+			kGeneratedFirstPose = 1u << 9
 		};
 
 		enum LastPose : uint8_t
@@ -71,16 +73,14 @@ namespace Animation
 		struct LOADED_DATA
 		{
 			ozz::math::Float4x4 defaultMatrix;
+			std::vector<ozz::math::Float4x4> lastOutput;
 			RE::BGSFadeNode* rootNode = nullptr;
-			ozz::animation::SamplingJob::Context context;
 			PoseCache poseCache;
 			PoseCache::Handle restPose;
 			PoseCache::Handle snapshotPose;
-			PoseCache::Handle generatedPose;
 			PoseCache::Handle blendedPose;
 			std::array<ozz::animation::BlendingJob::Layer, 2> blendLayers;
 			TransitionData transition;
-			LastPose lastPose = kNoPose;
 			std::unique_ptr<EyeTrackingData> eyeTrackData;
 			std::shared_ptr<Face::MorphData> faceMorphData = nullptr;
 			RE::BSFaceGenAnimationData* faceAnimData = nullptr;
@@ -126,7 +126,7 @@ namespace Animation
 		bool RemoveIKJob(IKTwoBoneData* a_jobData, float a_transitionTime);
 		void StartTransition(std::unique_ptr<Generator> a_dest, float a_transitionTime);
 		void AdvanceTransitionTime(float a_deltaTime);
-		void UpdateTransition(const ozz::span<ozz::math::SoaTransform>& a_output);
+		void UpdateTransition(const ozz::span<ozz::math::SoaTransform>& a_output, const ozz::span<ozz::math::SoaTransform>& a_generatedPose);
 		void PushAnimationOutput(const std::span<ozz::math::SoaTransform>& a_output);
 		void PushRootOutput(bool a_visible);
 		void UpdateRestPose();
