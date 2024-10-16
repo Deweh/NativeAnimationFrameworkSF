@@ -7,7 +7,8 @@ namespace Animation
 	std::span<ozz::math::SoaTransform> Generator::Generate(PoseCache&) { return {}; }
 	bool Generator::HasFaceAnimation() { return false; }
 	void Generator::SetFaceMorphData(Face::MorphData* morphData){}
-	void Generator::SetOutput(const std::span<ozz::math::Float4x4>& a_modelSpaceCache, const ozz::animation::Skeleton* a_skeleton){}
+	void Generator::SetOutput(const std::span<ozz::math::Float4x4>& a_modelSpaceCache, const ozz::animation::Skeleton* a_skeleton) {}
+	void Generator::SetRootTransform(const ozz::math::Float4x4* a_transform) {}
 	void Generator::OnDetaching() {}
 	void Generator::AdvanceTime(float deltaTime) { localTime += deltaTime * speed; }
 	const std::string_view Generator::GetSourceFile() { return ""; }
@@ -138,6 +139,11 @@ namespace Animation
 	{
 		pGraphInstance.skeleton = a_skeleton;
 		pGraphInstance.modelSpaceCache = a_modelSpaceCache;
+	}
+
+	void ProceduralGenerator::SetRootTransform(const ozz::math::Float4x4* a_transform)
+	{
+		pGraphInstance.rootTransform = a_transform;
 	}
 
 	void ProceduralGenerator::AdvanceTime(float deltaTime)

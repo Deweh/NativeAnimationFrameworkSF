@@ -27,6 +27,7 @@ namespace Animation
 		virtual bool HasFaceAnimation();
 		virtual void SetFaceMorphData(Face::MorphData* morphData);
 		virtual void SetOutput(const std::span<ozz::math::Float4x4>& a_modelSpaceCache, const ozz::animation::Skeleton* a_skeleton);
+		virtual void SetRootTransform(const ozz::math::Float4x4* a_transform);
 		virtual void OnDetaching();
 		virtual void AdvanceTime(float deltaTime);
 		virtual const std::string_view GetSourceFile();
@@ -49,6 +50,7 @@ namespace Animation
 		void ForEachVariable(const std::function<void(const std::string_view, float&)> a_func);
 		virtual std::span<ozz::math::SoaTransform> Generate(PoseCache& cache) override;
 		virtual void SetOutput(const std::span<ozz::math::Float4x4>& a_modelSpaceCache, const ozz::animation::Skeleton* a_skeleton) override;
+		virtual void SetRootTransform(const ozz::math::Float4x4* a_transform) override;
 		virtual void AdvanceTime(float deltaTime) override;
 		virtual const std::string_view GetSourceFile() override;
 		virtual void Synchronize(Generator* a_other, float a_correctionDelta) override;

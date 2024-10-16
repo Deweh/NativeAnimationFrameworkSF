@@ -24,9 +24,7 @@ namespace Animation::Procedural
 			"ik_2b_adj",
 			{
 				{ "pose", PEvaluationType<PoseCache::Handle> },
-				{ "x_offset", PEvaluationType<float> },
-				{ "y_offset", PEvaluationType<float> },
-				{ "z_offset", PEvaluationType<float> }
+				{ "target", PEvaluationType<ozz::math::Float4> }
 			},
 			{
 				{ "start_node", PEvaluationType<RE::BSFixedString> },

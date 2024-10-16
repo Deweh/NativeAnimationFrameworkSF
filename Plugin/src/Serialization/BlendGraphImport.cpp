@@ -56,6 +56,7 @@ namespace Serialization
 			std::string_view stringVal;
 			double numVal;
 			uint64_t intVal;
+			bool bVal;
 			for (auto n : nodes) {
 				std::string_view typeName = n["type"];
 				PNode::Registration* typeInfo = nullptr;
@@ -104,6 +105,11 @@ namespace Serialization
 						case PEvaluationType<uint64_t>:
 							intVal = curVal;
 							values.emplace_back(intVal);
+							break;
+						case PEvaluationType<bool>:
+							bVal = curVal;
+							values.emplace_back(bVal);
+							break;
 						}
 					}
 					if (!currentNode->SetCustomValues(values, a_skeleton)) {

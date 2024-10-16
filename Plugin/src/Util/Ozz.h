@@ -111,6 +111,18 @@ namespace Util::Ozz
 		}
 	}
 
+	inline void ApplySoATransformTranslation(int32_t a_index, const ozz::math::SimdFloat4& a_trans, const std::span<ozz::math::SoaTransform>& a_transforms)
+	{
+		ozz::math::SoaTransform& soa_transform_ref = a_transforms[a_index / 4];
+		ozz::math::SimdFloat4 aos_trans[4];
+		ozz::math::Transpose4x4(&soa_transform_ref.translation.x, aos_trans);
+
+		ozz::math::SimdFloat4& aos_trans_ref = aos_trans[a_index & 3];
+		aos_trans_ref = a_trans;
+
+		ozz::math::Transpose4x4(aos_trans, &soa_transform_ref.translation.x);
+	}
+
 	inline void ApplySoATransformQuaternion(int32_t a_index, const ozz::math::SimdQuaternion& a_quat, const std::span<ozz::math::SoaTransform>& a_transforms)
 	{
 		ozz::math::SoaTransform& soa_transform_ref = a_transforms[a_index / 4];
@@ -132,6 +144,24 @@ namespace Util::Ozz
 		aos_quat_ref = aos_quat_ref * a_quat;
 
 		ozz::math::Transpose4x4(&aos_quats->xyzw, &soa_transform_ref.rotation.x);
+	}
+
+	inline ozz::math::SimdQuaternion GetSoATransformQuaternion(int32_t a_index, const std::span<ozz::math::SoaTransform>& a_transforms)
+	{
+		ozz::math::SoaTransform& soa_transform_ref = a_transforms[a_index / 4];
+		ozz::math::SimdQuaternion aos_quats[4];
+		ozz::math::Transpose4x4(&soa_transform_ref.rotation.x, &aos_quats->xyzw);
+
+		return aos_quats[a_index & 3];
+	}
+
+	inline ozz::math::SimdFloat4 GetSoATransformTranslation(int32_t a_index, const std::span<ozz::math::SoaTransform>& a_transforms)
+	{
+		ozz::math::SoaTransform& soa_transform_ref = a_transforms[a_index / 4];
+		ozz::math::SimdFloat4 aos_trans[4];
+		ozz::math::Transpose4x4(&soa_transform_ref.translation.x, aos_trans);
+
+		return aos_trans[a_index & 3];
 	}
 
 	inline ozz::math::SimdQuaternion ToNormalizedQuaternion(const ozz::math::Float4x4& a_transform)

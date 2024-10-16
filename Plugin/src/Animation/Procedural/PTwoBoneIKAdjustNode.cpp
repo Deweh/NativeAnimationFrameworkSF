@@ -13,9 +13,7 @@ namespace Animation::Procedural
 	{
 		// Get node input data.
 		PoseCache::Handle& input = std::get<PoseCache::Handle>(a_evalContext.results[inputs[0]]);
-		float xOffset = std::get<float>(a_evalContext.results[inputs[1]]);
-		float yOffset = std::get<float>(a_evalContext.results[inputs[2]]);
-		float zOffset = std::get<float>(a_evalContext.results[inputs[3]]);
+		const ozz::math::Float4& target = std::get<ozz::math::Float4>(a_evalContext.results[inputs[1]]);
 
 		// Acquire a pose handle for this node's output and copy the input pose to the output pose - we only need to make 3 corrections to the pose.
 		PoseCache::Handle output = a_poseCache.acquire_handle();
@@ -26,12 +24,11 @@ namespace Animation::Procedural
 		// Calculate model-space matrices from the pose, and extract the model-space position & rotation of the IK end node.
 		a_evalContext.UpdateModelSpaceCache(outputSpan);
 		const ozz::math::Float4x4& endNodeMS = a_evalContext.modelSpaceCache[endNode];
-		const ozz::math::SimdFloat4& endMSPosition = endNodeMS.cols[3];
 		const ozz::math::SimdQuaternion endMSRotation = Util::Ozz::ToNormalizedQuaternion(endNodeMS);
 
 		// Setup IK job params & run.
 		ozz::animation::IKTwoBoneJob ikJob;
-		ikJob.target = endMSPosition + ozz::math::simd_float4::Load(xOffset, yOffset, zOffset, 0.0f);
+		ikJob.target = ozz::math::simd_float4::Load3PtrU(&target.x);
 		ikJob.pole_vector = ozz::math::simd_float4::zero();
 		ikJob.mid_axis = ozz::math::simd_float4::Load3PtrU(&midAxis.x);
 

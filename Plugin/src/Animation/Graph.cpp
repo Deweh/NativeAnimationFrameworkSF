@@ -82,6 +82,10 @@ namespace Animation
 			auto& l = loadedData;
 			l->rootNode = a_rootNode;
 
+			if (generator) {
+				generator->SetRootTransform(reinterpret_cast<ozz::math::Float4x4*>(&l->rootNode->world));
+			}
+
 			if (l->eyeTrackData) {
 				l->eyeTrackData->lEye = nullptr;
 				l->eyeTrackData->rEye = nullptr;
@@ -541,6 +545,7 @@ namespace Animation
 		if (a_dest != nullptr) {
 			generator = std::move(a_dest);
 			generator->SetOutput(loadedData->lastOutput, skeleton->data.get());
+			generator->SetRootTransform(reinterpret_cast<ozz::math::Float4x4*>(&loadedData->rootNode->world));
 
 			if (generator->HasFaceAnimation()) {
 				loadedData->transition.queuedDuration = a_transitionTime;
