@@ -52,7 +52,7 @@
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Release",
 				"CMAKE_CONFIGURATION_TYPES": "Release",
-				"CMAKE_CXX_FLAGS_RELEASE": "/O2 /DEBUG /Zi",
+				"CMAKE_CXX_FLAGS_RELEASE": "/O2 /DNDEBUG /Zi",
 				"CMAKE_SHARED_LINKER_FLAGS_RELEASE": "/DEBUG /OPT:REF /OPT:ICF"
 			}
 		},

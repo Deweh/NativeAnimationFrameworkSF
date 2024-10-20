@@ -17,11 +17,6 @@ namespace Animation
 
 	Graph::~Graph() noexcept
 	{
-		StopSyncing();
-		if (loadedData) {
-			Face::Manager::GetSingleton()->OnAnimDataChange(loadedData->faceAnimData, nullptr);
-		}
-		EnableEyeTracking();
 	}
 
 	void Graph::OnAnimationReady(const FileID& a_id, std::shared_ptr<IAnimationFile> a_anim)
@@ -372,6 +367,16 @@ namespace Animation
 			lastUpdateMs = 0.0f;
 #endif
 		}
+	}
+
+	void Graph::OnDetach()
+	{
+		std::unique_lock l{ lock };
+		StopSyncing();
+		if (loadedData) {
+			Face::Manager::GetSingleton()->OnAnimDataChange(loadedData->faceAnimData, nullptr);
+		}
+		EnableEyeTracking();
 	}
 
 	bool Graph::GetRequiresBaseTransforms() const

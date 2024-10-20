@@ -9,7 +9,7 @@ namespace Animation::Procedural
 		{
 			ozz::math::SimdFloat4 restOffset;
 			ozz::math::SimdFloat4 physicsPositionWS;
-			ozz::math::SimdFloat4 velocity = ozz::math::simd_float4::zero();
+			ozz::math::SimdFloat4 previousPositionWS;
 			float deltaTime = 1.0f;
 			bool initialized = false;
 		};

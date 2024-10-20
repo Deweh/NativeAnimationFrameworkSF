@@ -20,7 +20,7 @@ namespace Animation::Procedural
 		std::copy(inputSpan.begin(), inputSpan.end(), outputSpan.begin());
 
 		// Update model space transforms.
-		a_evalContext.UpdateModelSpaceCache(outputSpan);
+		a_evalContext.UpdateModelSpaceCache(outputSpan, ozz::animation::Skeleton::kNoParent, boneIdx);
 
 		// Setup IK job params & run.
 		ozz::animation::IKAimJob ikJob;

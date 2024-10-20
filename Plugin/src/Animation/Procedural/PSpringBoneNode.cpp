@@ -8,9 +8,7 @@ namespace Animation::Procedural
 	bool SpringPhysicsJob::Run()
 	{
 		using namespace ozz::math;
-
-		SimdInt4 invertible;
-		const SimdQuaternion rootRot = Util::Ozz::ToNormalizedQuaternion(*rootTransform);
+		const SimdQuaternion rootRot{ ToQuaternion(*rootTransform) };
 
 		// Rotate the root position by the root rotation's inverse so that it's oriented in model-space.
 		const SimdFloat4 rootWS = TransformVector(Conjugate(rootRot), rootTransform->cols[3]);
@@ -19,21 +17,37 @@ namespace Animation::Procedural
 		if (!context->initialized) {
 			context->restOffset = boneTransform->cols[3] - parentTransform->cols[3];
 			context->physicsPositionWS = rootWS + boneTransform->cols[3];
+			context->previousPositionWS = context->physicsPositionWS;
 			context->initialized = true;
 		}
 
-		// Calculate spring forces & update physics position.
-		const SimdFloat4 displacement = context->physicsPositionWS - (parentWS + context->restOffset);
+		const SimdFloat4 currentPos = context->physicsPositionWS;
+		const SimdFloat4 prevPos = context->previousPositionWS;
+
+		// Calculate spring forces.
+		const SimdFloat4 displacement = currentPos - (parentWS + context->restOffset);
 		const SimdFloat4 springForce = displacement * simd_float4::Load1(-stiffness);
-		const SimdFloat4 dampingForce = context->velocity * simd_float4::Load1(-damping);
 		const SimdFloat4 gravityForce = gravity * simd_float4::Load1(mass);
-		const SimdFloat4 totalForce = springForce + dampingForce + gravityForce;
+		const SimdFloat4 totalForce = springForce + gravityForce;
 		const SimdFloat4 acceleration = totalForce * simd_float4::Load1(1.0f / mass);
-		const SimdFloat4 deltaTime = simd_float4::Load1(context->deltaTime);
-		context->velocity = context->velocity + (acceleration * deltaTime);
-		context->physicsPositionWS = context->physicsPositionWS + (context->velocity * deltaTime);
+
+		// Verlet integration = x(t+dt) = 2x(t) - x(t-dt) + a(t)dt^2
+		const float deltaTime = context->deltaTime;
+		const SimdFloat4 deltaTimeSq = simd_float4::Load1(deltaTime * deltaTime);
+		const SimdFloat4 newPhysicsPosition = currentPos * simd_float4::Load1(2.0f) - prevPos + acceleration * deltaTimeSq;
+
+		// Add damping by scaling position change.
+		const float oscillationFreq = std::sqrt(stiffness / mass);
+		const SimdFloat4 positionDiff = newPhysicsPosition - currentPos;
+		const SimdFloat4 dampingFactor = simd_float4::Load1(std::expf(-damping * oscillationFreq * deltaTime));
+		const SimdFloat4 dampedNewPosition = currentPos + positionDiff * dampingFactor;
+
+		// Update physics position.
+		context->previousPositionWS = currentPos;
+		context->physicsPositionWS = dampedNewPosition;
 
 		// Transform back to local space for final output.
+		SimdInt4 invertible;
 		const Float4x4 parentInverseMS = Invert(*parentTransform, &invertible);
 		if (!AreAllTrue1(invertible)) {
 			return false;
@@ -44,6 +58,7 @@ namespace Animation::Procedural
 		*positionOutput = SetW(localPos, simd_float4::zero());
 		return true;
 	}
+
 
 	void PSpringBoneNode::AdvanceTime(PNodeInstanceData* a_instanceData, float a_deltaTime)
 	{
@@ -58,12 +73,12 @@ namespace Animation::Procedural
 	PEvaluationResult PSpringBoneNode::Evaluate(PNodeInstanceData* a_instanceData, PoseCache& a_poseCache, PEvaluationContext& a_evalContext)
 	{
 		auto inst = static_cast<InstanceData*>(a_instanceData);
-		constexpr float valMin = 1.0f;
+		constexpr float valMin = 0.00001f;
 
 		// Get node input data.
 		PoseCache::Handle& input = std::get<PoseCache::Handle>(a_evalContext.results[inputs[0]]);
 		const float stiffness = std::max(valMin, std::get<float>(a_evalContext.results[inputs[1]]));
-		const float damping = std::clamp(std::get<float>(a_evalContext.results[inputs[2]]), valMin, stiffness + valMin);
+		const float damping = std::max(valMin, std::get<float>(a_evalContext.results[inputs[2]]));
 		const float mass = std::max(valMin, std::get<float>(a_evalContext.results[inputs[3]]));
 		const ozz::math::Float4& gravity = std::get<ozz::math::Float4>(a_evalContext.results[inputs[4]]);
 
@@ -72,6 +87,10 @@ namespace Animation::Procedural
 		auto inputSpan = input.get();
 		auto outputSpan = output.get();
 		std::copy(inputSpan.begin(), inputSpan.end(), outputSpan.begin());
+
+		// If effectively paused, don't run any calculations as a deltaTime of 0 will break velocity updates.
+		if (inst->context.deltaTime < 0.00001f)
+			return output;
 
 		// Update model-space cache.
 		a_evalContext.UpdateModelSpaceCache(outputSpan, ozz::animation::Skeleton::kNoParent, boneIdx);

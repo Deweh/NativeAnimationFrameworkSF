@@ -12,8 +12,14 @@ namespace Animation
 {
 	GraphManager* GraphManager::GetSingleton()
 	{
-		static GraphManager singleton;
-		return &singleton;
+		static std::mutex initLock;
+		static GraphManager* instance = nullptr;
+
+		std::unique_lock l{ initLock };
+		if (instance == nullptr) {
+			instance = new GraphManager();
+		}
+		return instance;
 	}
 
 	bool GraphManager::LoadAndStartAnimation(RE::Actor* a_actor, const std::string_view a_filePath, const std::string_view a_animId, float a_transitionTime)
@@ -271,10 +277,12 @@ namespace Animation
 	{
 		std::unique_lock l{ stateLock };
 		if (auto iter = state->loadedGraphs.find(a_graphHolder); iter != state->loadedGraphs.end()) {
+			iter->second->OnDetach();
 			state->loadedGraphs.erase(iter);
 			return true;
 		}
 		if (auto iter = state->unloadedGraphs.find(a_graphHolder); iter != state->unloadedGraphs.end()) {
+			iter->second->OnDetach();
 			state->unloadedGraphs.erase(iter);
 			return true;
 		}
@@ -328,6 +336,7 @@ namespace Animation
 
 				if (g->GetRequiresDetach()) {
 					l.unlock();
+					gl.unlock();
 					gm.DetachGraph(a_graphHolder);
 				}
 			} else {

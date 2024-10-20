@@ -143,10 +143,8 @@ namespace Animation
 		void EnableEyeTracking();
 		void DetachSequencer(bool a_transitionOut = true);
 		void SetLoaded(bool a_loaded);
-
-		// This function can be called without acquiring the graph lock.
-		bool GetRequiresBaseTransforms() const;
-
+		bool GetRequiresBaseTransforms() const;	// This function is atomic.
+		void OnDetach(); // This function is atomic.
 		bool GetRequiresDetach() const;
 		XYZTransform GetRootXYZ();
 	};
