@@ -8,31 +8,51 @@ namespace Animation::Procedural
 	bool SpringPhysicsJob::Run()
 	{
 		using namespace ozz::math;
-		const SimdQuaternion rootRot{ ToQuaternion(*rootTransform) };
-
-		// Rotate the root position by the root rotation's inverse so that it's oriented in model-space.
-		const SimdFloat4 rootWS = TransformVector(Conjugate(rootRot), rootTransform->cols[3]);
-		const SimdFloat4 parentWS = rootWS + parentTransform->cols[3];
+		SimdInt4 invertible;
+		const Float4x4 rootInverseWS = Invert(*rootTransform, &invertible);
+		if (!AreAllTrue1(invertible)) {
+			return false;
+		}
+		const Float4x4 parentInverseMS = Invert(*parentTransform, &invertible);
+		if (!AreAllTrue1(invertible)) {
+			return false;
+		}
 
 		if (!context->initialized) {
-			context->restOffset = boneTransform->cols[3] - parentTransform->cols[3];
-			context->physicsPositionWS = rootWS + boneTransform->cols[3];
-			context->previousPositionWS = context->physicsPositionWS;
+			const SimdFloat4& boneMS = boneTransform->cols[3];
+			const SimdFloat4 boneLS = TransformPoint(parentInverseMS, boneMS);
+			context->restOffset = boneLS;
+			context->physicsPosition = boneMS;
+			context->previousPosition = boneMS;
+			(*prevRootPos) = rootTransform->cols[3];
+			(*prevRootVelocity) = simd_float4::one();
 			context->initialized = true;
 		}
 
-		const SimdFloat4 currentPos = context->physicsPositionWS;
-		const SimdFloat4 prevPos = context->previousPositionWS;
+		// Get root movement transformed into model-space.
+		const SimdFloat4 relativeRoot = rootTransform->cols[3] - (*prevRootPos);
+		const SimdFloat4 worldMovementMS = TransformVector(rootInverseWS, relativeRoot);
+		(*prevRootPos) = rootTransform->cols[3];
+
+		// Calculate root acceleration in model-space.
+		const float deltaTime = context->deltaTime;
+		const SimdFloat4 deltaInvSimd = simd_float4::Load1(1.0f / deltaTime);
+		const SimdFloat4 worldVelocity = worldMovementMS * deltaInvSimd;
+		const SimdFloat4 worldAcceleration = (worldVelocity - (*prevRootVelocity)) * deltaInvSimd;
+		(*prevRootVelocity) = worldVelocity;
 
 		// Calculate spring forces.
-		const SimdFloat4 displacement = currentPos - (parentWS + context->restOffset);
+		const SimdFloat4 massSimd = simd_float4::Load1(mass);
+		const SimdFloat4 currentPos = context->physicsPosition;
+		const SimdFloat4 prevPos = context->previousPosition;
+		const SimdFloat4 displacement = currentPos - TransformPoint(*parentTransform, context->restOffset);
 		const SimdFloat4 springForce = displacement * simd_float4::Load1(-stiffness);
-		const SimdFloat4 gravityForce = gravity * simd_float4::Load1(mass);
-		const SimdFloat4 totalForce = springForce + gravityForce;
+		const SimdFloat4 gravityForce = gravity * massSimd;
+		const SimdFloat4 inertiaForce = -worldAcceleration * massSimd;
+		const SimdFloat4 totalForce = springForce + gravityForce + inertiaForce;
 		const SimdFloat4 acceleration = totalForce * simd_float4::Load1(1.0f / mass);
 
 		// Verlet integration = x(t+dt) = 2x(t) - x(t-dt) + a(t)dt^2
-		const float deltaTime = context->deltaTime;
 		const SimdFloat4 deltaTimeSq = simd_float4::Load1(deltaTime * deltaTime);
 		const SimdFloat4 newPhysicsPosition = currentPos * simd_float4::Load1(2.0f) - prevPos + acceleration * deltaTimeSq;
 
@@ -43,22 +63,14 @@ namespace Animation::Procedural
 		const SimdFloat4 dampedNewPosition = currentPos + positionDiff * dampingFactor;
 
 		// Update physics position.
-		context->previousPositionWS = currentPos;
-		context->physicsPositionWS = dampedNewPosition;
+		context->previousPosition = currentPos;
+		context->physicsPosition = dampedNewPosition;
 
 		// Transform back to local space for final output.
-		SimdInt4 invertible;
-		const Float4x4 parentInverseMS = Invert(*parentTransform, &invertible);
-		if (!AreAllTrue1(invertible)) {
-			return false;
-		}
-
-		SimdFloat4 localPos = context->physicsPositionWS - rootWS;
-		localPos = TransformPoint(parentInverseMS, localPos);
+		const SimdFloat4 localPos = TransformPoint(parentInverseMS, context->physicsPosition);
 		*positionOutput = SetW(localPos, simd_float4::zero());
 		return true;
 	}
-
 
 	void PSpringBoneNode::AdvanceTime(PNodeInstanceData* a_instanceData, float a_deltaTime)
 	{
@@ -105,6 +117,8 @@ namespace Animation::Procedural
 		springJob.boneTransform = &a_evalContext.modelSpaceCache[boneIdx];
 		springJob.parentTransform = &a_evalContext.modelSpaceCache[parentIdx];
 		springJob.rootTransform = a_evalContext.rootTransform;
+		springJob.prevRootPos = &a_evalContext.prevRootPos;
+		springJob.prevRootVelocity = &a_evalContext.prevRootVelocity;
 		springJob.context = &inst->context;
 
 		ozz::math::SimdFloat4 positionOutput;

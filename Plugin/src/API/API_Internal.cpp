@@ -34,7 +34,7 @@ namespace
 			return output.get();
 		}
 
-		virtual void SetOutput(const std::span<ozz::math::Float4x4>& a_modelSpaceCache, const ozz::animation::Skeleton* a_skeleton) override
+		virtual void SetOutput(const std::span<ozz::math::Float4x4>& a_modelSpaceCache, const ozz::animation::Skeleton* a_skeleton, Animation::PoseCache::Handle* a_restPose) override
 		{
 			skeleton = a_skeleton;
 			userOutput.resize(skeleton->num_joints());

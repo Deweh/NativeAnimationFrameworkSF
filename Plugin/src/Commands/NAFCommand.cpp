@@ -359,6 +359,21 @@ namespace Commands::NAFCommand
 			itfc->PrintLn("Done.");
 	}
 
+	void ProcessLockPosCommand(uint64_t idxStart = 1, bool verbose = true)
+	{
+		if (args.size() < idxStart + 1) {
+			return;
+		}
+
+		auto actor = ActorStrOrSelection(idxStart + 1, verbose);
+		if (!actor) {
+			return;
+		}
+
+		bool lock = Util::String::ToLower(args[idxStart]) == "true";
+		Animation::GraphManager::GetSingleton()->SetGraphControlsPosition(actor, lock);
+	}
+
 	void ProcessSilentCommand()
 	{
 		if (args.size() < 2) {
@@ -419,6 +434,8 @@ namespace Commands::NAFCommand
 			ProcessStartSeqCommand();
 		} else if (type == "advseq") {
 			ProcessAdvanceSeqCommand();
+		} else if (type == "lockpos") {
+			ProcessLockPosCommand();
 		} else if (type == "test") {
 			ProcessTest();
 		} else {

@@ -8,8 +8,8 @@ namespace Animation::Procedural
 		struct Context
 		{
 			ozz::math::SimdFloat4 restOffset;
-			ozz::math::SimdFloat4 physicsPositionWS;
-			ozz::math::SimdFloat4 previousPositionWS;
+			ozz::math::SimdFloat4 physicsPosition;
+			ozz::math::SimdFloat4 previousPosition;
 			float deltaTime = 1.0f;
 			bool initialized = false;
 		};
@@ -21,6 +21,8 @@ namespace Animation::Procedural
 		const ozz::math::Float4x4* boneTransform;    // Model-space transform.
 		const ozz::math::Float4x4* parentTransform;  // Model-space transform.
 		const ozz::math::Float4x4* rootTransform;    // World-space transform.
+		ozz::math::SimdFloat4* prevRootPos;          // World-space transform.
+		ozz::math::SimdFloat4* prevRootVelocity;     // World-space transform.
 		Context* context;
 
 		ozz::math::SimdFloat4* positionOutput;  // Local-space transform.

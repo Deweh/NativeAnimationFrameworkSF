@@ -166,6 +166,9 @@ namespace Animation
 		}
 
 		if (a_visible) {
+			if (requiresBaseTransforms.load()) {
+				UpdateRestPose();
+			}
 			auto generatedPose = generator->Generate(loadedData->poseCache);
 
 			if (flags.any(FLAGS::kTransitioning)) {
@@ -180,7 +183,9 @@ namespace Animation
 			AdvanceTransitionTime(a_deltaTime);
 		}
 
-		PushRootOutput(a_visible);
+		if (flags.any(FLAGS::kLockPosition)) {
+			PushRootOutput(a_visible);
+		}
 
 		PERF_TIMER_END(start, updateTime);
 		PERF_TIMER_COPY_VALUE(updateTime, lastUpdateMs);
@@ -384,6 +389,16 @@ namespace Animation
 		return requiresBaseTransforms.load();
 	}
 
+	void Graph::SetLockPosition(bool a_lock)
+	{
+		if (a_lock) {
+			flags.set(FLAGS::kLockPosition);
+			ResetRootTransform();
+		} else {
+			flags.reset(FLAGS::kLockPosition);
+		}
+	}
+
 	bool Graph::GetRequiresDetach() const
 	{
 		return flags.none(
@@ -450,7 +465,6 @@ namespace Animation
 		blendLayers[1].transform = loadedData->snapshotPose.get_ozz();
 
 		ozz::animation::BlendingJob blendJob;
-		UpdateRestPose();
 		blendJob.rest_pose = loadedData->restPose.get_ozz();
 		blendJob.layers = ozz::make_span(blendLayers);
 		blendJob.output = a_output;
@@ -474,6 +488,7 @@ namespace Animation
 
 		auto& transition = loadedData->transition;
 		auto& blendLayers = loadedData->blendLayers;
+		bool needsRestPose = a_dest && a_dest->RequiresRestPose();
 
 		const auto SetData = [&](TRANSITION_TYPE t) {
 			switch (t) {
@@ -481,8 +496,8 @@ namespace Animation
 				requiresBaseTransforms = true;
 				transition.startLayer = -1;
 				transition.endLayer = 0;
-				transition.onEnd = [&]() {
-					requiresBaseTransforms = false;
+				transition.onEnd = [this, needsRestPose = needsRestPose]() {
+					requiresBaseTransforms = needsRestPose;
 				};
 				break;
 			case kGraphToGame:
@@ -495,7 +510,7 @@ namespace Animation
 				};
 				break;
 			case kGeneratorToGenerator:
-				requiresBaseTransforms = false;
+				requiresBaseTransforms = needsRestPose;
 				blendLayers[0].weight = 0.0f;
 				blendLayers[1].weight = 1.0f;
 				transition.startLayer = 1;
@@ -549,7 +564,7 @@ namespace Animation
 		flags.set(FLAGS::kTransitioning);
 		if (a_dest != nullptr) {
 			generator = std::move(a_dest);
-			generator->SetOutput(loadedData->lastOutput, skeleton->data.get());
+			generator->SetOutput(loadedData->lastOutput, skeleton->data.get(), &loadedData->restPose);
 			generator->SetRootTransform(reinterpret_cast<ozz::math::Float4x4*>(&loadedData->rootNode->world));
 
 			if (generator->HasFaceAnimation()) {

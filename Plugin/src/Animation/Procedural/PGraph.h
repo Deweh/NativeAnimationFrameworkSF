@@ -19,6 +19,7 @@ namespace Animation::Procedural
 		std::vector<std::unique_ptr<PNode>> nodes;
 		uint64_t actorNode = 0;
 		uint64_t loopTrackingNode = 0;
+		bool needsRestPose = false;
 		
 		std::span<ozz::math::SoaTransform> Evaluate(InstanceData& a_graphInst, PoseCache& a_poseCache);
 		bool AdvanceTime(InstanceData& a_graphInst, float a_deltaTime);

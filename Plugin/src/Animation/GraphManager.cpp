@@ -12,13 +12,7 @@ namespace Animation
 {
 	GraphManager* GraphManager::GetSingleton()
 	{
-		static std::mutex initLock;
-		static GraphManager* instance = nullptr;
-
-		std::unique_lock l{ initLock };
-		if (instance == nullptr) {
-			instance = new GraphManager();
-		}
+		static GraphManager* instance{ new GraphManager() };
 		return instance;
 	}
 
@@ -169,6 +163,14 @@ namespace Animation
 		return result;
 	}
 
+	void GraphManager::SetGraphControlsPosition(RE::Actor* a_actor, bool a_controls)
+	{
+		VisitGraph(a_actor, [&](Graph* g) {
+			g->SetLockPosition(a_controls);
+			return true;
+		});
+	}
+
 	bool GraphManager::AttachGenerator(RE::Actor* a_actor, std::unique_ptr<Generator> a_gen, float a_transitionTime)
 	{
 		return VisitGraph(a_actor, [&](Graph* g) {
@@ -250,6 +252,7 @@ namespace Animation
 		} else {
 			g->GetSkeletonNodes(nullptr);
 		}
+		g->SetLockPosition(true);
 		return g;
 	}
 

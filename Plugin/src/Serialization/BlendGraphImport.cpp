@@ -2,6 +2,7 @@
 #include "simdjson.h"
 #include "Animation/Procedural/PActorNode.h"
 #include "Animation/Procedural/PFullAnimationNode.h"
+#include "Animation/Procedural/PBasePoseNode.h"
 
 namespace Serialization
 {
@@ -127,16 +128,6 @@ namespace Serialization
 			//Pass 2: Connect inputs together.
 			for (auto& n : result->nodes) {
 				auto destTypeInfo = n->GetTypeInfo();
-
-				// Find the animation node with the longest duration.
-				if (destTypeInfo == &PFullAnimationNode::_reg) {
-					if (auto ptr = reinterpret_cast<PFullAnimationNode*>(result->loopTrackingNode);
-						ptr == nullptr || ptr->anim->data->duration() < static_cast<PFullAnimationNode*>(n.get())->anim->data->duration())
-					{
-						result->loopTrackingNode = reinterpret_cast<uint64_t>(n.get());
-					}
-				}
-
 				auto destInputIter = destTypeInfo->inputs.begin();
 				for (auto& i : n->inputs) {
 					if (auto iter = nodeIdMap.find(i); iter != nodeIdMap.end()) {
@@ -167,6 +158,20 @@ namespace Serialization
 					iter = result->nodes.erase(iter);
 				} else {
 					iter++;
+				}
+			}
+
+			//Pass 4: Cache data for special nodes.
+			for (auto& n : result->nodes) {
+				auto destTypeInfo = n->GetTypeInfo();
+				if (destTypeInfo == &PFullAnimationNode::_reg) {
+					// Find the animation node with the longest duration.
+					if (auto ptr = reinterpret_cast<PFullAnimationNode*>(result->loopTrackingNode);
+						ptr == nullptr || ptr->anim->data->duration() < static_cast<PFullAnimationNode*>(n.get())->anim->data->duration()) {
+						result->loopTrackingNode = reinterpret_cast<uint64_t>(n.get());
+					}
+				} else if (destTypeInfo == &PBasePoseNode::_reg) {
+					result->needsRestPose = true;
 				}
 			}
 

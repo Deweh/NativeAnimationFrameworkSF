@@ -51,7 +51,8 @@ namespace Animation
 			kLoadingSequencerAnimation = 1u << 7,
 			kRequiresFaceDataUpdate = 1u << 8,
 
-			kGeneratedFirstPose = 1u << 9
+			kGeneratedFirstPose = 1u << 9,
+			kLockPosition = 1u << 10
 		};
 
 		enum LastPose : uint8_t
@@ -146,6 +147,7 @@ namespace Animation
 		bool GetRequiresBaseTransforms() const;	// This function is atomic.
 		void OnDetach(); // This function is atomic.
 		bool GetRequiresDetach() const;
+		void SetLockPosition(bool a_lock);
 		XYZTransform GetRootXYZ();
 	};
 }

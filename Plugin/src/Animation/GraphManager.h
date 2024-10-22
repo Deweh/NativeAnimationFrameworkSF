@@ -33,6 +33,7 @@ namespace Animation
 		void StopSyncing(RE::Actor* a_actor);
 		bool SetProceduralVariable(RE::Actor* a_actor, const std::string_view a_name, float a_value);
 		float GetProceduralVariable(RE::Actor* a_actor, const std::string_view a_name);
+		void SetGraphControlsPosition(RE::Actor* a_actor, bool a_controls);
 		bool AttachGenerator(RE::Actor* a_actor, std::unique_ptr<Generator> a_gen, float a_transitionTime);
 		bool DetachGenerator(RE::Actor* a_actor, float a_transitionTime);
 		bool DetachGraph(RE::IAnimationGraphManagerHolder* a_graphHolder);
