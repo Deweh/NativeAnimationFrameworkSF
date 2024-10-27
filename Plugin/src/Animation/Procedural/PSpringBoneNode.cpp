@@ -25,51 +25,93 @@ namespace Animation::Procedural
 			context->physicsPosition = boneMS;
 			context->previousPosition = boneMS;
 			(*prevRootPos) = rootTransform->cols[3];
-			(*prevRootVelocity) = simd_float4::one();
 			context->initialized = true;
 		}
 
 		// Get root movement transformed into model-space.
 		const SimdFloat4 relativeRoot = rootTransform->cols[3] - (*prevRootPos);
 		const SimdFloat4 worldMovementMS = TransformVector(rootInverseWS, relativeRoot);
+		context->accumulatedMovement = context->accumulatedMovement + worldMovementMS;
 		(*prevRootPos) = rootTransform->cols[3];
+
+		// Add to accumulated time.
+		context->accumulatedTime += context->deltaTime;
+
+		// Calculate required physics steps.
+		SubStepConstants constants;
+		if (context->accumulatedTime >= FIXED_TIMESTEP) {
+			BeginStepUpdate(constants);
+		}
+
+		uint8_t stepsPerformed = 0;
+		while (context->accumulatedTime >= FIXED_TIMESTEP) {
+			ProcessPhysicsStep(constants);
+			++stepsPerformed;
+
+			if (stepsPerformed > MAX_STEPS_PER_RUN) [[unlikely]] {
+				context->accumulatedTime = 0.0f;
+			} else {
+				context->accumulatedTime -= FIXED_TIMESTEP;
+			}
+		}
+
+		// Interpolate between previous step and current step.
+		const float ratio = context->accumulatedTime > 0.0f ? (context->accumulatedTime / FIXED_TIMESTEP) : 0.0f;
+		const SimdFloat4 interpPosition = Lerp(context->previousPosition, context->physicsPosition, simd_float4::Load1(ratio));
+
+		// Transform back to local space for final output.
+		const SimdFloat4 localPos = TransformPoint(parentInverseMS, interpPosition);
+		*positionOutput = SetW(localPos, simd_float4::zero());
+		return true;
+	}
+
+	void SpringPhysicsJob::BeginStepUpdate(SubStepConstants& a_constantsOut)
+	{
+		using namespace ozz::math;
 
 		// Calculate root acceleration in model-space.
 		const float deltaTime = context->deltaTime;
 		const SimdFloat4 deltaInvSimd = simd_float4::Load1(1.0f / deltaTime);
-		const SimdFloat4 worldVelocity = worldMovementMS * deltaInvSimd;
-		const SimdFloat4 worldAcceleration = (worldVelocity - (*prevRootVelocity)) * deltaInvSimd;
-		(*prevRootVelocity) = worldVelocity;
+		const SimdFloat4 worldVelocity = context->accumulatedMovement * deltaInvSimd;
+		const SimdFloat4 worldAcceleration = (worldVelocity - context->prevRootVelocity) * deltaInvSimd;
+		context->accumulatedMovement = simd_float4::zero();
+		context->prevRootVelocity = worldVelocity;
 
-		// Calculate spring forces.
+		// Calculate sub-step-constant forces.
 		const SimdFloat4 massSimd = simd_float4::Load1(mass);
-		const SimdFloat4 currentPos = context->physicsPosition;
-		const SimdFloat4 prevPos = context->previousPosition;
-		const SimdFloat4 displacement = currentPos - TransformPoint(*parentTransform, context->restOffset);
-		const SimdFloat4 springForce = displacement * simd_float4::Load1(-stiffness);
 		const SimdFloat4 gravityForce = gravity * massSimd;
 		const SimdFloat4 inertiaForce = -worldAcceleration * massSimd;
-		const SimdFloat4 totalForce = springForce + gravityForce + inertiaForce;
-		const SimdFloat4 acceleration = totalForce * simd_float4::Load1(1.0f / mass);
+		const float oscillationFreq = std::sqrt(stiffness / mass);
+
+		a_constantsOut.force = gravityForce + inertiaForce;
+		a_constantsOut.restOffsetMS = TransformPoint(*parentTransform, context->restOffset);
+		a_constantsOut.dampingFactor = simd_float4::Load1(std::expf(-damping * oscillationFreq * FIXED_TIMESTEP));
+		a_constantsOut.massInverse = 1.0f / mass;
+	}
+
+	void SpringPhysicsJob::ProcessPhysicsStep(const SubStepConstants& a_constants)
+	{
+		using namespace ozz::math;
+		constexpr float deltaTime = FIXED_TIMESTEP;
+		constexpr float dtSquared = deltaTime * deltaTime;
+
+		const ozz::math::SimdFloat4 currentPos = context->physicsPosition;
+		const ozz::math::SimdFloat4 prevPos = context->previousPosition;
+
+		// Calculate spring forces.
+		const SimdFloat4 displacement = currentPos - a_constants.restOffsetMS;
+		const SimdFloat4 springForce = displacement * simd_float4::Load1(-stiffness);
+		const SimdFloat4 totalForce = springForce + a_constants.force;
+		const SimdFloat4 acceleration = totalForce * simd_float4::Load1(a_constants.massInverse);
 
 		// Verlet integration = x(t+dt) = 2x(t) - x(t-dt) + a(t)dt^2
-		const SimdFloat4 deltaTimeSq = simd_float4::Load1(deltaTime * deltaTime);
+		const SimdFloat4 deltaTimeSq = simd_float4::Load1(dtSquared);
 		const SimdFloat4 newPhysicsPosition = currentPos * simd_float4::Load1(2.0f) - prevPos + acceleration * deltaTimeSq;
 
-		// Add damping by scaling position change.
-		const float oscillationFreq = std::sqrt(stiffness / mass);
+		// Add damping by scaling position change & update physics position.
 		const SimdFloat4 positionDiff = newPhysicsPosition - currentPos;
-		const SimdFloat4 dampingFactor = simd_float4::Load1(std::expf(-damping * oscillationFreq * deltaTime));
-		const SimdFloat4 dampedNewPosition = currentPos + positionDiff * dampingFactor;
-
-		// Update physics position.
+		context->physicsPosition = currentPos + positionDiff * a_constants.dampingFactor;
 		context->previousPosition = currentPos;
-		context->physicsPosition = dampedNewPosition;
-
-		// Transform back to local space for final output.
-		const SimdFloat4 localPos = TransformPoint(parentInverseMS, context->physicsPosition);
-		*positionOutput = SetW(localPos, simd_float4::zero());
-		return true;
 	}
 
 	void PSpringBoneNode::AdvanceTime(PNodeInstanceData* a_instanceData, float a_deltaTime)
@@ -118,7 +160,6 @@ namespace Animation::Procedural
 		springJob.parentTransform = &a_evalContext.modelSpaceCache[parentIdx];
 		springJob.rootTransform = a_evalContext.rootTransform;
 		springJob.prevRootPos = &a_evalContext.prevRootPos;
-		springJob.prevRootVelocity = &a_evalContext.prevRootVelocity;
 		springJob.context = &inst->context;
 
 		ozz::math::SimdFloat4 positionOutput;

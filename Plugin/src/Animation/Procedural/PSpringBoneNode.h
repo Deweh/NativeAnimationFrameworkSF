@@ -3,14 +3,21 @@
 
 namespace Animation::Procedural
 {
-	struct SpringPhysicsJob
+	class SpringPhysicsJob
 	{
+	public:
+		static constexpr float FIXED_TIMESTEP{ 1.0f / 60.0f };
+		static constexpr uint8_t MAX_STEPS_PER_RUN{ 4 };
+
 		struct Context
 		{
 			ozz::math::SimdFloat4 restOffset;
 			ozz::math::SimdFloat4 physicsPosition;
 			ozz::math::SimdFloat4 previousPosition;
+			ozz::math::SimdFloat4 accumulatedMovement = ozz::math::simd_float4::zero();
+			ozz::math::SimdFloat4 prevRootVelocity = ozz::math::simd_float4::zero();
 			float deltaTime = 1.0f;
+			float accumulatedTime = 0.0f;
 			bool initialized = false;
 		};
 
@@ -22,12 +29,23 @@ namespace Animation::Procedural
 		const ozz::math::Float4x4* parentTransform;  // Model-space transform.
 		const ozz::math::Float4x4* rootTransform;    // World-space transform.
 		ozz::math::SimdFloat4* prevRootPos;          // World-space transform.
-		ozz::math::SimdFloat4* prevRootVelocity;     // World-space transform.
 		Context* context;
 
 		ozz::math::SimdFloat4* positionOutput;  // Local-space transform.
 
 		bool Run();
+
+	private:
+		struct SubStepConstants
+		{
+			ozz::math::SimdFloat4 force;
+			ozz::math::SimdFloat4 restOffsetMS;
+			ozz::math::SimdFloat4 dampingFactor;
+			float massInverse;
+		};
+
+		void BeginStepUpdate(SubStepConstants& a_constantsOut);
+		void ProcessPhysicsStep(const SubStepConstants& a_constants);
 	};
 
 	class PSpringBoneNode : public PNodeT<PSpringBoneNode>
