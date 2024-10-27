@@ -32,6 +32,7 @@ namespace Animation::Procedural
 		const SimdFloat4 relativeRoot = rootTransform->cols[3] - (*prevRootPos);
 		const SimdFloat4 worldMovementMS = TransformVector(rootInverseWS, relativeRoot);
 		context->accumulatedMovement = context->accumulatedMovement + worldMovementMS;
+		context->movementTime += context->deltaTime;
 		(*prevRootPos) = rootTransform->cols[3];
 
 		// Add to accumulated time.
@@ -70,11 +71,12 @@ namespace Animation::Procedural
 		using namespace ozz::math;
 
 		// Calculate root acceleration in model-space.
-		const float deltaTime = context->deltaTime;
+		const float deltaTime = context->movementTime;
 		const SimdFloat4 deltaInvSimd = simd_float4::Load1(1.0f / deltaTime);
 		const SimdFloat4 worldVelocity = context->accumulatedMovement * deltaInvSimd;
 		const SimdFloat4 worldAcceleration = (worldVelocity - context->prevRootVelocity) * deltaInvSimd;
 		context->accumulatedMovement = simd_float4::zero();
+		context->movementTime = 0.0f;
 		context->prevRootVelocity = worldVelocity;
 
 		// Calculate sub-step-constant forces.

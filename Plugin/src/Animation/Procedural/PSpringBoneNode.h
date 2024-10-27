@@ -18,6 +18,7 @@ namespace Animation::Procedural
 			ozz::math::SimdFloat4 prevRootVelocity = ozz::math::simd_float4::zero();
 			float deltaTime = 1.0f;
 			float accumulatedTime = 0.0f;
+			float movementTime = 0.0f;
 			bool initialized = false;
 		};
 
