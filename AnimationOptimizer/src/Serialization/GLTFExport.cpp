@@ -14,6 +14,7 @@ namespace Serialization
 			Rot,
 			Time,
 			Trans,
+			Scale,
 			Morphs
 		};
 
@@ -253,6 +254,28 @@ namespace Serialization
 			transChnl.nodeIndex = i;
 			transChnl.path = fastgltf::AnimationPath::Translation;
 			transChnl.samplerIndex = DedupeSampler(transSmplr);
+
+			auto& scaleSmplr = assetAnim.samplers.emplace_back();
+			scaleSmplr.interpolation = fastgltf::AnimationInterpolation::Linear;
+			scaleSmplr.inputAccessor = util.WriteAccessor(
+				trck.scales.front().time,
+				trck.scales.back().time,
+				fastgltf::AccessorType::Scalar,
+				trck.scales.size(),
+				BufferType::Time,
+				[&](size_t i) { return &trck.scales[i].time; });
+			scaleSmplr.outputAccessor = util.WriteAccessor(
+				0.0f,
+				0.0f,
+				fastgltf::AccessorType::Vec3,
+				trck.scales.size(),
+				BufferType::Scale,
+				[&](size_t i) { return &trck.scales[i].value; });
+
+			auto& scaleChnl = assetAnim.channels.emplace_back();
+			scaleChnl.nodeIndex = i;
+			scaleChnl.path = fastgltf::AnimationPath::Scale;
+			scaleChnl.samplerIndex = DedupeSampler(scaleSmplr);
 		}
 
 		std::vector<std::string> morphTargets = Settings::GetFaceMorphs();

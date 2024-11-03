@@ -200,7 +200,11 @@ namespace Serialization
 						trs.translation[1],
 						trs.translation[2]
 					};
-					b.scale = ozz::math::Float3::one();
+					b.scale = {
+						trs.scale[0],
+						trs.scale[1],
+						trs.scale[2]
+					};
 				}
 			} else {
 				skeletonIdxs.push_back(UINT64_MAX);
@@ -232,6 +236,7 @@ namespace Serialization
 
 			auto& rTl = animResult->tracks[idx].rotations;
 			auto& pTl = animResult->tracks[idx].translations;
+			auto& sTl = animResult->tracks[idx].scales;
 
 			if (c.samplerIndex > anim->samplers.size())
 				continue;
@@ -248,6 +253,7 @@ namespace Serialization
 
 			ozz::animation::offline::RawAnimation::RotationKey r;
 			ozz::animation::offline::RawAnimation::TranslationKey p;
+			ozz::animation::offline::RawAnimation::ScaleKey s;
 			for (size_t i = 0; i < timeAccessor.count; i++) {
 				float t = fastgltf::getAccessorElement<float>(*asset, timeAccessor, i);
 				if (t > animResult->duration)
@@ -264,6 +270,11 @@ namespace Serialization
 					p.time = t;
 					pTl.push_back(p);
 					break;
+				case fastgltf::AnimationPath::Scale:
+					s.value = fastgltf::getAccessorElement<ozz::math::Float3>(*asset, dataAccessor, i);
+					s.time = t;
+					sTl.push_back(s);
+					break;
 				}
 			}
 		}
@@ -271,6 +282,7 @@ namespace Serialization
 		for (size_t i = 0; i < skeletonMap.size(); i++) {
 			auto& rTl = animResult->tracks[i].rotations;
 			auto& pTl = animResult->tracks[i].translations;
+			auto& sTl = animResult->tracks[i].scales;
 			auto& b = bindPose[i];
 			if (rTl.empty()) {
 				ozz::animation::offline::RawAnimation::RotationKey r;
@@ -283,6 +295,12 @@ namespace Serialization
 				p.time = 0.0001f;
 				p.value = b.translation;
 				pTl.push_back(p);
+			}
+			if (sTl.empty()) {
+				ozz::animation::offline::RawAnimation::ScaleKey s;
+				s.time = 0.0001f;
+				s.value = b.scale;
+				sTl.push_back(s);
 			}
 		}
 
