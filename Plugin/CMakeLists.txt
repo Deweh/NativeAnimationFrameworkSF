@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.21)
 # info
 project(
 	NativeAnimationFrameworkSF
-	VERSION 1.2.2
+	VERSION 1.2.3
 	LANGUAGES CXX
 )
 
@@ -37,14 +37,8 @@ source_group(
 )
 
 # dependencies
-find_package(libzippp CONFIG REQUIRED)
-find_package(simdjson CONFIG REQUIRED)
-#find_package(fastgltf CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
-find_dependency_path(DKUtil include/DKUtil/Logger.hpp)
-find_dependency_path(CommonLibSF include/SFSE/SFSE.h)
-find_dependency_path(ozz-animation include/ozz/animation/runtime/animation.h)
-find_dependency_path(fastgltf include/fastgltf/core.hpp)
+add_subdirectory("../extern/NAF-Common" NAF-Common)
 
 file(GLOB_RECURSE SRC_FILES src/*.cpp)
 
@@ -81,14 +75,8 @@ target_include_directories(
 target_link_libraries(
 	${PROJECT_NAME} 
 	PRIVATE
-		DKUtil::DKUtil
-		CommonLibSF::CommonLibSF
 		spdlog::spdlog
-		simdjson::simdjson
-		fastgltf::fastgltf
-		libzippp::libzippp
-		ozz_animation
-		ozz_animation_offline
+		NAF-Common
 )
 
 # compiler def
@@ -140,13 +128,4 @@ set_property(
 	${PROJECT_NAME}
 	PROPERTY VS_USER_PROPS 
 	"${CMAKE_CURRENT_SOURCE_DIR}/cmake/build_stl_modules.props"
-)
-
-# update deployments
-add_custom_command(
-	TARGET 
-	${PROJECT_NAME} 
-	POST_BUILD
-	COMMAND powershell -NoProfile -ExecutionPolicy Bypass -File 
-		"${CMAKE_CURRENT_SOURCE_DIR}/!update.ps1" "DISTRIBUTE" "${PROJECT_VERSION}" "${CMAKE_CURRENT_BINARY_DIR}/$(ConfigurationName)" "${PROJECT_NAME}" 
 )

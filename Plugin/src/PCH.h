@@ -118,10 +118,6 @@ using namespace REL::literals;
 // Plugin
 #include "Plugin.h"
 
-// DKUtil
-#include "DKUtil/Hook.hpp"
-#include "DKUtil/Logger.hpp"
-
 // SFSEPlugin_Version
 DLLEXPORT constinit auto SFSEPlugin_Version = []() noexcept {
 	return SFSE::PluginVersionData{
@@ -138,7 +134,6 @@ DLLEXPORT constinit auto SFSEPlugin_Version = []() noexcept {
 	};
 }();
 
-#include "RE/RE.h"
 //Other dependencies
 #include "fastgltf/core.hpp"
 #include "fastgltf/types.hpp"

@@ -20,7 +20,8 @@
 				"ozz_build_fbx": "OFF",
 				"USING_VCPKG": "ON",
 				"CMAKE_CXX_FLAGS": "$env{PROJECT_PLATFORM_FLAGS} $env{PROJECT_TEXT_FLAGS} $env{PROJECT_COMPILER_FLAGS} $penv{CXXFLAGS}",
-				"SFSE_SUPPORT_XBYAK": "ON"
+				"SFSE_SUPPORT_XBYAK": "ON",
+				"COMMON_LIB_TYPE": "SF"
 			},
 			"vendor": {
 				"microsoft.com/VisualStudioSettings/CMake/1.0": {

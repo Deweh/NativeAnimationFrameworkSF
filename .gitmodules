@@ -1,12 +1,3 @@
-[submodule "extern/DKUtil"]
-	path = extern/DKUtil
-	url = https://github.com/gottyduke/DKUtil.git
-[submodule "extern/CommonLibSF"]
-	path = extern/CommonLibSF
-	url = https://github.com/Deweh/CommonLibSF.git
-[submodule "extern/ozz-animation"]
-	path = extern/ozz-animation
-	url = https://github.com/guillaumeblanc/ozz-animation
-[submodule "extern/fastgltf"]
-	path = extern/fastgltf
-	url = https://github.com/Deweh/fastgltf
+[submodule "extern/NAF-Common"]
+	path = extern/NAF-Common
+	url = https://github.com/Deweh/NAF-Common

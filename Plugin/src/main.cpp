@@ -1,4 +1,3 @@
-#include "DKUtil/Hook.hpp"
 #include "Settings/Settings.h"
 #include "Animation/GraphManager.h"
 #include "Commands/NAFCommand.h"
@@ -17,7 +16,7 @@ namespace
 		switch (a_msg->type) {
 		case SFSE::MessagingInterface::kPostDataLoad:
 			{
-				Settings::Load();
+				Settings::Init();
 				break;
 			}
 		case SFSE::MessagingInterface::kPostLoad:
@@ -38,15 +37,12 @@ namespace
 
 DLLEXPORT bool SFSEAPI SFSEPlugin_Load(const SFSE::LoadInterface* a_sfse)
 {
-	SFSE::Init(a_sfse, false);
-	DKUtil::Logger::Init(Plugin::NAME, std::to_string(Plugin::Version));
-	INFO("{} v{} loaded", Plugin::NAME, Plugin::Version);
-	INFO("Starfield Offset: {:X}", REL::Module::get().base());
+	SFSE::Init(a_sfse, true);
+	logger::info("Starfield Offset: {:X}", REL::Module::get().base());
 
 	Util::Trampoline::ProcessHooks();
 	SFSE::SetPapyrusCallback(&BindPapyrusScripts);
 	SFSE::GetMessagingInterface()->RegisterListener(MessageCallback);
 	Commands::NAFCommand::RegisterKeybinds();
-	//SFSE::GetTaskInterface()->AddPermanentTask(Tasks::MainLoop::GetSingleton());
 	return true;
 }

@@ -19,10 +19,10 @@ namespace
 		NAFAPI_CustomGeneratorFunction onDestroyFunc = nullptr;
 		bool detaching = false;
 
-		virtual std::span<ozz::math::SoaTransform> Generate(Animation::PoseCache& cache) override
+		virtual std::span<ozz::math::SoaTransform> Generate(Animation::PoseCache& a_cache, Animation::IAnimEventHandler* a_eventHandler) override
 		{
 			if (!output.is_valid()) {
-				output = cache.acquire_handle();
+				output = a_cache.acquire_handle();
 			}
 
 			if (detaching) [[unlikely]] {
@@ -34,9 +34,9 @@ namespace
 			return output.get();
 		}
 
-		virtual void SetOutput(const std::span<ozz::math::Float4x4>& a_modelSpaceCache, const ozz::animation::Skeleton* a_skeleton, Animation::PoseCache::Handle* a_restPose) override
+		virtual void SetContext(const Generator::ContextData& a_context) override
 		{
-			skeleton = a_skeleton;
+			skeleton = a_context.skeleton->data.get();
 			userOutput.resize(skeleton->num_joints());
 		}
 
@@ -242,6 +242,7 @@ void NAFAPI_AttachCustomGenerator(
 	Animation::GraphManager::GetSingleton()->AttachGenerator(a_actor, std::move(gen), a_transitionTime);
 }
 
+/*
 void NAFAPI_VisitGraph(
 	RE::Actor* a_actor,
 	NAFAPI_VisitGraphFunction a_visitFunc,
@@ -268,6 +269,7 @@ void NAFAPI_VisitGraph(
 		return true;
 	}, true);
 }
+*/
 
 bool NAFAPI_DetachGenerator(
 	RE::Actor* a_actor,
