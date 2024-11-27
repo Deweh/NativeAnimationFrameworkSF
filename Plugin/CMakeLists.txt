@@ -40,7 +40,7 @@ source_group(
 find_package(spdlog CONFIG REQUIRED)
 add_subdirectory("../extern/NAF-Common" NAF-Common)
 
-file(GLOB_RECURSE SRC_FILES src/*.cpp)
+file(GLOB_RECURSE SRC_FILES2 src/*.cpp)
 
 # cmake target
 # runtime
@@ -51,7 +51,7 @@ add_library(
 		${CMAKE_CURRENT_BINARY_DIR}/version.rc
 		.clang-format
 		vcpkg.json
-		${SRC_FILES})
+		${SRC_FILES2})
 
 # copy to Starfield directory
 set(STARFIELD_PATH "C:/Program Files (x86)/Steam/steamapps/common/Starfield/Data/SFSE/Plugins")

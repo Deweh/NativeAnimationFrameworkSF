@@ -90,7 +90,7 @@ namespace
 				UI->Checkbox("Paused", &gen->paused);
 
 				if (gen->GetType() != Animation::GenType::kProcedural) {
-					UI->DragFloat("Current Time (Seconds)", &gen->localTime, 0.0f, 1.0f);
+					UI->DragFloat("Current Time Ratio", &gen->localTime, 0.0f, 1.0f);
 				} else {
 					UI->Text("Blend Graph Variables:");
 					auto pGen = static_cast<Animation::ProceduralGenerator*>(gen);
@@ -170,10 +170,9 @@ namespace
 		if (!animPtr)
 			return;
 
-		size_t byteSize = 0;
+		size_t byteSize = animPtr->GetSize();
 		bool hasFaceData = false;
 		if (auto ozz = dynamic_cast<Animation::OzzAnimation*>(animPtr.get()); ozz) {
-			byteSize = ozz->GetSize();
 			hasFaceData = ozz->faceData.get() != nullptr;
 		}
 

@@ -1,4 +1,5 @@
 #include "Settings/Settings.h"
+#include "Settings/Impl.h"
 #include "Animation/GraphManager.h"
 #include "Commands/NAFCommand.h"
 #include "Tasks/SaveLoadListener.h"
@@ -7,7 +8,7 @@
 #include "Animation/Face/Manager.h"
 #include "Tasks/Input.h"
 #include "Papyrus/NAFScript.h"
-#define NDEBUG
+#include "Settings/SkeletonImpl.h"
 
 namespace
 {
@@ -17,6 +18,7 @@ namespace
 		case SFSE::MessagingInterface::kPostDataLoad:
 			{
 				Settings::Init();
+				Settings::LoadBaseSkeletons();
 				break;
 			}
 		case SFSE::MessagingInterface::kPostLoad:
@@ -35,7 +37,14 @@ namespace
 	}
 }
 
-DLLEXPORT bool SFSEAPI SFSEPlugin_Load(const SFSE::LoadInterface* a_sfse)
+bool g_implInitialized = ([]() {
+	Settings::ImplFunctions& funcs = Settings::GetImplFunctions();
+	funcs.GetSkeletonBonesForActor = [](Settings::SkeletonDescriptor&, RE::Actor*) {};
+	funcs.LoadOtherAnimationFile = [](const Animation::AnimID&, const Animation::OzzSkeleton*) -> std::unique_ptr<Animation::IBasicAnimation> { return nullptr; };
+	return true;
+})();
+
+extern "C" DLLEXPORT bool SFSEAPI SFSEPlugin_Load(const SFSE::LoadInterface* a_sfse)
 {
 	SFSE::Init(a_sfse, true);
 	logger::info("Starfield Offset: {:X}", REL::Module::get().base());
