@@ -68,16 +68,11 @@ namespace
 		UI->Separator();
 		UI->Text("Loaded: %s", isLoaded ? "True" : "False");
 #ifdef ENABLE_PERFORMANCE_MONITORING
-		UI->Text("Base Update Time: %.2f ms", g->baseUpdateMS);
+		UI->Text("Base Update Time: %.2f ms", g->baseUpdateMs);
 		UI->Text("Update Time: %.2f ms", g->lastUpdateMs);
 #endif
 
-		size_t memorySize = sizeof(Animation::Graph) + (isLoaded ? sizeof(Animation::Graph::LOADED_DATA) : sizeof(Animation::Graph::UNLOADED_DATA));
-		if (isLoaded) {
-			memorySize += g->loadedData->poseCache.transforms_capacity() * sizeof(ozz::math::SoaTransform);
-		}
-
-		UI->Text("Memory Usage: %.2f KB", static_cast<float>(memorySize) / 1024.0f);
+		UI->Text("Memory Usage: %.2f KB", static_cast<double>(g->GetSizeBytes()) / 1024.0);
 
 		if (isLoaded) {
 			UI->Separator();
@@ -170,20 +165,14 @@ namespace
 		if (!animPtr)
 			return;
 
-		size_t byteSize = animPtr->GetSize();
-		bool hasFaceData = false;
-		if (auto ozz = dynamic_cast<Animation::OzzAnimation*>(animPtr.get()); ozz) {
-			hasFaceData = ozz->faceData.get() != nullptr;
+		bool hasFaceAnim = false;
+		if (auto basicAnim = dynamic_cast<Animation::IBasicAnimation*>(animPtr.get()); basicAnim) {
+			hasFaceAnim = basicAnim->HasFaceAnimation();
 		}
 
-		if (byteSize < 1024) {
-			UI->Text("In-Memory Size: %.2f KB", static_cast<float>(byteSize) / 1024.0f);
-		} else {
-			UI->Text("In-Memory Size: %u KB", byteSize / 1024);
-		}
-
+		UI->Text("In-Memory Size: %.2f KB", static_cast<double>(animPtr->GetSizeBytes()) / 1024.0);
 		UI->Text("Time-to-Load: %.3f ms", animPtr->extra.loadTime);
-		UI->Text("Has Face Animation: %s", hasFaceData ? "True" : "False");
+		UI->Text("Has Face Animation: %s", hasFaceAnim ? "True" : "False");
 		UI->Text("Use Count: %i", animPtr.use_count() - 1);
 	}
 

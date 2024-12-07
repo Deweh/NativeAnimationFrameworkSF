@@ -48,13 +48,23 @@
 			}
 		},
 		{
-			"name": "buildtype-release",
+			"name": "buildtype-release-o2",
 			"hidden": true,
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Release",
 				"CMAKE_CONFIGURATION_TYPES": "Release",
 				"CMAKE_CXX_FLAGS_RELEASE": "/O2 /DNDEBUG /Zi",
-				"CMAKE_SHARED_LINKER_FLAGS_RELEASE": "/DEBUG /OPT:REF /OPT:ICF"
+				"CMAKE_SHARED_LINKER_FLAGS_RELEASE": "/DEBUG /OPT:REF /OPT:ICF /WHOLEARCHIVE:NAF-Common.lib"
+			}
+		},
+		{
+			"name": "buildtype-release-od",
+			"hidden": true,
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release",
+				"CMAKE_CONFIGURATION_TYPES": "Release",
+				"CMAKE_CXX_FLAGS_RELEASE": "/Od /DNDEBUG /Zi",
+				"CMAKE_SHARED_LINKER_FLAGS_RELEASE": "/DEBUG /OPT:REF /OPT:ICF /WHOLEARCHIVE:NAF-Common.lib"
 			}
 		},
 		{
@@ -116,128 +126,36 @@
 			}
 		},
 		{
-			"name": "build-debug-msvc-msvc",
+			"name": "build-release-msvc-o2",
 			"inherits": [
 				"common",
 				"packaging-vcpkg",
-				"buildtype-debug",
+				"buildtype-release-o2",
 				"generator-msvc",
 				"compiler-msvc"
 			]
 		},
 		{
-			"name": "build-debug-msvc-ninja",
+			"name": "build-release-msvc-od",
 			"inherits": [
 				"common",
 				"packaging-vcpkg",
-				"buildtype-debug",
-				"generator-ninja",
-				"compiler-msvc"
-			]
-		},
-		{
-			"name": "build-debug-clang-cl-msvc",
-			"toolset": "ClangCL",
-			"inherits": [
-				"common",
-				"packaging-vcpkg",
-				"buildtype-debug",
-				"generator-msvc",
-				"compiler-clang-cl"
-			]
-		},
-		{
-			"name": "build-debug-clang-cl-ninja",
-			"inherits": [
-				"common",
-				"packaging-vcpkg",
-				"buildtype-debug",
-				"generator-ninja",
-				"compiler-clang-cl"
-			]
-		},
-		{
-			"name": "build-release-msvc-msvc",
-			"inherits": [
-				"common",
-				"packaging-vcpkg",
-				"buildtype-release",
+				"buildtype-release-od",
 				"generator-msvc",
 				"compiler-msvc"
-			]
-		},
-		{
-			"name": "build-release-msvc-ninja",
-			"inherits": [
-				"common",
-				"packaging-vcpkg",
-				"buildtype-release",
-				"generator-ninja",
-				"compiler-msvc"
-			]
-		},
-		{
-			"name": "build-release-clang-cl-msvc",
-			"toolset": "ClangCL",
-			"inherits": [
-				"common",
-				"packaging-vcpkg",
-				"buildtype-release",
-				"generator-msvc",
-				"compiler-clang-cl"
-			]
-		},
-		{
-			"name": "build-release-clang-cl-ninja",
-			"inherits": [
-				"common",
-				"packaging-vcpkg",
-				"buildtype-release",
-				"generator-ninja",
-				"compiler-clang-cl"
 			]
 		}
 	],
 	"buildPresets": [
 		{
-			"name": "debug-msvc-ninja",
-			"configurePreset": "build-debug-msvc-ninja",
-			"displayName": "1. (Debug) MSVC - Ninja"
+			"name": "release-msvc-o2",
+			"configurePreset": "build-release-msvc-o2",
+			"displayName": "4. (Release) MSVC - MSVC [O2]"
 		},
 		{
-			"name": "release-msvc-ninja",
-			"configurePreset": "build-release-msvc-ninja",
-			"displayName": "2. (Release) MSVC - Ninja"
-		},
-		{
-			"name": "debug-msvc-msvc",
-			"configurePreset": "build-debug-msvc-msvc",
-			"displayName": "3. (Debug) MSVC - MSVC"
-		},
-		{
-			"name": "release-msvc-msvc",
-			"configurePreset": "build-release-msvc-msvc",
-			"displayName": "4. (Release) MSVC - MSVC"
-		},
-		{
-			"name": "debug-clang-cl-ninja",
-			"configurePreset": "build-debug-clang-cl-ninja",
-			"displayName": "5. (Debug) Clang - Ninja"
-		},
-		{
-			"name": "release-clang-cl-ninja",
-			"configurePreset": "build-release-clang-cl-ninja",
-			"displayName": "6. (Release) Clang - Ninja"
-		},
-		{
-			"name": "debug-clang-cl-msvc",
-			"configurePreset": "build-debug-clang-cl-msvc",
-			"displayName": "7. (Debug) Clang - MSVC"
-		},
-		{
-			"name": "release-clang-cl-msvc",
-			"configurePreset": "build-release-clang-cl-msvc",
-			"displayName": "8. (Release) Clang - MSVC"
+			"name": "release-msvc-od",
+			"configurePreset": "build-release-msvc-od",
+			"displayName": "4. (Release) MSVC - MSVC [Od]"
 		}
 	]
 }
