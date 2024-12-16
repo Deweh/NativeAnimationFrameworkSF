@@ -387,7 +387,9 @@ namespace Commands::NAFCommand
 		}
 
 		const auto StartFile = [](const std::filesystem::path& a_file) {
-			Animation::GraphManager::GetSingleton()->LoadAndStartAnimation(lastActor, a_file.lexically_relative(Util::String::GetDataPath()).generic_string());
+			const std::string relativePath = a_file.lexically_relative(Util::String::GetDataPath()).generic_string();
+			RE::ConsoleLog::GetSingleton()->PrintLine(relativePath.c_str());
+			Animation::GraphManager::GetSingleton()->LoadAndStartAnimation(lastActor, relativePath);
 			lastFile = a_file;
 		};
 		
@@ -396,18 +398,19 @@ namespace Commands::NAFCommand
 			return;
 		}
 
+		const auto ScrollFile = [&](uint64_t a_relative) {
+			size_t targetIndex = (currentIdx + a_relative) % files.size();
+			StartFile(files[targetIndex]);
+		};
+
 		if (a_key == Tasks::Input::BS_BUTTON_CODE::kDown) {
-			if (currentIdx >= (files.size() - 1)) {
-				StartFile(files[0]);
-			} else {
-				StartFile(files[currentIdx + 1]);
-			}
-		} else {
-			if (currentIdx == 0) {
-				StartFile(files.back());
-			} else {
-				StartFile(files[currentIdx - 1]);
-			}
+			ScrollFile(1);
+		} else if (a_key == Tasks::Input::BS_BUTTON_CODE::kUp) {
+			ScrollFile(-1);
+		} else if (a_key == Tasks::Input::BS_BUTTON_CODE::kLeft) {
+			ScrollFile(-10);
+		} else if (a_key == Tasks::Input::BS_BUTTON_CODE::kRight) {
+			ScrollFile(10);
 		}
 	}
 
@@ -416,5 +419,7 @@ namespace Commands::NAFCommand
 		auto im = Tasks::Input::GetSingleton();
 		im->RegisterForKey(Tasks::Input::BS_BUTTON_CODE::kDown, &ScrollAnims);
 		im->RegisterForKey(Tasks::Input::BS_BUTTON_CODE::kUp, &ScrollAnims);
+		im->RegisterForKey(Tasks::Input::BS_BUTTON_CODE::kLeft, &ScrollAnims);
+		im->RegisterForKey(Tasks::Input::BS_BUTTON_CODE::kRight, &ScrollAnims);
 	}
 }

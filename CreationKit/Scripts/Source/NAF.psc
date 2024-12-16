@@ -14,6 +14,9 @@ EndStruct
 ; This also works with blend graph (.bt) files.
 Function PlayAnimation(Actor akTarget, String asAnim, Float fTransitionSeconds = 1.0) Native Global
 
+; This is a conveinence function for starting a sequence with one phase that simply plays the given animation once then stops.
+Function PlayAnimationOnce(Actor akTarget, String asAnim, Float fTransitionSeconds = 1.0) Native Global
+
 ; Returns true if the actor is playing a NAF animation.
 Bool Function StopAnimation(Actor akTarget, Float fTransitionSeconds = 1.0) Native Global
 
@@ -45,6 +48,16 @@ Bool Function SetSequencePhase(Actor akTarget, Int iPhase) Native Global
 
 ; Returns -1 if the actor does not currently have a sequence.
 Int Function GetSequencePhase(Actor akTarget) Native Global
+
+; Sets whether or not NAF should lock an actor's world position. Only works while the actor is playing a NAF animation.
+; This defaults to true when an animation is started on an actor. If set to false, the actor will be able to move
+; while the animation is playing.
+Function SetPositionLocked(Actor akTarget, Bool bLocked) Native Global
+
+; Sets an actor's position in the world. Only works while the actor is playing a NAF animation & their position is locked.
+; NAF will force the actor to stay at this position until the animation is stopped or they move to a different cell.
+; This value will be overriden if the actor's position is being synchronized to another actor.
+Function SetActorPosition(Actor akTarget, Float fX, Float fY, Float fZ) Native Global
 
 ; Returns true if the actor is playing a NAF animation. Only persists for the current animation.
 ; 100.0 is normal speed.

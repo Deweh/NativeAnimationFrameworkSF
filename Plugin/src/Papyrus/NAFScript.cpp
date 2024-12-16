@@ -62,6 +62,23 @@ namespace Papyrus::NAFScript
 		agm->LoadAndStartAnimation(a_actor, a_anim, "", a_transitionTime);
 	}
 
+	void PlayAnimationOnce(IVirtualMachine& a_vm, uint32_t a_stackID, std::monostate, RE::Actor* a_actor, RE::BSFixedString a_anim, float a_transitionTime)
+	{
+		if (!a_actor) {
+			a_vm.PostError("Cannot play an animation on a none actor.", a_stackID, ErrorLevel::kInfo);
+			return;
+		}
+
+		std::vector<Animation::Sequencer::PhaseData> phases;
+		phases.reserve(1);
+		Animation::Sequencer::PhaseData& firstPhase = phases.emplace_back();
+		firstPhase.file = Animation::FileID(a_anim.c_str(), "");
+		firstPhase.loopCount = 0;
+		firstPhase.transitionTime = a_transitionTime;
+
+		agm->StartSequence(a_actor, std::move(phases));
+	}
+
 	bool StopAnimation(IVirtualMachine& a_vm, uint32_t a_stackID, std::monostate, RE::Actor* a_actor, float a_transitionTime)
 	{
 		return agm->DetachGenerator(a_actor, a_transitionTime);
@@ -144,6 +161,22 @@ namespace Papyrus::NAFScript
 		return static_cast<int32_t>(result);
 	}
 
+	void SetPositionLocked(IVirtualMachine& a_vm, uint32_t a_stackID, std::monostate, RE::Actor* a_actor, bool a_locked)
+	{
+		agm->SetGraphControlsPosition(a_actor, a_locked);
+	}
+
+	void SetActorPosition(IVirtualMachine& a_vm, uint32_t a_stackID, std::monostate, RE::Actor* a_actor, float a_x, float a_y, float a_z)
+	{
+		agm->VisitGraph(a_actor, [&](Animation::Graph* g) {
+			RE::NiPoint3& pos = g->rootTransform.translate;
+			pos.x = a_x;
+			pos.y = a_y;
+			pos.z = a_z;
+			return true;
+		});
+	}
+
 	bool SetAnimationSpeed(IVirtualMachine& a_vm, uint32_t a_stackID, std::monostate, RE::Actor* a_actor, float a_speed)
 	{
 		return agm->SetAnimationSpeed(a_actor, a_speed * 0.01f);
@@ -201,6 +234,7 @@ namespace Papyrus::NAFScript
 	void RegisterFunctions(IVirtualMachine* a_vm)
 	{
 		a_vm->BindNativeMethod(SCRIPT_NAME, "PlayAnimation", &PlayAnimation, true, false);
+		a_vm->BindNativeMethod(SCRIPT_NAME, "PlayAnimationOnce", &PlayAnimationOnce, true, false);
 		a_vm->BindNativeMethod(SCRIPT_NAME, "StopAnimation", &StopAnimation, true, false);
 		a_vm->BindNativeMethod(SCRIPT_NAME, "SyncAnimations", &SyncAnimations, true, false);
 		a_vm->BindNativeMethod(SCRIPT_NAME, "StopSyncing", &StopSyncing, true, false);
@@ -208,6 +242,8 @@ namespace Papyrus::NAFScript
 		a_vm->BindNativeMethod(SCRIPT_NAME, "AdvanceSequence", &AdvanceSequence, true, false);
 		a_vm->BindNativeMethod(SCRIPT_NAME, "SetSequencePhase", &SetSequencePhase, true, false);
 		a_vm->BindNativeMethod(SCRIPT_NAME, "GetSequencePhase", &GetSequencePhase, true, false);
+		a_vm->BindNativeMethod(SCRIPT_NAME, "SetPositionLocked", &SetPositionLocked, true, false);
+		a_vm->BindNativeMethod(SCRIPT_NAME, "SetActorPosition", &SetActorPosition, true, false);
 		a_vm->BindNativeMethod(SCRIPT_NAME, "SetAnimationSpeed", &SetAnimationSpeed, true, false);
 		a_vm->BindNativeMethod(SCRIPT_NAME, "GetAnimationSpeed", &GetAnimationSpeed, true, false);
 		a_vm->BindNativeMethod(SCRIPT_NAME, "GetCurrentAnimation", &GetCurrentAnimation, true, false);
