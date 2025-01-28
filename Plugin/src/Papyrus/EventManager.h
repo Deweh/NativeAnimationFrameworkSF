@@ -6,10 +6,11 @@
 
 namespace Papyrus
 {
-	enum EventType
+	enum EventType : uint8_t
 	{
 		kPhaseBegin,
-		kSequenceEnd
+		kSequenceEnd,
+		kTotal
 	};
 
 	class EventManager :
@@ -26,7 +27,7 @@ namespace Papyrus
 		{
 			using RegistrationMap = std::unordered_map<size_t, Registration>;
 
-			std::map<EventType, RegistrationMap> scriptRegistrations;
+			std::array<RegistrationMap, EventType::kTotal> scriptRegistrations;
 		};
 
 		EventManager();
@@ -41,7 +42,7 @@ namespace Papyrus
 			auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
 			for (auto& reg : scripts)
 			{
-				Util::VM::CallFunction(vm, reg.first, reg.second.scriptName, reg.second.functionName, nullptr, std::forward<Args>(a_args)...);
+				Util::VM::CallFunction(vm, reg.first, reg.second.scriptName, reg.second.functionName, nullptr, std::forward<Args&&>(a_args)...);
 			}
 		}
 

@@ -42,6 +42,8 @@ namespace Papyrus
 	void EventManager::Reset()
 	{
 		auto d = data.lock();
-		d->scriptRegistrations.clear();
+		for (auto& m : d->scriptRegistrations) {
+			m.clear();
+		}
 	}
 }

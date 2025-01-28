@@ -43,7 +43,6 @@ namespace Settings
 
 	void LoadBaseSkeletons()
 	{
-		ozz::animation::offline::SkeletonBuilder skeletonBuilder;
 		simdjson::ondemand::parser parser;
 		auto& skeletons = Settings::GetSkeletonMap();
 		for (auto& f : std::filesystem::directory_iterator(Settings::GetSkeletonsPath())) {
@@ -58,10 +57,22 @@ namespace Settings
 					if (!doc.is_alive()) {
 						continue;
 					}
+
 					auto nodes = doc["nodes"].get_array();
 					for (auto n : nodes) {
-						skele.AddBone(n.get_string().value(), "", ozz::math::Transform::identity());
+						auto type = n.type();
+						// If the node entry is just a string, add it with default values.
+						// If it's an object, add it with the defined values.
+						if (type.value() == simdjson::fallback::ondemand::json_type::string) {
+							skele.AddBone(n.get_string().value(), "", ozz::math::Transform::identity());
+						} else if (type.value() == simdjson::fallback::ondemand::json_type::object) {
+							const std::string_view name = n["name"].get_string();
+							bool controlledByDefault = true;   //n["defaultControlled"].get_bool();
+							bool controlledByGame = n["gameControlled"].get_bool();
+							skele.AddBone(name, "", ozz::math::Transform::identity(), -1, controlledByDefault, controlledByGame);
+						}
 					}
+
 					auto sName = p.stem().generic_string();
 					FillInSkeletonNIFData(skele, sName);
 
