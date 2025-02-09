@@ -1,12 +1,8 @@
 #include "Settings/Settings.h"
 #include "Settings/Impl.h"
-#include "Animation/GraphManager.h"
 #include "Commands/NAFCommand.h"
-#include "Tasks/SaveLoadListener.h"
 #include "API/CCF_API.h"
 #include "Util/Trampoline.h"
-#include "Animation/Face/Manager.h"
-#include "Tasks/Input.h"
 #include "Papyrus/NAFScript.h"
 #include "Settings/SkeletonImpl.h"
 

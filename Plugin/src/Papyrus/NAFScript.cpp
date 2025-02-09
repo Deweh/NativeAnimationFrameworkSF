@@ -192,9 +192,7 @@ namespace Papyrus::NAFScript
 		RE::BSFixedString result{ "" };
 
 		agm->VisitGraph(a_actor, [&result](Animation::Graph* g) {
-			if (g->generator) {
-				result = g->generator->GetSourceFile();
-			}
+			result = g->GetCurrentAnimationFile();
 			return true;
 		});
 

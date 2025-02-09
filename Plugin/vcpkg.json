@@ -3,7 +3,7 @@
   "name": "nativeanimationframeworksf",
   "version-string": "1.0.0",
   "description": "sfse plugin for starfield",
-  "builtin-baseline": "9edb1b8e590cc086563301d735cae4b6e732d2d2",
+  "builtin-baseline": "6f29f12e82a8293156836ad81cc9bf5af41fe836",
   "homepage": "https://github.com/Deweh/NativeAnimationFrameworkSF",
   "dependencies": [
     "spdlog",
@@ -14,6 +14,7 @@
     "simdjson",
     "zstr",
     "libzippp",
-    "detours"
+    "detours",
+    "delaunator-cpp"
   ]
 }

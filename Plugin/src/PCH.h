@@ -119,7 +119,7 @@ using namespace REL::literals;
 #include "Plugin.h"
 
 // SFSEPlugin_Version
-DLLEXPORT constinit auto SFSEPlugin_Version = []() noexcept {
+DLLEXPORT inline constinit auto SFSEPlugin_Version = []() noexcept {
 	return SFSE::PluginVersionData{
 		.dataVersion = SFSE::PluginVersionData::kVersion,
 		.pluginVersion = Plugin::Version,

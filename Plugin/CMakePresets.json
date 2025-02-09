@@ -53,8 +53,7 @@
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Release",
 				"CMAKE_CONFIGURATION_TYPES": "Release",
-				"CMAKE_CXX_FLAGS_RELEASE": "/O2 /DNDEBUG /Zi",
-				"CMAKE_SHARED_LINKER_FLAGS_RELEASE": "/DEBUG /OPT:REF /OPT:ICF /WHOLEARCHIVE:NAF-Common.lib"
+				"CMAKE_CXX_FLAGS_RELEASE": "/O2 /DNDEBUG /Zi"
 			}
 		},
 		{
@@ -63,8 +62,7 @@
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Release",
 				"CMAKE_CONFIGURATION_TYPES": "Release",
-				"CMAKE_CXX_FLAGS_RELEASE": "/Od /DNDEBUG /Zi",
-				"CMAKE_SHARED_LINKER_FLAGS_RELEASE": "/DEBUG /OPT:REF /OPT:ICF /WHOLEARCHIVE:NAF-Common.lib"
+				"CMAKE_CXX_FLAGS_RELEASE": "/Od /DNDEBUG /Zi"
 			}
 		},
 		{
@@ -84,11 +82,18 @@
 		{
 			"name": "generator-ninja",
 			"hidden": true,
-			"generator": "Ninja"
+			"generator": "Ninja",
+			"cacheVariables": {
+				"CMAKE_MAKE_PROGRAM": "ninja.exe",
+				"CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
+			}
 		},
 		{
 			"name": "compiler-msvc",
 			"hidden": true,
+			"cacheVariables": {
+				"CMAKE_SHARED_LINKER_FLAGS_RELEASE": "/DEBUG /OPT:REF /OPT:ICF /WHOLEARCHIVE:NAF-Common.lib"
+			},
 			"environment": {
 				"PROJECT_COMPILER_FLAGS": "/cgthreads8 /diagnostics:caret /fp:contract /fp:except- /guard:cf- /permissive- /Zc:__cplusplus /Zc:lambda /Zc:preprocessor /Zc:referenceBinding /Zc:rvalueCast /Zc:templateScope /Zc:ternary /Zc:preprocessor /EHsc /MP /W4 /external:anglebrackets /external:W0",
 				"PROJECT_COMPILER": "msvc"
@@ -117,7 +122,8 @@
 			"inherits": "compiler-clang",
 			"cacheVariables": {
 				"CMAKE_C_COMPILER": "clang-cl",
-				"CMAKE_CXX_COMPILER": "clang-cl"
+				"CMAKE_CXX_COMPILER": "clang-cl",
+				"CMAKE_SHARED_LINKER_FLAGS_RELEASE": "/DEBUG /OPT:REF /OPT:ICF /WHOLEARCHIVE:NAF-Common/project/NAF-Common.lib"
 			},
 			"environment": {
 				"CC": "clang-cl",
@@ -144,18 +150,52 @@
 				"generator-msvc",
 				"compiler-msvc"
 			]
+		},
+		{
+			"name": "build-release-clang-o2",
+			"inherits": [
+				"common",
+				"packaging-vcpkg",
+				"buildtype-release-o2",
+				"generator-ninja",
+				"compiler-clang-cl"
+			]
+		},
+		{
+			"name": "build-release-clang-od",
+			"inherits": [
+				"common",
+				"packaging-vcpkg",
+				"buildtype-release-od",
+				"generator-ninja",
+				"compiler-clang-cl"
+			]
 		}
 	],
 	"buildPresets": [
 		{
 			"name": "release-msvc-o2",
 			"configurePreset": "build-release-msvc-o2",
-			"displayName": "4. (Release) MSVC - MSVC [O2]"
+			"configuration": "Release",
+			"displayName": "(Release) MSVC - MSVC [O2]"
 		},
 		{
 			"name": "release-msvc-od",
 			"configurePreset": "build-release-msvc-od",
-			"displayName": "4. (Release) MSVC - MSVC [Od]"
+			"configuration": "Release",
+			"displayName": "(Release) MSVC - MSVC [Od]"
+		},
+		{
+			"name": "release-clang-o2",
+			"configurePreset": "build-release-clang-o2",
+			"configuration": "Release",
+			"displayName": "(Release) Ninja - ClangCL [O2]"
+		},
+		{
+			"name": "release-clang-od",
+			"configurePreset": "build-release-clang-od",
+			"configuration": "Release",
+			"displayName": "(Release) Ninja - ClangCL [Od]"
 		}
 	]
 }
