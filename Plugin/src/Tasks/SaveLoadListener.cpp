@@ -6,7 +6,7 @@
 
 namespace Tasks::SaveLoadListener
 {
-	static Util::VFuncHook<void*(RE::BSScript::Internal::VirtualMachine*)> RevertHook(447253, 0x7, "BSScript::Internal::VirtualMachine::DropAllRunningData",
+	static Util::VFuncHook<void*(RE::BSScript::Internal::VirtualMachine*)> RevertHook(481117, 0x7, "BSScript::Internal::VirtualMachine::DropAllRunningData",
 		[](RE::BSScript::Internal::VirtualMachine* a_this) -> void* {
 			Animation::GraphManager::GetSingleton()->Reset();
 			Animation::Face::Manager::GetSingleton()->Reset();

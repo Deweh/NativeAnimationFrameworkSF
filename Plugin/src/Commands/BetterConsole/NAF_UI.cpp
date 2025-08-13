@@ -212,7 +212,12 @@ namespace
 		UI->VBoxEnd();
 	}
 
-	static std::array<const char*, 2> tabNames{ "Managed Actors", "Loaded Animations" };
+	void DrawPhysicsTab()
+	{
+		
+	}
+
+	static std::array<const char*, 3> tabNames{ "Managed Actors", "Loaded Animations", "Physics" };
 	static int activeTab = 0;
 
 	void OnUIDraw(void*)
@@ -224,6 +229,9 @@ namespace
 			break;
 		case 1:
 			DrawAnimationsTab();
+			break;
+		case 2:
+			DrawPhysicsTab();
 			break;
 		}
 	}

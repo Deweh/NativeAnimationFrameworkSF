@@ -1,10 +1,15 @@
 #include "NAFCommand.h"
+#include "RE/P/PlayerCharacter.h"
+#include "Serialization/BlendGraphSchemaExport.h"
 #include "Serialization/GLTFImport.h"
 #include "Serialization/GLTFExport.h"
 #include "Settings/Settings.h"
 #include "Animation/GraphManager.h"
 #include "Animation/Ozz.h"
+#include "Util/Ozz.h"
 #include "Util/String.h"
+#include "ozz/animation/runtime/skeleton.h"
+#include "ozz/animation/runtime/skeleton_utils.h"
 #include "zstr.hpp"
 #include "Tasks/Input.h"
 
@@ -282,31 +287,18 @@ namespace Commands::NAFCommand
 		Animation::GraphManager::GetSingleton()->SetGraphControlsPosition(actor, lock);
 	}
 
-	void ProcessSilentCommand()
+	void ProcessExportBTSchemaCommand(uint64_t idxStart = 1, bool verbose = true)
 	{
-		if (args.size() < 2) {
-			return;
-		}
-
-		auto type = args[1].get();
-		if (type == "play") {
-			ProcessPlayCommand(2, false);
-		} else if (type == "stop") {
-			ProcessStopCommand(2, false);
-		} else if (type == "sync") {
-			ProcessSyncCommand(2);
-		} else if (type == "stopsync") {
-			ProcessStopSyncCommand(2, false);
-		} else if (type == "startseq") {
-			ProcessStartSeqCommand(2, false);
-		} else if (type == "advseq") {
-			ProcessAdvanceSeqCommand(2, false);
+		std::filesystem::path filePath = Util::String::GetDataPath() / "bt_schema.json";
+		if(Serialization::BlendGraphSchemaExport::SaveSchemaJSON(filePath)){
+			itfc->PrintLn(std::format("Saved blend tree schema to: {}", filePath.generic_string()));
+		} else {
+			itfc->PrintLn("Failed to save blend tree schema.");
 		}
 	}
 
 	void ProcessTest()
 	{
-		// put test routines here.
 	}
 
 	void Run(const CCF::simple_array<CCF::simple_string_view>& a_args, const char* a_fullString, CCF::ConsoleInterface* a_intfc)
@@ -321,10 +313,7 @@ namespace Commands::NAFCommand
 		}
 
 		auto type = args[0].get();
-		if (type == "s") {
-			itfc->PreventDefaultPrint();
-			ProcessSilentCommand();
-		} else if (type == "play") {
+		if (type == "play") {
 			ProcessPlayCommand();
 		} else if (type == "stop") {
 			ProcessStopCommand();
@@ -344,6 +333,8 @@ namespace Commands::NAFCommand
 			ProcessAdvanceSeqCommand();
 		} else if (type == "lockpos") {
 			ProcessLockPosCommand();
+		} else if (type == "ebts") {
+			ProcessExportBTSchemaCommand();
 		} else if (type == "test") {
 			ProcessTest();
 		} else {

@@ -128,12 +128,18 @@
 	"launch": {
 		"version": "0.2.0",
 		"configurations": [
-		{
-			"type": "lldb",
-			"request": "attach",
-			"name": "Attach",
-			"program": "Starfield.exe"
-		}
+			{
+				"type": "lldb",
+				"request": "attach",
+				"name": "Attach (LLDB)",
+				"program": "Starfield.exe"
+			},
+			{
+				"type": "cppvsdbg",
+				"request": "attach",
+				"name": "Attach (Microsoft)",
+				"processId": "${command:pickProcess}"
+			}
 		]
 	}
 }

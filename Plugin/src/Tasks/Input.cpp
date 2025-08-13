@@ -13,7 +13,7 @@ namespace Tasks
 		callbacks[a_key] = a_callback;
 	}
 
-	static Util::VFuncHook<void(const RE::PlayerCamera*, const RE::InputEvent*)> PerformInputProcessingHook(428955, 0x1, "PlayerCamera::PerformInputProcessing",
+	static Util::VFuncHook<void(const RE::PlayerCamera*, const RE::InputEvent*)> PerformInputProcessingHook(459729, 0x1, "PlayerCamera::PerformInputProcessing",
 		[](const RE::PlayerCamera* a_camera, const RE::InputEvent* a_queueHead) {
 			static Input* m = Input::GetSingleton();
 			for (auto curEvent = a_queueHead; curEvent != nullptr && curEvent->status != RE::InputEvent::Status::kStop; curEvent = curEvent->next) {
